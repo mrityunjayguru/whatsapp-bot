@@ -1,57 +1,70 @@
 package com.whatsapp.app.services;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class WhatsAppService {
 
-    @Value("${whatsapp.access-token}")
-    private String accessToken;
-
-    @Value("${whatsapp.phone-number-id}")
-    private String phoneNumberId;
-
     @Autowired
     private RestTemplate restTemplate;
 
-    public String sendMessage(String to, String message) {
-
-        System.out.println(" to "+to);
-        System.out.println(" message "+message);
-        System.out.println(" phoneNumberId "+phoneNumberId);
-        System.out.println(" accessToken "+accessToken);
-        
-
+    public String sendTemplateWithParams(String to, String templateName, List<String> parametersList) {
+        String phoneNumberId = "1216945994830075";
+        String accessToken = "EAAZALVnOwhKABR6...[Your Full Token]"; 
         String url = "https://graph.facebook.com/v23.0/" + phoneNumberId + "/messages";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
-Map<String, Object> body = new HashMap<>();
-body.put("messaging_product", "whatsapp");
-body.put("to", to);
-body.put("type", "template"); // Change from "text" to "template"
 
-Map<String, Object> template = new HashMap<>();
-template.put("name", "hello_world"); // Use Meta's pre-approved sandbox template
+        // Core Meta JSON Structure
+        Map<String, Object> body = new HashMap<>();
+        body.put("messaging_product", "whatsapp");
+        body.put("to", to);
+        body.put("type", "template");
 
-Map<String, String> language = new HashMap<>();
-language.put("code", "en_US");
-template.put("language", language);
+        Map<String, Object> template = new HashMap<>();
+        template.put("name", templateName);
 
-body.put("template", template);
+        Map<String, String> language = new HashMap<>();
+        language.put("code", "en_US");
+        template.put("language", language);
 
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        // Map list strings to Meta Parameter Objects: {"type": "text", "text": "value"}
+        List<Map<String, Object>> parameters = new ArrayList<>();
+        for (String textValue : parametersList) {
+            Map<String, Object> param = new HashMap<>();
+            param.put("type", "text");
+            param.put("text", textValue);
+            parameters.add(param);
+        }
 
-        return restTemplate.postForObject(url, request, String.class);
+        // Place parameter array inside the text "body" component context
+        Map<String, Object> bodyComponent = new HashMap<>();
+        bodyComponent.put("type", "body");
+        bodyComponent.put("parameters", parameters);
+
+        List<Map<String, Object>> components = new ArrayList<>();
+        components.add(bodyComponent);
+
+        template.put("components", components);
+        body.put("template", template);
+
+        // Execute Post request via HttpEntity wrapper
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+        ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+        
+        return response.getBody();
     }
 }
