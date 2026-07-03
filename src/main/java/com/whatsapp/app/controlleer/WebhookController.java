@@ -1,30 +1,27 @@
 package com.whatsapp.app.controlleer;
 
-
+import com.whatsapp.app.services.WhatsAppService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 
 @RestController
-@RequestMapping("/webhook")
-public class WebhookController {
+@RequestMapping("/api/whatsapp")
+public class WhatsAppController {
 
-    @GetMapping
-    public String verify(
-            @RequestParam("hub.mode") String mode,
-            @RequestParam("hub.verify_token") String token,
-            @RequestParam("hub.challenge") String challenge) {
+    @Autowired
+    private WhatsAppService whatsAppService;
 
-        if ("YOUR_VERIFY_TOKEN".equals(token)) {
-            return challenge;
-        }
-
-        return "Verification failed";
-    }
-
-    @PostMapping
-    public ResponseEntity<String> receive(@RequestBody String payload) {
-        System.out.println(payload);
-        return ResponseEntity.ok("EVENT_RECEIVED");
+    @PostMapping("/send-template")
+    public ResponseEntity<String> sendDynamicTemplate(
+            @RequestParam String to,
+            @RequestParam String templateName,
+            @RequestParam List<String> params) {
+        
+        // Example: If template needs Name and Code, pass them comma-separated in Postman
+        String result = whatsAppService.sendTemplateWithParams(to, templateName, params);
+        return ResponseEntity.ok(result);
     }
 }
