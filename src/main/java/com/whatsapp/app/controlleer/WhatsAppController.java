@@ -1,27 +1,41 @@
 package com.whatsapp.app.controlleer;
 
+import com.whatsapp.app.services.TwilioService;
 import com.whatsapp.app.services.WhatsAppService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/whatsapp")
 public class WhatsAppController {
 
     @Autowired
-    private WhatsAppService whatsAppService;
+    private TwilioService twilioService;
 
-    @PostMapping("/send-template")
-    public ResponseEntity<String> sendDynamicTemplate(
-            @RequestParam String to,
-            @RequestParam String templateName,
-            @RequestParam List<String> params) {
-        
-        // Example: If template needs Name and Code, pass them comma-separated in Postman
-        String result = whatsAppService.sendTemplateWithParams(to, templateName, params);
-        return ResponseEntity.ok(result);
+    @PostMapping("/send")
+    public String sendWhatsAppMessage(@RequestParam("to") String to, 
+                                      @RequestParam("message") String message) {
+
+
+        System.out.println(" to "+to);
+        System.out.println(" message "+message);
+
+        return twilioService.sendWhatsAppMessage(to, message);
     }
+
+
+    @Autowired
+    private WhatsAppService service;
+
+    @PostMapping("/send1")
+    public String send(@RequestParam("to") String to, 
+                                      @RequestParam("message") String message) {
+
+           System.out.println(" to "+to);
+           System.out.println(" message "+message);
+        return service.sendMessage(to, message);
+    }
+
+
 }
