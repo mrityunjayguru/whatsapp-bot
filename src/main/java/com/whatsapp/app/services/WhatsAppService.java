@@ -36,22 +36,18 @@ public class WhatsAppService {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
-Map<String, Object> body = new HashMap<>();
-body.put("messaging_product", "whatsapp");
-body.put("to", to);
-body.put("type", "template"); // Change from "text" to "template"
+        Map<String, Object> body = new HashMap<>();
+        body.put("messaging_product", "whatsapp");
+        body.put("to", to);
+        body.put("type", "text");
 
-Map<String, Object> template = new HashMap<>();
-template.put("name", "hello_world"); // Use Meta's pre-approved sandbox template
+        Map<String, Object> text = new HashMap<>();
+        text.put("preview_url", false);
+        text.put("body", message);
 
-Map<String, String> language = new HashMap<>();
-language.put("code", "en_US");
-template.put("language", language);
+        body.put("text", text);
+                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
-body.put("template", template);
-
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-
-        return restTemplate.postForObject(url, request, String.class);
+                return restTemplate.postForObject(url, request, String.class);
     }
 }
