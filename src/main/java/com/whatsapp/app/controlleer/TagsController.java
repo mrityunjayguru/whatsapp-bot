@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.whatsapp.app.Repository.TagsRepository;
-import com.whatsapp.app.model.ContactEntity;
 import com.whatsapp.app.model.Tags;
 
 @RestController

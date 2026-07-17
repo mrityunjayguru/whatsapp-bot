@@ -23,6 +23,8 @@ public class ContactEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private String messageBody;
+
     @Column(name = "tenantid", nullable = false)
     private Long tenantid;
 

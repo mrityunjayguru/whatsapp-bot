@@ -16,6 +16,10 @@ public interface ContactEntityRepository extends JpaRepository<ContactEntity, Lo
             INCREMENT BY 1;
         */
 
+            @Query("SELECT c FROM ContactEntity c WHERE c.phonenumber = :phonenumber")
+            ContactEntity findBPhonenumber(@Param("phonenumber") String phonenumber);
+
+
 
             @Query("SELECT c FROM ContactEntity c WHERE c.whatsappphonenumberid = :whatsappphonenumberid")
             ContactEntity findByWhatsappphonenumberid(@Param("whatsappphonenumberid") Long whatsappphonenumberid);

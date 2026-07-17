@@ -1,0 +1,59 @@
+package com.whatsapp.app.controlleer;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.whatsapp.app.Repository.ConversationEntityRepository;
+import com.whatsapp.app.model.ConversationEntity;
+
+
+@RestController
+@RequestMapping("/api/conversation")
+public class ConversationEntityRepositoryController {
+
+    @Autowired
+    private ConversationEntityRepository conversationEntityRepository;
+
+    @PostMapping
+    public ResponseEntity<?> createTag(@RequestBody ConversationEntity conversationEntity) {
+
+        //tags.setTagid(tagsRepository.getNextTagId());
+        ConversationEntity savedConversationEntity = conversationEntityRepository.save(conversationEntity);
+          return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body("Data saved successfully");
+    }
+
+
+    @GetMapping
+    public ResponseEntity<Iterable<ConversationEntity>> allTag() {
+        Iterable<ConversationEntity> conversationEntities = conversationEntityRepository.findAll();
+        return ResponseEntity.ok(conversationEntities);
+    }
+
+
+
+/* 
+     @GetMapping("/bytagid/{tagid}")
+    public ResponseEntity<?> getTagByTagId(@PathVariable String tagid) {
+            List<String> tagids = Arrays.asList(tagid.split(","));
+            List<ConversationEntity> conversationEntities = conversationEntityRepository.findByTagid(tagids);
+                    if (conversationEntities == null) {
+                        return ResponseEntity.notFound().build();
+                    }
+                    return ResponseEntity.ok(conversationEntities);
+                }
+ */
+
+
+}

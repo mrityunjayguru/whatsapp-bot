@@ -548,6 +548,104 @@ let tagsdatalist=[];
 }
 
 
+// Saving Conversation Data 
+
+
+function saveConversation() {
+
+    let conversationData = {
+        title: document.getElementById("title").value,
+        assignedUserId: document.getElementById("assigned_user_id").value || null,
+        contactId: document.getElementById("contact_id").value || null,
+        status: document.getElementById("status").value,
+        firstMessageAt: document.getElementById("first_message_at").value || null,
+        lastMessageAt: document.getElementById("last_message_at").value || null,
+        lastMessagePreview: document.getElementById("last_message_preview").value,
+        resolvedAt: document.getElementById("resolved_at").value || null,
+        tenantId: document.getElementById("tenant_id").value || null
+    };
+
+    console.log("=========conversationData===========");
+    console.log(conversationData);    
+    console.log("=========conversationData===========");
+
+    fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/conversation", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        },
+        body: JSON.stringify(conversationData)   // <-- Don't wrap it
+    })
+    .then(response => response.text())
+    .then(data => {
+        document.getElementById("resultconversation").innerHTML = data;
+    })
+    .catch(error => {
+        document.getElementById("resultconversation").innerHTML = "Error: " + error;
+    });
+}
+
+
+
+
+
+function loadConversation() {
+
+    fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/conversation", {
+        method: "GET",
+        headers: {
+            "Accept": "application/json",
+            "ngrok-skip-browser-warning": "1"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+
+        let tbody = document.getElementById("conversationBody");
+        tbody.innerHTML = "";
+
+       data.forEach(function (tag) {
+
+        console.log("Conversation Data");
+        console.log(tag);
+        console.log("Conversation Data");
+
+    let row =
+        "<tr id='id'>" +
+
+             "<td>" + tag.id + "</td>" +
+            "<td>" + tag.title + "</td>" +
+            "<td>" + tag.assigned_user_id + "</td>" +
+            "<td>" + tag.contact_id + "</td>" +
+            "<td>" + tag.first_message_at + "</td>" +
+            "<td>" + tag.last_message_at + "</td>" +
+            "<td>" + tag.last_message_preview + "</td>" +
+            "<td>" + tag.resolved_at + "</td>" +
+              "<td>" + tag.status + "</td>" +
+              "<td>" + tag.tenant_id + "</td>" +
+              "<td>" + tag.unread_count + "</td>" +
+               "<td>" + tag.whatsapp_phone_number_id + "</td>" +
+
+            "<td>" + tag.created_at + "</td>" +
+            "<td>" + tag.updated_at + "</td>" +
+
+
+        "</tr>";
+
+    
+
+    tbody.insertAdjacentHTML("beforeend", row);
+});
+
+    })
+    .catch(error => {
+        console.error(error);
+        alert("Unable to load tags.");
+    });
+}
+
+
 
 </script>
 
@@ -666,6 +764,8 @@ let tagsdatalist=[];
 
 
 </div>
+
+
 <hr>
 <hr>
 
@@ -710,6 +810,178 @@ let tagsdatalist=[];
 
 
 <hr>
+<hr>
+
+
+<hr>
+
+
+
+// Saving Conversation Data
+<div>
+
+
+<h2>Save Conversation</h2>
+
+<table>
+    
+
+    <tr>
+        <td>Conversation Title</td>
+        <td>
+            <input type="text" id="title" name="title" placeholder="Enter conversation title">
+        </td>
+    </tr>
+
+    <tr>
+        <td>Assigned User ID</td>
+        <td>
+            <input type="number" id="assigned_user_id" name="assigned_user_id">
+        </td>
+    </tr>
+
+    <tr>
+        <td>Contact ID</td>
+        <td>
+            <input type="number" id="contact_id" name="contact_id">
+        </td>
+    </tr>
+
+    <tr>
+        <td>Status</td>
+        <td>
+            <input type="text" id="status" name="status">
+        </td>
+    </tr>
+
+    <tr>
+        <td>Tenant ID</td>
+        <td>
+            <input type="number" id="tenant_id" name="tenant_id">
+        </td>
+    </tr>
+
+    <tr>
+        <td>WhatsApp Phone Number ID</td>
+        <td>
+            <input type="text" id="whatsapp_phone_number_id" name="whatsapp_phone_number_id">
+        </td>
+    </tr>
+
+    <tr>
+        <td>Payload</td>
+        <td>
+            <textarea id="payload" name="payload" rows="4" cols="40"></textarea>
+        </td>
+    </tr>
+
+    <!-- Read-only fields -->
+
+    <tr>
+        <td>ID</td>
+        <td>
+            <input type="number" id="id" value="2" readonly>
+        </td>
+    </tr>
+
+    <tr>
+        <td>Created At</td>
+        <td>
+            <input type="text" id="created_at" value="2026-07-16T16:25:15.372521" readonly>
+        </td>
+    </tr>
+
+    <tr>
+        <td>Updated At</td>
+        <td>
+            <input type="text" id="updated_at" value="2026-07-16T16:25:15.372521" readonly>
+        </td>
+    </tr>
+
+    <tr>
+        <td>First Message At</td>
+        <td>
+            <input type="text" id="first_message_at" readonly>
+        </td>
+    </tr>
+
+    <tr>
+        <td>Last Message At</td>
+        <td>
+            <input type="text" id="last_message_at" readonly>
+        </td>
+    </tr>
+
+    <tr>
+        <td>Last Message ID</td>
+        <td>
+            <input type="text" id="last_message_id" readonly>
+        </td>
+    </tr>
+
+    <tr>
+        <td>Last Message Preview</td>
+        <td>
+            <textarea id="last_message_preview" rows="2" readonly></textarea>
+        </td>
+    </tr>
+
+    <tr>
+        <td>Resolved At</td>
+        <td>
+            <input type="text" id="resolved_at" readonly>
+        </td>
+    </tr>
+
+    <tr>
+        <td>Unread Count</td>
+        <td>
+            <input type="number" id="unread_count" readonly>
+        </td>
+    </tr>
+
+
+    
+
+    <tr>
+        <td colspan="2">
+            <button onclick="saveConversation()">Save Conversation</button>
+        </td>
+    </tr>
+</table>
+<hr>
+
+
+
+<a href="#" onclick="loadConversation(); return false;">All Conversation</a>
+
+<br><br>
+
+<table border="1">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Conversation Title</th>
+            <th>Created At</th>
+            <th>Updated At</th>
+            
+        </tr>
+    </thead>
+
+    <tbody id="conversationBody">
+
+    </tbody>
+
+</table>
+
+<hr>
+
+<div id="resultconversation"></div>
+
+
+</div>
+
+
 
 </body>
 </html>

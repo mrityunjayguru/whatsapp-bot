@@ -19,16 +19,23 @@ public class ConversationEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String tenant_id;
-    private String whatsapp_phone_number_id;
-    private String contact_id;
-    private String assigned_user_id;
+    private String phonenumber;
+    private String profilename;
+    private String messagestatus;
+    private String messageBody;
+
+    private Long tenant_id;
+    private Long whatsapp_phone_number_id;
+    private Long contact_id;
+    private String title;
+    private Long assigned_user_id;
     private String status;
     private Integer unread_count;
     private String last_message_id;
     private String last_message_preview;
     private LocalDateTime last_message_at;
     private LocalDateTime first_message_at;
+    private LocalDateTime resolved_at;
     private LocalDateTime created_at = LocalDateTime.now();
     private LocalDateTime updated_at = LocalDateTime.now();
 

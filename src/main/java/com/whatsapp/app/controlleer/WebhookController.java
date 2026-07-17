@@ -14,9 +14,11 @@ import org.springframework.web.bind.annotation.*;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.whatsapp.app.Repository.ContactEntityRepository;
+import com.whatsapp.app.Repository.ConversationEntityRepository;
 import com.whatsapp.app.Repository.WebhookRepository;
 import com.whatsapp.app.model.ContactEntity;
 import com.whatsapp.app.model.Contacttags;
+import com.whatsapp.app.model.ConversationEntity;
 import com.whatsapp.app.model.WebhookEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
@@ -36,6 +38,9 @@ public class WebhookController {
 
     @Autowired
     private ContactEntityRepository contactEntityRepository;
+
+    @Autowired 
+    private ConversationEntityRepository conversationEntityRepository;
 
 
     
@@ -71,6 +76,10 @@ public class WebhookController {
 
         String phoneNumberId = root.get("entry").get(0).get("changes").get(0).get("value").get("contacts").get(0).get("wa_id").asText();
         String profileName = root.get("entry").get(0).get("changes").get(0).get("value").get("contacts").get(0).get("profile").get("name").asText();
+
+        String messageBody = root.get("entry").get(0).get("changes").get(0).get("value").get("messages").get(0).get("text").get("body").asText();
+
+
         if (!contactEntityRepository.existsByphonenumber(phoneNumberId)) {
                     ContactEntity  contactEntity = new ContactEntity();
                         contactEntity.setPayload(payload);
@@ -78,11 +87,28 @@ public class WebhookController {
                         contactEntity.setWhatsappphonenumberid(contactEntityRepository.getNextWhatsappphonenumberId());
                         contactEntity.setPhonenumber(phoneNumberId);
                         contactEntity.setWhatsappprofilename(profileName);
+                        contactEntity.setMessageBody(messageBody);
                         contactEntityRepository.save(contactEntity);
         }
         else{
             System.out.println(" Phone number must be unique");
         }
+
+
+        ContactEntity contactEntity = contactEntityRepository.findBPhonenumber(phoneNumberId);
+        ConversationEntity conversationEntity = new ConversationEntity();
+        conversationEntity.setTenant_id(contactEntity.getTenantid());
+        conversationEntity.setWhatsapp_phone_number_id(contactEntity.getWhatsappphonenumberid());
+        conversationEntity.setPhonenumber(contactEntity.getPhonenumber());
+        conversationEntity.setProfilename(contactEntity.getWhatsappprofilename());
+        conversationEntity.setMessagestatus("Received");
+        conversationEntity.setContact_id(contactEntity.getId());
+        conversationEntity.setTitle("Default Title");
+        conversationEntity.setStatus("Open");
+        conversationEntity.setMessageBody(messageBody);
+
+
+        conversationEntityRepository.save(conversationEntity);
 
         return ResponseEntity.ok("EVENT_RECEIVED");
     }
