@@ -2,9 +2,11 @@ package com.whatsapp.app.controlleer;
 
 import com.whatsapp.app.Repository.ContactEntityRepository;
 import com.whatsapp.app.Repository.ConversationEntityRepository;
+import com.whatsapp.app.Repository.MessageEntityRepository;
 import com.whatsapp.app.Repository.WebhookRepository;
 import com.whatsapp.app.model.ContactEntity;
 import com.whatsapp.app.model.ConversationEntity;
+import com.whatsapp.app.model.MessageEntity;
 import com.whatsapp.app.services.TwilioService;
 import com.whatsapp.app.services.WhatsAppService;
 
@@ -26,6 +28,9 @@ public class WhatsAppController {
 
     @Autowired 
     private ConversationEntityRepository conversationEntityRepository;
+
+    @Autowired
+    MessageEntityRepository messageEntityRepository;
 
 
     @PostMapping("/send")
@@ -69,10 +74,32 @@ public class WhatsAppController {
         conversationEntity.setContact_id(contactEntity.getId());
         conversationEntity.setTitle("Default Title");
         conversationEntity.setStatus("Open");
-        conversationEntity.setMessageBody(message);
+        conversationEntity.setMessagebody(message);
 
 
         conversationEntityRepository.save(conversationEntity);
+
+
+
+
+          // ========================= Message Entity =============================
+        //messageEntityRepository
+        MessageEntity  messageEntity = new MessageEntity();
+        messageEntity.setMediaid(messageEntityRepository.getNextMessageId());
+        messageEntity.setTenantid(contactEntity.getTenantid());
+        messageEntity.setWhatsappphonenumberid(contactEntity.getWhatsappphonenumberid());
+        messageEntity.setContactid(contactEntity.getId());
+        messageEntity.setPhonenumber(contactEntity.getPhonenumber());
+        messageEntity.setProfilename(contactEntity.getWhatsappprofilename());
+        messageEntity.setDirection("Outbound");
+        messageEntity.setMessagetext(message);
+        messageEntity.setMessagebody(message);
+
+        messageEntityRepository.save(messageEntity);
+
+
+        // =======================================================================
+
 
 
         return service.sendMessage(to, message);

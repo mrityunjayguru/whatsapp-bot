@@ -22,7 +22,7 @@ public class ConversationEntity {
     private String phonenumber;
     private String profilename;
     private String messagestatus;
-    private String messageBody;
+    private String messagebody;
 
     private Long tenant_id;
     private Long whatsapp_phone_number_id;

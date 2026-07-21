@@ -82,6 +82,41 @@ function loadContacts() {
 */saveContactTagData
 
 
+function loadAllConversationStatus()
+{
+    
+    fetch("  https://familiar-underwent-riddance.ngrok-free.dev/api/allwebhookrequest", {
+        method: "GET",
+        headers: {
+            "Accept": "application/json",
+            "ngrok-skip-browser-warning": "1"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+
+        let tbody = document.getElementById("contactBodyConversationData");
+        tbody.innerHTML = "";
+
+        data.forEach(contact => {
+
+            let row = "<tr>"
+                    + "<td>" + contact + "</td>"
+                  
+                  
+            tbody.innerHTML += row;
+        });
+
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        alert("Unable to load contacts.");
+    });
+    
+
+}
+
+
 function loadContacts() {
 
 
@@ -195,6 +230,13 @@ fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/tags", {
                 "</button>" +
             "</td>" +
 
+            
+            "<td>" +
+                "<button onclick='viewConversation(" + contact.phonenumber + ")'>" +
+                    "View Conversation" +
+                "</button>" +
+            "</td>" +
+
         "</tr>";
 
     
@@ -255,6 +297,44 @@ alert(Array.from(document.getElementById("tags-" + id).selectedOptions)
     .catch(error => {
         console.error(error);
         alert("Unable to update contact.");
+    });
+
+}
+
+
+function viewConversation(phonenumber) {
+
+    let url = "  https://familiar-underwent-riddance.ngrok-free.dev/api/conversation/byphonenumber/"+phonenumber;
+
+       alert(phonenumber);
+
+    
+    fetch(url, {
+        method: "GET",
+        headers: {
+            "Accept": "application/json",
+            "ngrok-skip-browser-warning": "1"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+
+        let tbody = document.getElementById("conversationBodyConversationData");
+        tbody.innerHTML = "";
+
+        data.forEach(contact => {
+
+            let row = "<tr>"
+                    + "<td>" + JSON.stringify(contact, null, 2)   + "</td>"
+                  
+                  
+            tbody.innerHTML += row;
+        });
+
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        alert("Unable to load contacts.");
     });
 
 }
@@ -625,7 +705,10 @@ function loadConversation() {
               "<td>" + tag.status + "</td>" +
               "<td>" + tag.tenant_id + "</td>" +
               "<td>" + tag.unread_count + "</td>" +
-               "<td>" + tag.whatsapp_phone_number_id + "</td>" +
+            "<td>" + tag.whatsapp_phone_number_id + "</td>" +
+            "<td>" + tag.messagebody + "</td>" +
+            "<td>" + tag.messagestatus + "</td>" +
+            "<td>" + tag.profilename + "</td>" +
 
             "<td>" + tag.created_at + "</td>" +
             "<td>" + tag.updated_at + "</td>" +
@@ -682,6 +765,7 @@ function loadConversation() {
 
 
 
+
 <a href="#" onclick="loadContacts(); return false;">All Contact</a>
 
 <br><br>
@@ -712,6 +796,24 @@ function loadConversation() {
 
 <hr>
 <div>
+
+<div style="background-color: burlywood;">
+
+    
+<table border="1">
+    <thead>
+        <tr>
+            <th>Data</th>
+            
+        </tr>
+    </thead>
+
+    <tbody id="conversationBodyConversationData">
+
+    </tbody>
+
+</table>
+</div>
 
 
 <h2>Add Tag</h2>
@@ -962,6 +1064,20 @@ function loadConversation() {
         <tr>
             <th>ID</th>
             <th>Conversation Title</th>
+            <th> Assigned User Id </th>
+            <th>Contact Id</th>
+            <th>First Message At</th>
+            <th>Last Message At</th>
+            <th>Last Message Preview</th>
+            <th>Resolved At</th>
+            <th>Status</th>
+            <th>Tenant Id</th>
+            <th>Unread Count</th>
+            <th>WhatsApp Phone Number Id</th>
+             <th> Message Body </th>
+            <th> Message Status </th>
+            <th> Profile Name </th>
+
             <th>Created At</th>
             <th>Updated At</th>
             
@@ -981,6 +1097,40 @@ function loadConversation() {
 
 </div>
 
+
+    <div>
+     <hr style="height: 20px;color: red;">
+
+        <a href="#" onclick="loadAllConversationStatus(); return false;"> All Conversation Status </a>
+    
+<table border="1">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Tenant ID</th>
+            <th>WhatsApp Phone Number ID</th>
+            <th>Phone</th>
+            <th>WhatsApp Profile Name</th>
+            <th>Custom Name</th>
+            <th>Email</th>
+            <th>Tags</th>
+            <th>Created At</th>
+            <th>Updated At</th>
+            <th>Payload</th>
+        </tr>
+    </thead>
+
+    <tbody id="contactBodyConversationData">
+
+    </tbody>
+
+</table>
+
+
+    
+    <hr style="height: 20px; color:red">                
+
+    </div>
 
 
 </body>

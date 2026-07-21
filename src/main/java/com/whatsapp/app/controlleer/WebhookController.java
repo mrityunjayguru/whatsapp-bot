@@ -15,10 +15,12 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.whatsapp.app.Repository.ContactEntityRepository;
 import com.whatsapp.app.Repository.ConversationEntityRepository;
+import com.whatsapp.app.Repository.MessageEntityRepository;
 import com.whatsapp.app.Repository.WebhookRepository;
 import com.whatsapp.app.model.ContactEntity;
 import com.whatsapp.app.model.Contacttags;
 import com.whatsapp.app.model.ConversationEntity;
+import com.whatsapp.app.model.MessageEntity;
 import com.whatsapp.app.model.WebhookEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
@@ -42,6 +44,9 @@ public class WebhookController {
     @Autowired 
     private ConversationEntityRepository conversationEntityRepository;
 
+    @Autowired
+    private MessageEntityRepository messageEntityRepository;
+
 
     
     @GetMapping
@@ -64,9 +69,16 @@ public class WebhookController {
     @PostMapping
     public ResponseEntity<String> receiveWebhook(@RequestBody String payload) throws JsonMappingException, JsonProcessingException {
 
-        System.out.println("Webhook Received:");
+        System.out.println("=================Webhook Received:===============");
+        System.out.println("=================Webhook Received:===============");
+        System.out.println("=================Webhook Received:===============");
+        
         System.out.println(payload);
 
+        System.out.println("=================Webhook Received:===============");
+        System.out.println("=================Webhook Received:===============");
+        System.out.println("=================Webhook Received:===============");
+        
          WebhookEvent entity = new WebhookEvent();
          entity.setPayload(payload);
          webhookRepository.save(entity);
@@ -105,10 +117,30 @@ public class WebhookController {
         conversationEntity.setContact_id(contactEntity.getId());
         conversationEntity.setTitle("Default Title");
         conversationEntity.setStatus("Open");
-        conversationEntity.setMessageBody(messageBody);
+        conversationEntity.setMessagebody(messageBody);
 
 
         conversationEntityRepository.save(conversationEntity);
+
+
+
+        // ========================= Message Entity =============================
+        //messageEntityRepository
+        MessageEntity  messageEntity = new MessageEntity();
+        messageEntity.setMediaid(messageEntityRepository.getNextMessageId());
+        messageEntity.setTenantid(contactEntity.getTenantid());
+        messageEntity.setWhatsappphonenumberid(contactEntity.getWhatsappphonenumberid());
+        messageEntity.setContactid(contactEntity.getId());
+        messageEntity.setPhonenumber(contactEntity.getPhonenumber());
+        messageEntity.setProfilename(contactEntity.getWhatsappprofilename());
+        messageEntity.setDirection("Inbound");
+        messageEntity.setMessagetext(messageBody);
+        messageEntity.setMessagebody(messageBody);
+
+        messageEntityRepository.save(messageEntity);
+
+
+        // =======================================================================
 
         return ResponseEntity.ok("EVENT_RECEIVED");
     }

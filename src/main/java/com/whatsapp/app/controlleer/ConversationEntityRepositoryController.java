@@ -43,17 +43,17 @@ public class ConversationEntityRepositoryController {
 
 
 
-/* 
-     @GetMapping("/bytagid/{tagid}")
-    public ResponseEntity<?> getTagByTagId(@PathVariable String tagid) {
-            List<String> tagids = Arrays.asList(tagid.split(","));
-            List<ConversationEntity> conversationEntities = conversationEntityRepository.findByTagid(tagids);
+
+     @GetMapping("/byphonenumber/{phonenumber}")
+    public ResponseEntity<?> getTagByTagId(@PathVariable String phonenumber) {
+            
+            List<ConversationEntity> conversationEntities = conversationEntityRepository.findByPhonenumber(phonenumber);
                     if (conversationEntities == null) {
                         return ResponseEntity.notFound().build();
                     }
                     return ResponseEntity.ok(conversationEntities);
                 }
- */
+ 
 
 
 }
