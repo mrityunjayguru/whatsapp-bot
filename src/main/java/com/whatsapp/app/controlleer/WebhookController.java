@@ -86,10 +86,49 @@ public class WebhookController {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode root = mapper.readTree(payload);
 
+
+         // new logic for media type 
+
+
+   JsonNode message = root.path("entry")
+        .path(0)
+        .path("changes")
+        .path(0)
+        .path("value")
+        .path("messages")
+        .path(0);
+
+            String type = message.path("type").asText();
+
+            if ("image".equals(type)) {
+
+                JsonNode image = message.path("image");
+
+                String mediaId = image.path("id").asText();
+                String caption = image.path("caption").asText("");
+                String mimeType = image.path("mime_type").asText();
+
+                System.out.println(mediaId);
+                System.out.println(caption);
+                System.out.println(mimeType);
+
+            }
+
+        //======================
+
+
+
+
+
+
+
         String phoneNumberId = root.get("entry").get(0).get("changes").get(0).get("value").get("contacts").get(0).get("wa_id").asText();
         String profileName = root.get("entry").get(0).get("changes").get(0).get("value").get("contacts").get(0).get("profile").get("name").asText();
 
         String messageBody = root.get("entry").get(0).get("changes").get(0).get("value").get("messages").get(0).get("text").get("body").asText();
+
+
+
 
 
         if (!contactEntityRepository.existsByphonenumber(phoneNumberId)) {
@@ -107,6 +146,10 @@ public class WebhookController {
         }
 
 
+        
+
+
+
         ContactEntity contactEntity = contactEntityRepository.findBPhonenumber(phoneNumberId);
         ConversationEntity conversationEntity = new ConversationEntity();
         conversationEntity.setTenant_id(contactEntity.getTenantid());
@@ -120,10 +163,10 @@ public class WebhookController {
         conversationEntity.setMessagebody(messageBody);
 
 
-        conversationEntityRepository.save(conversationEntity);
+       
+        ConversationEntity  conversationEntityData =  conversationEntityRepository.save(conversationEntity);
 
-
-
+       
         // ========================= Message Entity =============================
         //messageEntityRepository
         MessageEntity  messageEntity = new MessageEntity();
@@ -136,6 +179,8 @@ public class WebhookController {
         messageEntity.setDirection("Inbound");
         messageEntity.setMessagetext(messageBody);
         messageEntity.setMessagebody(messageBody);
+        messageEntity.setConversationentityid(conversationEntityData.getId());
+
 
         messageEntityRepository.save(messageEntity);
 

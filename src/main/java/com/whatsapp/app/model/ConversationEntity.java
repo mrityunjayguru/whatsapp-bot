@@ -45,4 +45,19 @@ public class ConversationEntity {
     private String payload;
 
 
+     private String messageId;
+
+    private String mediaId;
+
+    private String sender;
+
+    private String caption;
+
+    private String mimeType;
+
+    private String filePath;
+
+    private LocalDateTime receivedAt;
+
+
 }

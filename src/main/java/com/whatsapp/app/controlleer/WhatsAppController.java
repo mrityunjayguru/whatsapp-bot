@@ -77,9 +77,9 @@ public class WhatsAppController {
         conversationEntity.setMessagebody(message);
 
 
-        conversationEntityRepository.save(conversationEntity);
 
 
+         ConversationEntity  conversationEntityData =  conversationEntityRepository.save(conversationEntity);
 
 
           // ========================= Message Entity =============================
@@ -94,6 +94,7 @@ public class WhatsAppController {
         messageEntity.setDirection("Outbound");
         messageEntity.setMessagetext(message);
         messageEntity.setMessagebody(message);
+        messageEntity.setConversationentityid(conversationEntityData.getId());
 
         messageEntityRepository.save(messageEntity);
 

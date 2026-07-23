@@ -8,11 +8,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.whatsapp.app.Repository.MessageEntityRepository;
+import com.whatsapp.app.model.ConversationEntity;
 import com.whatsapp.app.model.MessageEntity;
 
 
@@ -27,5 +28,16 @@ public class MessageEntityRepositoryController {
     public ResponseEntity<List<MessageEntity>> allMessage() {
         return ResponseEntity.ok(messageEntityRepository.findAll());
     }
+
+    
+     @GetMapping("/byphonenumber/{phonenumber}")
+    public ResponseEntity<?> getTagByTagId(@PathVariable String phonenumber) {
+            
+            List<MessageEntity> messageEntity = messageEntityRepository.findByPhonenumber(phonenumber);
+                    if (messageEntity == null) {
+                        return ResponseEntity.notFound().build();
+                    }
+                    return ResponseEntity.ok(messageEntity);
+                }
 
 }

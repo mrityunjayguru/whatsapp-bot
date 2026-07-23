@@ -305,9 +305,6 @@ alert(Array.from(document.getElementById("tags-" + id).selectedOptions)
 function viewConversation(phonenumber) {
 
     let url = "  https://familiar-underwent-riddance.ngrok-free.dev/api/conversation/byphonenumber/"+phonenumber;
-
-       alert(phonenumber);
-
     
     fetch(url, {
         method: "GET",
@@ -322,14 +319,14 @@ function viewConversation(phonenumber) {
         let tbody = document.getElementById("conversationBodyConversationData");
         tbody.innerHTML = "";
 
-        data.forEach(contact => {
+            data.forEach(contact => {
+                let row = "<tr>"
+                    + "<td>" + contact.messagebody + "</td>"
+                    + "<td>" + contact.messagestatus + "</td>"
+                    + "</tr>";
 
-            let row = "<tr>"
-                    + "<td>" + JSON.stringify(contact, null, 2)   + "</td>"
-                  
-                  
-            tbody.innerHTML += row;
-        });
+                tbody.innerHTML += row;
+            });
 
     })
     .catch(error => {
@@ -730,6 +727,102 @@ function loadConversation() {
 
 
 
+function loadUniqueConversation() {
+
+    fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/conversation/byuniquephonenumber", {
+        method: "GET",
+        headers: {
+            "Accept": "application/json",
+            "ngrok-skip-browser-warning": "1"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+
+        let tbody = document.getElementById("uniqueconversationBody");
+        tbody.innerHTML = "";
+
+       data.forEach(function (tag) {
+
+        console.log("Conversation Data");
+        console.log(tag);
+        console.log("Conversation Data");
+
+    let row =
+        "<tr id='id'>" +
+
+             "<td>" + tag.id + "</td>" +
+            "<td>" + tag.title + "</td>" +
+            "<td>" + tag.assigned_user_id + "</td>" +
+            "<td>" + tag.contact_id + "</td>" +
+            "<td>" + tag.first_message_at + "</td>" +
+            "<td>" + tag.last_message_at + "</td>" +
+            "<td>" + tag.last_message_preview + "</td>" +
+            "<td>" + tag.resolved_at + "</td>" +
+              "<td>" + tag.status + "</td>" +
+              "<td>" + tag.tenant_id + "</td>" +
+              "<td>" + tag.unread_count + "</td>" +
+            "<td>" + tag.whatsapp_phone_number_id + "</td>" +
+            "<td>" + tag.messagebody + "</td>" +
+            "<td>" + tag.messagestatus + "</td>" +
+            "<td>" + tag.profilename + "</td>" +
+              "<td>" + tag.phonenumber + "</td>" +
+
+            "<td>" + tag.created_at + "</td>" +
+            "<td>" + tag.updated_at + "</td>" +
+                "<td>"
+                + "<button onclick=\"viewMessageByPhonenumber('" + tag.phonenumber + "')\">View Message</button>"
+                + "</td>"
+
+        "</tr>";
+
+    
+
+    tbody.insertAdjacentHTML("beforeend", row);
+});
+
+    })
+    .catch(error => {
+        console.error(error);
+        alert("Unable to load tags.");
+    });
+}
+
+
+
+function viewMessageByPhonenumber(phonenumber)
+{
+    alert(phonenumber);
+
+      fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/messages/byphonenumber/"+phonenumber, {
+        method: "GET",
+        headers: {
+            "Accept": "application/json",
+            "ngrok-skip-browser-warning": "1"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+
+
+        console.log(" Message Data ");
+        console.log(data);
+        console.log(" Message Data ");
+
+document.getElementById("messageviewdata").innerHTML =
+    "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
+    
+
+    })
+    .catch(error => {
+        console.error(error);
+        alert("Unable to load tags.");
+    });
+
+
+
+}
+
 </script>
 
 </head>
@@ -1094,6 +1187,50 @@ function loadConversation() {
 
 <div id="resultconversation"></div>
 
+
+
+
+<a href="#" onclick="loadUniqueConversation(); return false;">Unique Conversation</a>
+
+<br><br>
+
+<table border="1">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Conversation Title</th>
+            <th> Assigned User Id </th>
+            <th>Contact Id</th>
+            <th>First Message At</th>
+            <th>Last Message At</th>
+            <th>Last Message Preview</th>
+            <th>Resolved At</th>
+            <th>Status</th>
+            <th>Tenant Id</th>
+            <th>Unread Count</th>
+            <th>WhatsApp Phone Number Id</th>
+             <th> Message Body </th>
+            <th> Message Status </th>
+            <th> Profile Name </th>
+            <th> phonenumber </th>
+            <th>Created At</th>
+            <th>Updated At</th>
+            <th>  Action  </th>
+            
+        </tr>
+    </thead>
+
+    <tbody id="uniqueconversationBody">
+
+    </tbody>
+
+</table>
+
+Message Data
+<div id="messageviewdata">
+
+
+</div>
 
 </div>
 

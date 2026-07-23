@@ -42,6 +42,12 @@ public class ConversationEntityRepositoryController {
     }
 
 
+    @GetMapping("/byuniquephonenumber")
+    public ResponseEntity<List<ConversationEntity>> uniqueConversationByPhonenumber() {
+        
+                return ResponseEntity.ok(conversationEntityRepository.findLatestConversationPerPhoneNumber());
+    }
+
 
 
      @GetMapping("/byphonenumber/{phonenumber}")

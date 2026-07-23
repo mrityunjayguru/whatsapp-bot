@@ -44,6 +44,7 @@ public class MessageEntity {
     private String phonenumber;
     private String messagebody;
     private String profilename;
+    private Long conversationentityid;
 
 
 
