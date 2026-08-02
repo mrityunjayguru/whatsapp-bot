@@ -40,8 +40,7 @@ public class ConversationEntity {
     private LocalDateTime updated_at = LocalDateTime.now();
 
     
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "TEXT")
     private String payload;
 
 
@@ -57,7 +56,11 @@ public class ConversationEntity {
 
     private String filePath;
 
-    private LocalDateTime receivedAt;
+    private LocalDateTime receivedAt = LocalDateTime.now();
+
+    
+    @Column(columnDefinition = "TEXT")
+    private String chatbaotdata;
 
 
 }

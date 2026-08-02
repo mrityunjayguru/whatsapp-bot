@@ -25,10 +25,10 @@ public class ContactEntity {
 
     private String messageBody;
 
-    @Column(name = "tenantid", nullable = false)
+    @Column(name = "tenantid")
     private Long tenantid;
 
-    @Column(name = "whatsappphonenumberid", nullable = false)
+    @Column(name = "whatsappphonenumberid")
     private Long whatsappphonenumberid;
 
     @Column(name = "phonenumber", nullable = false)
@@ -52,7 +52,10 @@ public class ContactEntity {
     @Column(name = "updatedat", nullable = false)
     private LocalDateTime updatedat = LocalDateTime.now();
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "payload", columnDefinition = "jsonb")
+    @Column(columnDefinition = "TEXT")
     private String payload;
+
+    private String humanboatsetting;
+    
+
 }

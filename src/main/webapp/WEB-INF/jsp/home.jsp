@@ -5,8 +5,129 @@
 <head>
 <meta charset="UTF-8">
 <title>WhatsApp API Test</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+    }
+
+    .container {
+        width: 450px;
+        margin: 40px auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px #ccc;
+    }
+
+    h2 {
+        text-align: center;
+        color: #333;
+    }
+
+    label {
+        display: block;
+        margin-top: 10px;
+        font-weight: bold;
+    }
+
+    input {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+
+    button {
+        width: 100%;
+        margin-top: 20px;
+        padding: 10px;
+        background: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 16px;
+    }
+
+    button:hover {
+        background: #0056b3;
+    }
+
+    #message {
+        margin-top: 15px;
+        text-align: center;
+        font-weight: bold;
+    }
+</style>
+
+
+
 
 <script>
+
+
+function saveOrUpdateEmployee() {
+
+    const idValue = document.getElementById("idemp").value;
+
+    alert(idValue);
+    let  employee;
+    if(idValue=="")
+    {
+        employee = {
+           
+            firstname: document.getElementById("firstname").value,
+            lastname: document.getElementById("lastname").value,
+            email: document.getElementById("email").value,
+            mobile: document.getElementById("mobile").value
+        };
+    }
+    else
+    {
+        employee = {
+            id:  parseInt(idValue),
+            firstname: document.getElementById("firstname").value,
+            lastname: document.getElementById("lastname").value,
+            email: document.getElementById("email").value,
+            mobile: document.getElementById("mobile").value
+        };
+
+    }
+
+    fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/employee/save", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(employee)
+    })
+    .then(async response => {
+        const result = await response.text();
+
+        document.getElementById("messageemployee").innerHTML = result;
+        document.getElementById("messageemployee").style.color = "green";
+
+        // Clear form after successful save
+        if (response.ok) {
+            document.getElementById("employeeForm").reset();
+        }
+    })
+    .catch(error => {
+        document.getElementById("messageemployee").innerHTML = error.message;
+        document.getElementById("messageemployee").style.color = "red";
+    });
+
+    return false;
+}
+
+
+
+
+
+
 function sendMessage() {
 
     const to = document.getElementById("to").value;
@@ -237,6 +358,18 @@ fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/tags", {
                 "</button>" +
             "</td>" +
 
+            "<td>" +
+                "<button onclick=\"enableHumanBoatChat('" + contact.phonenumber + "','ENABLED_HUMAN')\">" +
+                "Enable Human Chat" +
+                "</button>" +
+            "</td>"+
+
+            
+            "<td>" +
+                "<button onclick=\"enableHumanBoatChat('" + contact.phonenumber + "','ENABLED_BOAT')\">" +
+                "Enable Boat Chat" +
+                "</button>" +
+            "</td>"
         "</tr>";
 
     
@@ -337,6 +470,36 @@ function viewConversation(phonenumber) {
 }
 
 
+
+
+function enableHumanBoatChat(phonenumber, humanboatsetting) {
+
+    alert("phonenumber " + phonenumber + " humanboatsetting " + humanboatsetting);
+
+    let url = "https://familiar-underwent-riddance.ngrok-free.dev/allcontactentity/update-humanboatsetting";
+
+    let formData = new URLSearchParams();
+    formData.append("phonenumber", phonenumber);
+    formData.append("humanboatsetting", humanboatsetting);
+
+    fetch(url, {
+        method: "POST",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "ngrok-skip-browser-warning": "1"
+        },
+        body: formData.toString()
+    })
+    .then(response => response.text())
+    .then(data => {
+        alert(data);
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        alert("Unable to update human boat setting.");
+    });
+}
 
 
 
@@ -823,6 +986,51 @@ document.getElementById("messageviewdata").innerHTML =
 
 }
 
+// All Chat Boat Data
+
+
+function loadAllChatBoatData()
+{
+    
+    fetch("  https://familiar-underwent-riddance.ngrok-free.dev/chatboatentity", {
+        method: "GET",
+        headers: {
+            "Accept": "application/json",
+            "ngrok-skip-browser-warning": "1"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+
+        let tbody = document.getElementById("allchatbaotbody");
+        tbody.innerHTML = "";
+
+        data.forEach(contact => {
+
+            let row = "<tr>"
+                    + "<td>" + contact.id + "</td>"
+                    + "<td>" + contact.phonenumber + "</td>"
+                    + "<td>" + contact.requestpayload + "</td>"
+                    + "<td>" + contact.responsepayload + "</td>"
+                    + "<td>" + contact.payload + "</td>"
+
+                    
+                  
+                    "</tr>"
+                  
+            tbody.innerHTML += row;
+        });
+
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        alert("Unable to load contacts.");
+    });
+    
+
+}
+
+
 </script>
 
 </head>
@@ -877,6 +1085,11 @@ document.getElementById("messageviewdata").innerHTML =
             <th>Created At</th>
             <th>Updated At</th>
             <th>Payload</th>
+            <th>Action 1</th>
+            <th>Action 2</th>
+            <th>Action 3</th>
+            <th>Action 4</th>
+
         </tr>
     </thead>
 
@@ -1238,8 +1451,8 @@ Message Data
     <div>
      <hr style="height: 20px;color: red;">
 
-        <a href="#" onclick="loadAllConversationStatus(); return false;"> All Conversation Status </a>
-    
+<!--        <a href="#" onclick="loadAllConversationStatus(); return false;"> All Conversation Status </a>
+    -->
 <table border="1">
     <thead>
         <tr>
@@ -1268,6 +1481,68 @@ Message Data
     <hr style="height: 20px; color:red">                
 
     </div>
+
+<div>
+
+    <div>
+     <hr style="height: 20px;color: red;">
+
+        <a href="#" onclick="loadAllChatBoatData(); return false;"> All Chatbaot  </a>
+    
+<table border="1">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Phone Number</th>
+            <th>Requested Paylaod</th>
+            <th>Respone Paylaod</th>
+            <th>Actual Paylaod</th>
+            
+        </tr>
+    </thead>
+
+    <tbody id="allchatbaotbody">
+
+    </tbody>
+
+</table>
+
+
+</div>
+
+
+<div class="container">
+
+    <h2>Employee Form</h2>
+
+    <form id="employeeForm" onsubmit="return saveOrUpdateEmployee();">
+
+    <label>ID</label>
+    <input type="number"  id="idemp" name="idemp" value="" placeholder="Leave blank for new employee" autocomplete="off">
+
+    <label>First Name</label>
+    <input type="text" id="firstname" required>
+
+    <label>Last Name</label>
+    <input type="text" id="lastname" required>
+
+    <label>Email</label>
+    <input type="email" id="email" required>
+
+    <label>Mobile</label>
+    <input type="text" id="mobile" required>
+
+    <button type="submit" id="btnSave">Save / Update</button>
+    <button type="reset">Clear</button>
+
+</form>
+
+
+    <div id="messageemployee">....</div>
+
+</div>
+
+
 
 
 </body>

@@ -49,62 +49,98 @@ public class WhatsAppController {
     @Autowired
     private WhatsAppService service;
 
-    @PostMapping("/send1")
-    public String send(@RequestParam("to") String to, 
-                                      @RequestParam("message") String message) {
+@PostMapping("/send1")
+public String send(@RequestParam("to") String to,
+                   @RequestParam("message") String message) {
 
-           System.out.println(" to "+to);
-           System.out.println(" message "+message);
+    System.out.println("To : " + to);
+    System.out.println("Message : " + message);
+                    System.out.println("To : " + to);
+    System.out.println("Message : " + message);
 
-           
+    System.out.println("To : " + to);
+    System.out.println("Message : " + message);
 
-          ContactEntity contactEntity = contactEntityRepository.findBPhonenumber(to);
-          
-          System.out.println("=====================contactEntity===============");
-          System.out.println(contactEntity);
-          System.out.println(contactEntity);
-          System.out.println("=====================contactEntity===============");
-
-        ConversationEntity conversationEntity = new ConversationEntity();
-        conversationEntity.setTenant_id(contactEntity.getTenantid());
-        conversationEntity.setWhatsapp_phone_number_id(contactEntity.getWhatsappphonenumberid());
-        conversationEntity.setPhonenumber(contactEntity.getPhonenumber());
-        conversationEntity.setProfilename(contactEntity.getWhatsappprofilename());
-        conversationEntity.setMessagestatus("Sended");
-        conversationEntity.setContact_id(contactEntity.getId());
-        conversationEntity.setTitle("Default Title");
-        conversationEntity.setStatus("Open");
-        conversationEntity.setMessagebody(message);
+    System.out.println("To : " + to);
+    System.out.println("Message : " + message);
 
 
+    // Find existing contact
+    ContactEntity contactEntity = contactEntityRepository.findByPhonenumber(to);
+
+    System.out.println("contactEntity");
+    System.out.println("contactEntity");
+    System.out.println("contactEntity");
+
+    System.out.println(contactEntity);
 
 
-         ConversationEntity  conversationEntityData =  conversationEntityRepository.save(conversationEntity);
+    System.out.println("contactEntity");
+    System.out.println("contactEntity");
+    System.out.println("contactEntity");
 
 
-          // ========================= Message Entity =============================
-        //messageEntityRepository
-        MessageEntity  messageEntity = new MessageEntity();
-        messageEntity.setMediaid(messageEntityRepository.getNextMessageId());
-        messageEntity.setTenantid(contactEntity.getTenantid());
-        messageEntity.setWhatsappphonenumberid(contactEntity.getWhatsappphonenumberid());
-        messageEntity.setContactid(contactEntity.getId());
-        messageEntity.setPhonenumber(contactEntity.getPhonenumber());
-        messageEntity.setProfilename(contactEntity.getWhatsappprofilename());
-        messageEntity.setDirection("Outbound");
-        messageEntity.setMessagetext(message);
-        messageEntity.setMessagebody(message);
-        messageEntity.setConversationentityid(conversationEntityData.getId());
+    // Create contact if it does not exist
+    if (contactEntity == null) {
+        contactEntity = new ContactEntity();
 
-        messageEntityRepository.save(messageEntity);
+        contactEntity.setPhonenumber(to);
+        contactEntity.setMessageBody(message);
+        contactEntity.setTenantid(contactEntityRepository.getNextTenantId());
+        contactEntity.setWhatsappphonenumberid(contactEntityRepository.getNextWhatsappphonenumberId());
+       
+        contactEntity.setHumanboatsetting("ENABLED_BOAT");
 
 
-        // =======================================================================
+        contactEntity = contactEntityRepository.save(contactEntity);
+        
+    System.out.println("contactEntity");
+    System.out.println("contactEntity");
+    System.out.println("contactEntity");
+
+    System.out.println(contactEntity);
 
 
-
-        return service.sendMessage(to, message);
+    System.out.println("contactEntity");
+    System.out.println("contactEntity");
+    System.out.println("contactEntity");
     }
 
+    System.out.println("========== Contact ==========");
+    System.out.println(contactEntity);
+    System.out.println("=============================");
+
+    // Create Conversation
+    ConversationEntity conversationEntity = new ConversationEntity();
+    conversationEntity.setTenant_id(contactEntity.getTenantid());
+    conversationEntity.setWhatsapp_phone_number_id(contactEntity.getWhatsappphonenumberid());
+    conversationEntity.setPhonenumber(contactEntity.getPhonenumber());
+    conversationEntity.setProfilename(contactEntity.getWhatsappprofilename());
+    conversationEntity.setMessagestatus("Sent");   // Fixed spelling
+    conversationEntity.setContact_id(contactEntity.getId());
+    conversationEntity.setTitle("Default Title");
+    conversationEntity.setStatus("Open");
+    conversationEntity.setMessagebody(message);
+
+    ConversationEntity savedConversation =
+            conversationEntityRepository.save(conversationEntity);
+
+    // Create Message
+    MessageEntity messageEntity = new MessageEntity();
+    messageEntity.setMessageid(messageEntityRepository.getNextMessageId());
+    messageEntity.setTenantid(contactEntity.getTenantid());
+    messageEntity.setWhatsappphonenumberid(contactEntity.getWhatsappphonenumberid());
+    messageEntity.setContactid(contactEntity.getId());
+    messageEntity.setPhonenumber(contactEntity.getPhonenumber());
+    messageEntity.setProfilename(contactEntity.getWhatsappprofilename());
+    messageEntity.setDirection("Outbound");
+    messageEntity.setMessagetext(message);
+    messageEntity.setMessagebody(message);
+    messageEntity.setConversationentityid(savedConversation.getId());
+
+    messageEntityRepository.save(messageEntity);
+
+    return service.sendMessage(to, message);
+}
 
 }

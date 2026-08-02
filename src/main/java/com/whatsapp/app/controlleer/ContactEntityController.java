@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,5 +42,26 @@ public class ContactEntityController {
 
         return ResponseEntity.ok(contact);
     }
+
+
+       @PostMapping("/update-humanboatsetting")
+    public ResponseEntity<String> updateHumanBoatSetting(
+            @RequestParam String phonenumber,
+            @RequestParam String humanboatsetting) {
+
+                System.out.println(" phonenumber "+phonenumber + " humanboatsetting "+humanboatsetting);
+
+
+
+    ContactEntity contact = contactEntityRepository.findBPhonenumber(phonenumber);
+
+        if (contact == null) {
+            return ResponseEntity.ok("No contact found with phone: " + phonenumber);
+        }
+
+        int updatedRows = contactEntityRepository.updateBPhonenumber(phonenumber, humanboatsetting);
+
+        return ResponseEntity.ok("Human Baot setting updated successfully. Rows affected: " + updatedRows);    }
+
 
 }

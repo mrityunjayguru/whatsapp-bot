@@ -24,27 +24,45 @@ public class MessageEntity {
     private String sendertype;
     private Long tenantuserid;
     private String messagetext;
-    private Long mediaid;
+    private String mediaid;
     private String mediaurl;
     private String mimetype;
     private String filename;
     private String caption;
-    private String status;
+    private String status="open";
     private String failurereason;
     private Boolean isdeleted;
     private Boolean isforwarded;
     private Boolean isstarred;
     private Boolean isedited;
-    private LocalDateTime sentat;
-    private LocalDateTime deliveredat;
-    private LocalDateTime read_at;
+    private LocalDateTime sentat = LocalDateTime.now();
+    private LocalDateTime deliveredat=LocalDateTime.now();
+    private LocalDateTime read_at= LocalDateTime.now();
     private LocalDateTime createdat = LocalDateTime.now();
     private LocalDateTime updatedat = LocalDateTime.now();
 
     private String phonenumber;
+
+    @Column(columnDefinition = "TEXT")
     private String messagebody;
+
     private String profilename;
     private Long conversationentityid;
+
+
+
+    private String sender;
+
+    
+
+
+    private String filepath;
+
+    private LocalDateTime receivedAt = LocalDateTime.now();
+
+    @Column(columnDefinition = "TEXT")
+    private String chatbaotdata;
+
 
 
 
