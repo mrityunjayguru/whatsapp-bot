@@ -24,6 +24,7 @@ public class DesignationMaster {
 
     @Column(nullable = false, unique = true)
     private String designationname;
+    
 
     private String createdby;
     
