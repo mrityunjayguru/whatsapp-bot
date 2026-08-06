@@ -12,7 +12,7 @@
     }
 
     .container {
-        width: 450px;
+        width: 100%;
         margin: 40px auto;
         background: #fff;
         padding: 20px;
@@ -68,6 +68,120 @@
 
 <script>
 
+function saveOrUpdateDesignation()
+{
+    const idValue = document.getElementById("iddesignation").value.trim();
+    const designationName = document.getElementById("designationname").value.trim();
+
+    // Validation
+    if (designationName === "") {
+        document.getElementById("messagedesignation").innerHTML = "Designation name is required.";
+        document.getElementById("messagedesignation").style.color = "red";
+        return false;
+    }
+
+    let designation = {
+        designationname: designationName
+    };
+
+    // Add id only for update
+    if (idValue !== "") {
+        designation.id = Number(idValue);
+    }
+
+    console.log("Designation Object:", designation);
+
+    fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/designationmaster/save", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(designation)
+    })
+    .then(async (response) => {
+        const result = await response.text();
+
+        const message = document.getElementById("messagedesignation");
+
+        if (response.ok) {
+            message.innerHTML = result;
+            message.style.color = "green";
+
+            // Optional: Clear form after insert
+            // document.getElementById("designationForm").reset();
+            // document.getElementById("iddesignation").value = "";
+        } else {
+            message.innerHTML = result;
+            message.style.color = "red";
+        }
+    })
+    .catch((error) => {
+        document.getElementById("messagedesignation").innerHTML = "Error: " + error.message;
+        document.getElementById("messagedesignation").style.color = "red";
+        console.error(error);
+    });
+
+    return false;
+}
+
+
+
+
+function saveOrUpdateRole() {
+    const idValue = document.getElementById("idrole").value.trim();
+    const roleName = document.getElementById("rolename").value.trim();
+
+    // Validation
+    if (roleName === "") {
+        document.getElementById("messagerole").innerHTML = "Role name is required.";
+        document.getElementById("messagerole").style.color = "red";
+        return false;
+    }
+
+    let role = {
+        rolename: roleName
+    };
+
+    // Add id only for update
+    if (idValue !== "") {
+        role.id = Number(idValue);
+    }
+
+    console.log("Role Object:", role);
+
+    fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/rolemaster/save", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(role)
+    })
+    .then(async (response) => {
+        const result = await response.text();
+
+        const message = document.getElementById("messagerole");
+
+        if (response.ok) {
+            message.innerHTML = result;
+            message.style.color = "green";
+
+            // Optional: Clear form after insert
+            // document.getElementById("roleForm").reset();
+            // document.getElementById("idrole").value = "";
+        } else {
+            message.innerHTML = result;
+            message.style.color = "red";
+        }
+    })
+    .catch((error) => {
+        document.getElementById("messagerole").innerHTML = "Error: " + error.message;
+        document.getElementById("messagerole").style.color = "red";
+        console.error(error);
+    });
+
+    return false;
+}
+
 
 function saveOrUpdateEmployee() {
 
@@ -77,12 +191,15 @@ function saveOrUpdateEmployee() {
     let  employee;
     if(idValue=="")
     {
-        employee = {
-           
+        employee = {           
             firstname: document.getElementById("firstname").value,
             lastname: document.getElementById("lastname").value,
             email: document.getElementById("email").value,
-            mobile: document.getElementById("mobile").value
+            mobile: document.getElementById("mobile").value,
+            designation:document.getElementById("designationId").value,
+            role:document.getElementById("roleId").value,
+            tenantid: document.getElementById("tenantIdemp").value,
+            password_hash:document.getElementById("password").value
         };
     }
     else
@@ -92,8 +209,18 @@ function saveOrUpdateEmployee() {
             firstname: document.getElementById("firstname").value,
             lastname: document.getElementById("lastname").value,
             email: document.getElementById("email").value,
-            mobile: document.getElementById("mobile").value
+            mobile: document.getElementById("mobile").value,
+            designation:document.getElementById("designationId").value,
+            role:document.getElementById("roleId").value,
+            tenantid: document.getElementById("tenantIdemp").value,
+            password_hash:document.getElementById("password").value
+
         };
+
+        console.log(" employee data");
+        console.log(employee);
+        console.log(" employee data");
+
 
     }
 
@@ -357,6 +484,12 @@ fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/tags", {
                     "View Conversation" +
                 "</button>" +
             "</td>" +
+                    
+            "<td>" +
+                "<button onclick='viewStatusCountOpen(" + contact.phonenumber + ")'>" +
+                    "View Status Count Open" +
+                "</button>" +
+            "</td>" +
 
             "<td>" +
                 "<button onclick=\"enableHumanBoatChat('" + contact.phonenumber + "','ENABLED_HUMAN')\">" +
@@ -438,6 +571,42 @@ alert(Array.from(document.getElementById("tags-" + id).selectedOptions)
 function viewConversation(phonenumber) {
 
     let url = "  https://familiar-underwent-riddance.ngrok-free.dev/api/conversation/byphonenumber/"+phonenumber;
+    
+    fetch(url, {
+        method: "GET",
+        headers: {
+            "Accept": "application/json",
+            "ngrok-skip-browser-warning": "1"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+
+        let tbody = document.getElementById("conversationBodyConversationData");
+        tbody.innerHTML = "";
+
+            data.forEach(contact => {
+                let row = "<tr>"
+                    + "<td>" + contact.messagebody + "</td>"
+                    + "<td>" + contact.messagestatus + "</td>"
+                    + "</tr>";
+
+                tbody.innerHTML += row;
+            });
+
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        alert("Unable to load contacts.");
+    });
+
+}
+
+
+
+function viewStatusCountOpen(phonenumber) {
+
+    let url = "  https://familiar-underwent-riddance.ngrok-free.dev/api/conversation/byphonenumbergetlastsentopen/"+phonenumber;
     
     fetch(url, {
         method: "GET",
@@ -636,6 +805,126 @@ function saveContactTagData() {
         console.error("Error:", error);
         alert("Unable to load contact tags.");
     });
+
+
+// loading designationmaster
+
+ fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/designationmaster/getalldesignation", {
+    method: "GET",
+    headers: {
+        "Accept": "application/json",
+        "ngrok-skip-browser-warning": "1"
+    }
+})
+.then(response => {
+    if (!response.ok) {
+        throw new Error("HTTP error! Status: " + response.status);
+    }
+    return response.json();
+})
+.then(data => {
+
+    console.log("Designation Response");
+    console.log(data);
+
+    const designation = document.getElementById("designationId"); // or "contactid"
+
+    designation.innerHTML = '<option value="">-- Select Designation --</option>';
+
+    data.forEach(function(item) {
+        console.log(item);
+             let option = document.createElement("option");
+            option.value = item.id;
+            option.textContent = item.designationname;
+            designation.appendChild(option);
+    });
+
+})
+.catch(error => {
+    console.error("Error:", error);
+});
+
+// loading Role Master
+
+ fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/rolemaster/getallroles", {
+    method: "GET",
+    headers: {
+        "Accept": "application/json",
+        "ngrok-skip-browser-warning": "1"
+    }
+})
+.then(response => {
+    if (!response.ok) {
+        throw new Error("HTTP error! Status: " + response.status);
+    }
+    return response.json();
+})
+.then(data => {
+
+    console.log("Role Response");
+    console.log(data);
+
+    const role = document.getElementById("roleId"); // or "contactid"
+
+    role.innerHTML = '<option value="">-- Select Role --</option>';
+
+    data.forEach(function(item) {
+        console.log(item);
+             let option = document.createElement("option");
+            option.value = item.id;
+            option.textContent = item.rolename;
+            role.appendChild(option);
+    });
+
+})
+.catch(error => {
+    console.error("Error:", error);
+});
+
+
+
+
+// loading Tenant ID
+
+ fetch("https://familiar-underwent-riddance.ngrok-free.dev/allcontactentity", {
+    method: "GET",
+    headers: {
+        "Accept": "application/json",
+        "ngrok-skip-browser-warning": "1"
+    }
+})
+.then(response => {
+    if (!response.ok) {
+        throw new Error("HTTP error! Status: " + response.status);
+    }
+    return response.json();
+})
+.then(data => {
+
+    console.log("Tenant Response");
+    console.log(data);
+
+    const tenantdata = document.getElementById("tenantIdemp"); // or "contactid"
+
+    tenantdata.innerHTML = '<option value="">-- Select Tenant --</option>';
+
+    data.forEach(function(item) {
+        console.log(item);
+             let option = document.createElement("option");
+            option.value = item.id;
+            option.textContent = item.tenantid;
+            tenantdata.appendChild(option);
+    });
+
+})
+.catch(error => {
+    console.error("Error:", error);
+});
+
+
+
+
+
 
 
 });
@@ -1030,6 +1319,52 @@ function loadAllChatBoatData()
 
 }
 
+
+function loadEmployees() {
+    fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/employee/getallemployee", {
+        method: "GET",
+        headers: {
+            "Accept": "application/json",
+            "ngrok-skip-browser-warning": "1"
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+
+        console.log("Employee Data");
+        console.log(data);
+        console.log("Employee Data");
+
+
+        let tbody = document.getElementById("employeeBody");
+        tbody.innerHTML = "";
+
+        data.forEach(employee => {
+
+            let row = "<tr>"
+                    + "<td>" + employee.id + "</td>"
+                    + "<td>" + employee.firstname + "</td>"
+                    + "<td>" + employee.lastname + "</td>"
+                    + "<td>" + employee.email + "</td>"
+                    + "<td>" + employee.mobile + "</td>"
+                    + "<td>" + employee.designation + "</td>"
+                    + "<td>" + employee.role + "</td>"
+                    + "<td>" + employee.tenantid + "</td>"
+                    
+                    + "<td>" + employee.createdat + "</td>"
+                    + "<td>" + employee.updatedat + "</td>"
+                    // Add more fields as necessary
+                    + "</tr>";
+
+            tbody.innerHTML += row;
+        });
+
+    })
+    .catch(error => {
+        console.error("Error:", error);
+        alert("Unable to load employees.");
+    });
+}
 
 </script>
 
@@ -1529,8 +1864,29 @@ Message Data
     <label>Email</label>
     <input type="email" id="email" required>
 
+     <label>Password</label>
+    <input type="password" id="password" required>
+
+
     <label>Mobile</label>
     <input type="text" id="mobile" required>
+
+    <label>Employee Designation</label>
+    <select id="designationId" name="designationId" class="form-control">
+      <option value="">-- Select Designation --</option>
+    </select>
+
+    <label>Employee Role</label>
+    <select id="roleId" name="roleId" class="form-control">
+      <option value="">-- Select Role --</option>
+    </select>
+
+
+    <label>Tenant ID</label>
+    <select id="tenantIdemp" name="tenantIdemp" class="form-control">
+      <option value="">-- Select Tenant --</option>
+    </select>
+
 
     <button type="submit" id="btnSave">Save / Update</button>
     <button type="reset">Clear</button>
@@ -1540,7 +1896,121 @@ Message Data
 
     <div id="messageemployee">....</div>
 
+    <button type="button" onclick="loadEmployees()" style="cursor: pointer;">
+    Load Employees
+</button>
+
+
+<div class="container mt-4">
+
+    <h2 class="mb-4">Employee List</h2>
+
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Email</th>
+                    <th>Mobile</th>
+                    <th>Designation</th>
+                    <th>Role</th>
+                    <th>Tenant ID</th>
+                    <th>Created At</th>
+                    <th>Updated At</th>
+                </tr>
+            </thead>
+
+            <tbody id="employeeBody">
+                <tr>
+                    <td colspan="10" class="text-center">
+                        Loading...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
 </div>
+
+
+
+</div>
+
+
+
+
+<div class="container">
+
+    <h2>Role Master</h2>
+
+    <form id="roleForm" onsubmit="return saveOrUpdateRole();">
+
+        <label for="idrole">ID</label>
+        <input
+            type="number"
+            id="idrole"
+            name="idrole"
+            placeholder="Leave blank for new Role"
+            autocomplete="off">
+
+        <label for="rolename">Role Name</label>
+        <input
+            type="text"
+            id="rolename"
+            name="rolename"
+            placeholder="Enter role name"
+            required>
+
+        <button type="submit" id="btnSave">Save / Update</button>
+        <button type="reset">Clear</button>
+
+    </form>
+
+    <div id="messagerole"></div>
+
+</div>
+
+
+<div class="container">
+
+    <h2>Designation Master</h2>
+
+    <form id="designationForm" onsubmit="return saveOrUpdateDesignation();">
+
+        <label for="iddesignation">ID</label>
+        <input
+            type="number"
+            id="iddesignation"
+            name="iddesignation"
+            placeholder="Leave blank for new Designation"
+            autocomplete="off">
+
+        <label for="designationname">Designation Name</label>
+        <input
+            type="text"
+            id="designationname"
+            name="designationname"
+            placeholder="Enter designation name"
+            required>
+
+        <button type="submit" id="btnSave">Save / Update</button>
+        <button type="reset">Clear</button>
+
+    </form>
+
+    <div id="messagedesignation"></div>
+
+</div>
+
+
+
+
+
+
+
 
 
 

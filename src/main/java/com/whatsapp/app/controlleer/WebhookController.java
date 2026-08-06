@@ -2,6 +2,7 @@ package com.whatsapp.app.controlleer;
 
 
 import java.time.LocalDateTime;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,6 +29,9 @@ import com.whatsapp.app.model.WebhookEvent;
 import com.whatsapp.app.services.SendReplyToChatBaot;
 import com.whatsapp.app.services.WhatsAppMediaDownloader;
 import com.whatsapp.app.services.WhatsAppService;
+
+import jakarta.servlet.http.HttpServletRequest;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -635,6 +639,27 @@ if (optional.isEmpty()) {
 
     return ResponseEntity.ok(updated);
 }
+
+
+@PostMapping("/events")
+public ResponseEntity<Void> webhook(HttpServletRequest request,
+                                    @RequestBody String body) {
+
+    Enumeration<String> headerNames = request.getHeaderNames();
+
+    while (headerNames.hasMoreElements()) {
+        String name = headerNames.nextElement();
+        System.out.println(name + " : " + request.getHeader(name));
+    }
+
+    System.out.println("===============All Event ==================");
+    System.out.println(body);
+    System.out.println("===============All Event ==================");
+
+    
+    return ResponseEntity.ok().build();
+}
+
 
         
 }

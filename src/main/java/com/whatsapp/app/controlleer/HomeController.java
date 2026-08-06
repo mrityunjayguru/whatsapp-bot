@@ -14,4 +14,12 @@ public class HomeController {
         model.addAttribute("message", "Hello from Spring Boot Controller!");
         return "home";
     }
+
+    @GetMapping("/dashboard")
+    public String dashboard(Model model) {
+
+        System.out.println(" Dashboard ");
+        model.addAttribute("message", "Hello from Spring Boot Controller!");
+        return "dashboard";
+    }
 }

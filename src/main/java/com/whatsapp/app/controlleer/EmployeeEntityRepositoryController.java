@@ -54,7 +54,7 @@ public ResponseEntity<String> saveEmployee(@RequestBody EmployeeEntity employeeE
 }
 
 
-    @GetMapping("/getall")
+    @GetMapping("/getallemployee")
     public ResponseEntity<Iterable<EmployeeEntity>> allTag() {
         Iterable<EmployeeEntity> employeeEntity = employeeEntityRepository.findAll();
         return ResponseEntity.ok(employeeEntity);

@@ -59,6 +59,18 @@ public class ConversationEntityRepositoryController {
                     }
                     return ResponseEntity.ok(conversationEntities);
                 }
+
+
+                
+     @GetMapping("/byphonenumbergetlastsentopen/{phonenumber}")
+    public ResponseEntity<?> getLastSentOpen(@PathVariable String phonenumber) {
+            
+            List<ConversationEntity> conversationEntities = conversationEntityRepository.findConversationAfterLastSentOpen(phonenumber);
+                    if (conversationEntities == null) {
+                        return ResponseEntity.notFound().build();
+                    }
+                    return ResponseEntity.ok(conversationEntities);
+                }
  
 
 
