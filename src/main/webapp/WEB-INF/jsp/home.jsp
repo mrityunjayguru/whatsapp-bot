@@ -333,7 +333,7 @@ function loadContacts() {
 function loadAllConversationStatus()
 {
     
-    fetch("  https://familiar-underwent-riddance.ngrok-free.dev/api/allwebhookrequest", {
+    fetch(" https://whatsapi.trpgps.com/api/allwebhookrequest", {
         method: "GET",
         headers: {
             "Accept": "application/json",
@@ -372,7 +372,7 @@ let allTags = [];
 let tagOptions = "";
 
 // First load all available tags
-fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/tags", {
+fetch("https://whatsapi.trpgps.com/api/tags", {
     method: "GET",
     headers: {
         "Accept": "application/json",
@@ -413,7 +413,7 @@ fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/tags", {
 
 
 
-    fetch("https://familiar-underwent-riddance.ngrok-free.dev/allcontactentity", {
+    fetch("https://whatsapi.trpgps.com/allcontactentity", {
         method: "GET",
         headers: {
             "Accept": "application/json",
@@ -541,7 +541,7 @@ alert(Array.from(document.getElementById("tags-" + id).selectedOptions)
 
 
     
-    fetch(`  https://familiar-underwent-riddance.ngrok-free.dev/webhook/update`, {
+    fetch(` https://whatsapi.trpgps.com/webhook/update`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -570,7 +570,7 @@ alert(Array.from(document.getElementById("tags-" + id).selectedOptions)
 
 function viewConversation(phonenumber) {
 
-    let url = "  https://familiar-underwent-riddance.ngrok-free.dev/api/conversation/byphonenumber/"+phonenumber;
+    let url = "https://whatsapi.trpgps.com/api/conversation/byphonenumber/"+phonenumber;
     
     fetch(url, {
         method: "GET",
@@ -606,7 +606,7 @@ function viewConversation(phonenumber) {
 
 function viewStatusCountOpen(phonenumber) {
 
-    let url = "  https://familiar-underwent-riddance.ngrok-free.dev/api/conversation/byphonenumbergetlastsentopen/"+phonenumber;
+    let url = " https://whatsapi.trpgps.com/api/conversation/byphonenumbergetlastsentopen/"+phonenumber;
     
     fetch(url, {
         method: "GET",
@@ -645,7 +645,7 @@ function enableHumanBoatChat(phonenumber, humanboatsetting) {
 
     alert("phonenumber " + phonenumber + " humanboatsetting " + humanboatsetting);
 
-    let url = "https://familiar-underwent-riddance.ngrok-free.dev/allcontactentity/update-humanboatsetting";
+    let url = "https://whatsapi.trpgps.com/allcontactentity/update-humanboatsetting";
 
     let formData = new URLSearchParams();
     formData.append("phonenumber", phonenumber);
@@ -676,7 +676,7 @@ function sendTagsMessage() {
 
     const tagName = document.getElementById("tagName").value;
     
-    const url = "https://familiar-underwent-riddance.ngrok-free.dev/api/tags"
+    const url = "https://whatsapi.trpgps.com/api/tags"
         + "?name=" + encodeURIComponent(tagName)
         
 
@@ -705,7 +705,7 @@ function saveContactTagData() {
     const contactid = document.getElementById("contactid").value;
     const tagid = document.getElementById("tagid").value;
 
-    const url = "https://familiar-underwent-riddance.ngrok-free.dev/api/contacttags"
+    const url = "https://whatsapi.trpgps.com/api/contacttags"
         + "?contactid=" + encodeURIComponent(contactid)
         + "&tagid=" + encodeURIComponent(tagid);
 
@@ -731,7 +731,7 @@ function saveContactTagData() {
 
   document.addEventListener("DOMContentLoaded", function () {
 
-    fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/tags", {
+    fetch("https://whatsapi.trpgps.com/api/tags", {
         method: "GET",
         headers: {
             "Accept": "application/json",
@@ -771,7 +771,7 @@ function saveContactTagData() {
     // Contact  Data 
 
     
-    fetch("https://familiar-underwent-riddance.ngrok-free.dev/allcontactentity", {
+    fetch("https://whatsapi.trpgps.com/allcontactentity", {
         method: "GET",
         headers: {
             "Accept": "application/json",
@@ -809,7 +809,7 @@ function saveContactTagData() {
 
 // loading designationmaster
 
- fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/designationmaster/getalldesignation", {
+ fetch("https://whatsapi.trpgps.com/api/designationmaster/getalldesignation", {
     method: "GET",
     headers: {
         "Accept": "application/json",
@@ -846,7 +846,7 @@ function saveContactTagData() {
 
 // loading Role Master
 
- fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/rolemaster/getallroles", {
+ fetch("https://whatsapi.trpgps.com/api/rolemaster/getallroles", {
     method: "GET",
     headers: {
         "Accept": "application/json",
@@ -886,7 +886,7 @@ function saveContactTagData() {
 
 // loading Tenant ID
 
- fetch("https://familiar-underwent-riddance.ngrok-free.dev/allcontactentity", {
+ fetch("https://whatsapi.trpgps.com/allcontactentity", {
     method: "GET",
     headers: {
         "Accept": "application/json",
@@ -939,7 +939,7 @@ function loadTags() {
 
 
 
-    fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/tags", {
+    fetch("https://whatsapi.trpgps.com/api/tags", {
         method: "GET",
         headers: {
             "Accept": "application/json",
@@ -987,7 +987,7 @@ alert(whatsappphonenumberid);
 let tagsdatalist=[];
 
            
-    fetch("https://familiar-underwent-riddance.ngrok-free.dev/allcontactentity/by-whatsapp-phone/" + whatsappphonenumberid,
+    fetch("https://whatsapi.trpgps.com/allcontactentity/by-whatsapp-phone/" + whatsappphonenumberid,
         {
         method: "GET",
         headers: {
@@ -1013,7 +1013,7 @@ let tagsdatalist=[];
 
 
                
-   await fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/tags/bytagid/" + data.tags,
+   await fetch("https://whatsapi.trpgps.com/api/tags/bytagid/" + data.tags,
         {
         method: "GET",
         headers: {
@@ -1098,7 +1098,7 @@ function saveConversation() {
     console.log(conversationData);    
     console.log("=========conversationData===========");
 
-    fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/conversation", {
+    fetch("https://whatsapi.trpgps.com/api/conversation", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -1121,7 +1121,7 @@ function saveConversation() {
 
 function loadConversation() {
 
-    fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/conversation", {
+    fetch("https://whatsapi.trpgps.com/api/conversation", {
         method: "GET",
         headers: {
             "Accept": "application/json",
@@ -1181,7 +1181,7 @@ function loadConversation() {
 
 function loadUniqueConversation() {
 
-    fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/conversation/byuniquephonenumber", {
+    fetch("https://whatsapi.trpgps.com/api/conversation/byuniquephonenumber", {
         method: "GET",
         headers: {
             "Accept": "application/json",
@@ -1246,7 +1246,7 @@ function viewMessageByPhonenumber(phonenumber)
 {
     alert(phonenumber);
 
-      fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/messages/byphonenumber/"+phonenumber, {
+      fetch("https://whatsapi.trpgps.com/api/messages/byphonenumber/"+phonenumber, {
         method: "GET",
         headers: {
             "Accept": "application/json",
@@ -1281,7 +1281,7 @@ document.getElementById("messageviewdata").innerHTML =
 function loadAllChatBoatData()
 {
     
-    fetch("  https://familiar-underwent-riddance.ngrok-free.dev/chatboatentity", {
+    fetch(" https://whatsapi.trpgps.com/chatboatentity", {
         method: "GET",
         headers: {
             "Accept": "application/json",
@@ -1321,7 +1321,7 @@ function loadAllChatBoatData()
 
 
 function loadEmployees() {
-    fetch("https://familiar-underwent-riddance.ngrok-free.dev/api/employee/getallemployee", {
+    fetch("https://whatsapi.trpgps.com/api/employee/getallemployee", {
         method: "GET",
         headers: {
             "Accept": "application/json",
