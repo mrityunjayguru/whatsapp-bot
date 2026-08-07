@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRP Bot Tester</title>
+<style>
+  :root{
+    --ink:#0F172A;
+    --paper:#F6F4EF;
+    --panel:#FFFFFF;
+    --line:#E4E0D6;
+    --teal:#0F6B5C;
+    --teal-bright:#14B8A6;
+    --user-bubble:#0F6B5C;
+    --bot-bubble:#FFFFFF;
+    --muted:#6B7280;
+    --danger:#DC2626;
+    --ok:#15803D;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .shell{
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+  header{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:14px 20px;
+    background:var(--ink);
+    color:#fff;
+    flex-wrap:wrap;
+  }
+  header .brand{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+  }
+  header .brand b{ font-size:17px; letter-spacing:.2px; }
+  header .brand span{ font-size:12px; color:#94A3B8; font-family: ui-monospace, monospace; }
+  header .spacer{ flex:1; }
+  header label{ font-size:12px; color:#94A3B8; margin-right:6px; }
+  header input[type=text]{
+    background:#1E293B;
+    border:1px solid #334155;
+    color:#fff;
+    border-radius:8px;
+    padding:7px 10px;
+    font-size:13px;
+    font-family: ui-monospace, monospace;
+    width:220px;
+  }
+  .status{
+    display:flex; align-items:center; gap:6px;
+    font-size:12px; color:#94A3B8;
+  }
+  .dot{ width:8px; height:8px; border-radius:50%; background:#6B7280; transition:background .2s; }
+  .dot.up{ background:#22C55E; }
+  .dot.down{ background:#EF4444; }
+
+  main{
+    flex:1;
+    display:grid;
+    grid-template-columns: minmax(320px, 40%) 1fr;
+    gap:16px;
+    padding:16px;
+    background:var(--paper);
+  }
+  @media (max-width: 860px){
+    main{ grid-template-columns: 1fr; }
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  /* ---- Chat panel ---- */
+  .chat-card{ min-height:560px; }
+  .chat-head{
+    padding:14px 16px;
+    border-bottom:1px solid var(--line);
+    display:flex; gap:10px; flex-wrap:wrap;
+  }
+  .chat-head input{
+    flex:1;
+    min-width:120px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px 10px;
+    font-size:13px;
+  }
+  .chat-log{
+    flex:1;
+    padding:16px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    background:
+      radial-gradient(circle at 20px 20px, #00000006 1px, transparent 1px) 0 0/22px 22px;
+  }
+  .empty-hint{
+    margin:auto;
+    color:var(--muted);
+    font-size:13px;
+    text-align:center;
+    max-width:260px;
+  }
+  .bubble-row{ display:flex; flex-direction:column; max-width:78%; }
+  .bubble-row.user{ align-self:flex-end; align-items:flex-end; }
+  .bubble-row.bot{ align-self:flex-start; align-items:flex-start; }
+  .bubble{
+    padding:9px 13px;
+    border-radius:14px;
+    font-size:14px;
+    line-height:1.45;
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
+  .bubble-row.user .bubble{
+    background:var(--user-bubble); color:#fff; border-bottom-right-radius:4px;
+  }
+  .bubble-row.bot .bubble{
+    background:var(--bot-bubble); border:1px solid var(--line); border-bottom-left-radius:4px;
+  }
+  .meta-row{
+    display:flex; align-items:center; gap:6px; margin-top:4px;
+  }
+  .pill{
+    font-size:10px; font-family:ui-monospace, monospace; font-weight:600;
+    padding:2px 7px; border-radius:99px; color:#fff; text-transform:lowercase;
+    letter-spacing:.3px;
+  }
+  .handoff-flag{
+    font-size:10px; color:var(--danger); font-weight:600; font-family:ui-monospace,monospace;
+  }
+  .chat-input{
+    display:flex; gap:8px; padding:12px; border-top:1px solid var(--line);
+  }
+  .chat-input input{
+    flex:1; border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:14px;
+  }
+  button{
+    cursor:pointer; border:none; border-radius:10px; padding:10px 16px;
+    font-size:13px; font-weight:600; background:var(--teal); color:#fff;
+    transition:opacity .15s;
+  }
+  button:hover{ opacity:.88; }
+  button.ghost{
+    background:transparent; color:var(--teal); border:1px solid var(--teal);
+  }
+  button.danger{ background:var(--danger); }
+  button:disabled{ opacity:.5; cursor:not-allowed; }
+
+  /* ---- FAQ panel ---- */
+  .faq-card{ min-height:560px; }
+  .faq-scroll{ overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:18px; }
+  .section-title{
+    font-size:12px; font-weight:700; letter-spacing:.6px; text-transform:uppercase;
+    color:var(--muted); margin:0 0 8px;
+  }
+  .upload-grid{
+    display:grid; grid-template-columns: 1fr 1fr; gap:10px;
+  }
+  .upload-box{
+    border:1px dashed var(--line); border-radius:10px; padding:12px;
+    display:flex; flex-direction:column; gap:8px; background:#FCFBF8;
+  }
+  .upload-box .label{ font-size:12px; font-weight:600; color:var(--ink); }
+  .upload-box input[type=text], .upload-box textarea{
+    border:1px solid var(--line); border-radius:8px; padding:7px 9px; font-size:12.5px; width:100%;
+  }
+  .upload-box textarea{ resize:vertical; min-height:52px; font-family:inherit; }
+  .upload-box input[type=file]{ font-size:12px; }
+  .msg{ font-size:12px; margin-top:2px; }
+  .msg.ok{ color:var(--ok); }
+  .msg.err{ color:var(--danger); }
+
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  th{ text-align:left; color:var(--muted); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--line); }
+  td{ padding:7px 8px; border-bottom:1px solid #F0EDE5; vertical-align:top; }
+  td.mono{ font-family:ui-monospace, monospace; color:var(--muted); }
+  .type-tag{
+    font-size:10px; font-family:ui-monospace,monospace; padding:2px 6px; border-radius:6px;
+    background:#EEF2FF; color:#4338CA;
+  }
+  .del-btn{
+    background:transparent; color:var(--danger); border:1px solid #FCA5A5; padding:4px 8px; font-size:11px;
+  }
+  .search-row{ display:flex; gap:8px; }
+  .search-row input{ flex:1; border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:13px; }
+  .match{
+    border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-top:8px; background:#FCFBF8;
+  }
+  .match-head{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px; }
+  .match-source{ font-size:11px; color:var(--muted); font-family:ui-monospace,monospace; }
+  .score-bar-wrap{ width:70px; height:6px; background:#E4E0D6; border-radius:99px; overflow:hidden; }
+  .score-bar{ height:100%; border-radius:99px; }
+  .match-text{ font-size:13px; line-height:1.5; white-space:pre-wrap; }
+  .empty-small{ color:var(--muted); font-size:12.5px; padding:8px 0; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="brand"><b>TRP Bot Tester</b><span>/bot/reply · /faq/*</span></div>
+    <div class="spacer"></div>
+    <div>
+      <label for="baseUrl">API base URL</label>
+      <input type="text" id="baseUrl" value="http://localhost:8000">
+    </div>
+    <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">checking…</span></div>
+  </header>
+
+  <main>
+    <!-- CHAT PANEL -->
+    <section class="card chat-card">
+      <div class="chat-head">
+        <input type="text" id="phoneNumber" placeholder="Phone number" value="919876543210">
+        <input type="text" id="profileName" placeholder="Profile name (optional)" value="Rushil">
+      </div>
+      <div class="chat-log" id="chatLog">
+        <div class="empty-hint">Send a message below to test /bot/reply. Try things like "hi", "price of sentinel", "my device isn't working", or a question only covered in something you've uploaded on the right.</div>
+      </div>
+      <div class="chat-input">
+        <input type="text" id="msgInput" placeholder="Type a message…">
+        <button id="sendBtn">Send</button>
+      </div>
+    </section>
+
+    <!-- FAQ PANEL -->
+    <section class="card faq-card">
+      <div class="faq-scroll">
+
+        <div>
+          <p class="section-title">Add to knowledge base</p>
+          <div class="upload-grid">
+            <div class="upload-box">
+              <span class="label">Document (pdf, docx, pptx, xlsx, txt, md, csv)</span>
+              <input type="file" id="docFile">
+              <label style="font-size:11px;display:flex;align-items:center;gap:5px;color:var(--muted);">
+                <input type="checkbox" id="docSendAsLink" checked style="width:auto;">
+                Reply with a link to the file (uncheck to answer with extracted text instead)
+              </label>
+              <button id="docUploadBtn">Upload document</button>
+              <div class="msg" id="docMsg"></div>
+            </div>
+            <div class="upload-box">
+              <span class="label">Website URL</span>
+              <input type="text" id="urlInput" placeholder="https://example.com/faq">
+              <input type="text" id="urlName" placeholder="Name (optional)">
+              <button id="urlUploadBtn">Fetch &amp; index</button>
+              <div class="msg" id="urlMsg"></div>
+            </div>
+            <div class="upload-box">
+              <span class="label">YouTube video URL (needs captions)</span>
+              <input type="text" id="videoInput" placeholder="https://youtube.com/watch?v=...">
+              <input type="text" id="videoName" placeholder="Name (optional)">
+              <button id="videoUploadBtn">Transcribe &amp; index</button>
+              <div class="msg" id="videoMsg"></div>
+            </div>
+            <div class="upload-box">
+              <span class="label">Raw / pasted text (social captions, manual FAQ)</span>
+              <input type="text" id="textName" placeholder="Name, e.g. Instagram - returns">
+              <input type="text" id="textSourceUrl" placeholder="Link to the post/video (optional) — sent back to customers">
+              <textarea id="textInput" placeholder="Paste text here…"></textarea>
+              <button id="textUploadBtn">Index text</button>
+              <div class="msg" id="textMsg"></div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p class="section-title">Indexed sources</p>
+          <table>
+            <thead><tr><th>Name</th><th>Type</th><th>Chunks</th><th></th></tr></thead>
+            <tbody id="sourcesBody"><tr><td colspan="4" class="empty-small">No sources yet.</td></tr></tbody>
+          </table>
+        </div>
+
+        <div>
+          <p class="section-title">Try a search directly</p>
+          <div class="search-row">
+            <input type="text" id="searchInput" placeholder="Ask a question against the knowledge base…">
+            <button id="searchBtn" class="ghost">Search</button>
+          </div>
+          <div id="searchResults"></div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const baseUrlInput = $('baseUrl');
+
+function apiBase(){ return baseUrlInput.value.replace(/\/+$/, ''); }
+
+const INTENT_COLORS = {
+  greeting: '#8B5CF6', pricing: '#F59E0B', demo: '#14B8A6', order_status: '#3B82F6',
+  support: '#EF4444', human_handoff: '#EF4444', thanks: '#10B981', faq: '#6366F1',
+  fallback: '#6B7280'
+};
+
+// ---- health check ----
+async function checkHealth(){
+  const dot = $('statusDot'), text = $('statusText');
+  try{
+    const res = await fetch(apiBase() + '/health');
+    if(!res.ok) throw new Error();
+    dot.className = 'dot up';
+    text.textContent = 'connected';
+  }catch(e){
+    dot.className = 'dot down';
+    text.textContent = 'unreachable';
+  }
+}
+checkHealth();
+setInterval(checkHealth, 6000);
+baseUrlInput.addEventListener('change', () => { checkHealth(); loadSources(); });
+
+// ---- chat ----
+function addBubble(role, text, meta){
+  const log = $('chatLog');
+  const hint = log.querySelector('.empty-hint');
+  if(hint) hint.remove();
+
+  const row = document.createElement('div');
+  row.className = 'bubble-row ' + role;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  if(role === 'bot'){
+    bubble.innerHTML = linkify(escapeHtml(text));
+  }else{
+    bubble.textContent = text;
+  }
+  row.appendChild(bubble);
+
+  if(meta){
+    const metaRow = document.createElement('div');
+    metaRow.className = 'meta-row';
+    const pill = document.createElement('span');
+    pill.className = 'pill';
+    pill.textContent = meta.intent;
+    pill.style.background = INTENT_COLORS[meta.intent] || '#6B7280';
+    metaRow.appendChild(pill);
+    if(meta.handoff){
+      const flag = document.createElement('span');
+      flag.className = 'handoff-flag';
+      flag.textContent = '→ human handoff';
+      metaRow.appendChild(flag);
+    }
+    row.appendChild(metaRow);
+  }
+
+  log.appendChild(row);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function sendMessage(){
+  const input = $('msgInput');
+  const message = input.value.trim();
+  if(!message) return;
+  input.value = '';
+  addBubble('user', message);
+  $('sendBtn').disabled = true;
+
+  try{
+    const res = await fetch(apiBase() + '/bot/reply', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        phone_number: $('phoneNumber').value || '910000000000',
+        message,
+        profile_name: $('profileName').value || undefined
+      })
+    });
+    const data = await res.json();
+    if(!res.ok){
+      addBubble('bot', 'Error: ' + (data.detail || res.status));
+    }else{
+      addBubble('bot', data.reply, {intent: data.intent, handoff: data.should_handoff_to_human});
+    }
+  }catch(e){
+    addBubble('bot', 'Could not reach the API at ' + apiBase() + '. Is uvicorn running?');
+  }
+  $('sendBtn').disabled = false;
+}
+$('sendBtn').addEventListener('click', sendMessage);
+$('msgInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') sendMessage(); });
+
+// ---- FAQ: sources list ----
+async function loadSources(){
+  const body = $('sourcesBody');
+  try{
+    const res = await fetch(apiBase() + '/faq/sources');
+    const sources = await res.json();
+    if(!sources.length){
+      body.innerHTML = '<tr><td colspan="4" class="empty-small">No sources yet.</td></tr>';
+      return;
+    }
+    body.innerHTML = '';
+    sources.forEach(s => {
+      const tr = document.createElement('tr');
+      const linkHtml = s.source_url
+        ? `<a href="${escapeHtml(s.source_url)}" target="_blank" rel="noopener" style="color:var(--teal);font-size:11px;">link ↗</a> <button class="copy-btn" data-url="${escapeHtml(s.source_url)}" style="font-size:10px;padding:2px 6px;background:transparent;color:var(--muted);border:1px solid var(--line);">copy</button>`
+        : '';
+      const modeTag = s.send_as_link
+        ? '<span class="type-tag" style="background:#ECFDF5;color:#047857;">replies: link</span>'
+        : '<span class="type-tag" style="background:#FFF7ED;color:#C2410C;">replies: text</span>';
+      tr.innerHTML = `
+        <td>${escapeHtml(s.name)}${linkHtml ? '<br>' + linkHtml : ''}</td>
+        <td><span class="type-tag">${s.type}</span><br>${modeTag}</td>
+        <td class="mono">${s.num_chunks}</td>
+        <td><button class="del-btn" data-id="${s.id}">Remove</button></td>
+      `;
+      body.appendChild(tr);
+    });
+    body.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => copyToClipboard(btn.dataset.url, btn));
+    });
+    body.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        await fetch(apiBase() + '/faq/sources/' + btn.dataset.id, {method: 'DELETE'});
+        loadSources();
+      });
+    });
+  }catch(e){
+    body.innerHTML = '<tr><td colspan="4" class="empty-small">Could not load sources.</td></tr>';
+  }
+}
+loadSources();
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function linkify(escapedHtml){
+  return escapedHtml.replace(
+    /(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">$1</a>'
+  );
+}
+
+function copyToClipboard(text, btn){
+  navigator.clipboard.writeText(text).then(() => {
+    const original = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = original; }, 1200);
+  }).catch(() => {
+    btn.textContent = 'Copy failed';
+  });
+}
+
+function showMsg(el, text, ok){
+  el.textContent = text;
+  el.className = 'msg ' + (ok ? 'ok' : 'err');
+}
+
+// ---- FAQ: uploads ----
+$('docUploadBtn').addEventListener('click', async () => {
+  const fileInput = $('docFile');
+  const msgEl = $('docMsg');
+  if(!fileInput.files.length){ showMsg(msgEl, 'Choose a file first', false); return; }
+  const form = new FormData();
+  form.append('file', fileInput.files[0]);
+  form.append('send_as_link', $('docSendAsLink').checked ? 'true' : 'false');
+  try{
+    const res = await fetch(apiBase() + '/faq/upload/document', {method: 'POST', body: form});
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.detail || 'upload failed');
+    showMsg(msgEl, `Indexed (${data.num_chunks} chunks)`, true);
+    fileInput.value = '';
+    loadSources();
+  }catch(e){ showMsg(msgEl, e.message, false); }
+});
+
+$('urlUploadBtn').addEventListener('click', async () => {
+  const url = $('urlInput').value.trim();
+  const name = $('urlName').value.trim();
+  const msgEl = $('urlMsg');
+  if(!url){ showMsg(msgEl, 'Enter a URL first', false); return; }
+  try{
+    const res = await fetch(apiBase() + '/faq/upload/url', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url, name: name || undefined})
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.detail || 'fetch failed');
+    showMsg(msgEl, `Indexed (${data.num_chunks} chunks)`, true);
+    $('urlInput').value = ''; $('urlName').value = '';
+    loadSources();
+  }catch(e){ showMsg(msgEl, e.message, false); }
+});
+
+$('videoUploadBtn').addEventListener('click', async () => {
+  const url = $('videoInput').value.trim();
+  const name = $('videoName').value.trim();
+  const msgEl = $('videoMsg');
+  if(!url){ showMsg(msgEl, 'Enter a video URL first', false); return; }
+  try{
+    const res = await fetch(apiBase() + '/faq/upload/video', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url, name: name || undefined})
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.detail || 'transcription failed');
+    showMsg(msgEl, `Indexed (${data.num_chunks} chunks)`, true);
+    $('videoInput').value = ''; $('videoName').value = '';
+    loadSources();
+  }catch(e){ showMsg(msgEl, e.message, false); }
+});
+
+$('textUploadBtn').addEventListener('click', async () => {
+  const name = $('textName').value.trim();
+  const text = $('textInput').value.trim();
+  const sourceUrl = $('textSourceUrl').value.trim();
+  const msgEl = $('textMsg');
+  if(!name || !text){ showMsg(msgEl, 'Name and text are both required', false); return; }
+  try{
+    const res = await fetch(apiBase() + '/faq/upload/text', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name, text, source_url: sourceUrl || undefined})
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.detail || 'indexing failed');
+    showMsg(msgEl, `Indexed (${data.num_chunks} chunks)`, true);
+    $('textName').value = ''; $('textInput').value = ''; $('textSourceUrl').value = '';
+    loadSources();
+  }catch(e){ showMsg(msgEl, e.message, false); }
+});
+
+// ---- FAQ: direct search ----
+async function runSearch(){
+  const query = $('searchInput').value.trim();
+  const resultsEl = $('searchResults');
+  if(!query) return;
+  resultsEl.innerHTML = '<div class="empty-small">Searching…</div>';
+  try{
+    const res = await fetch(apiBase() + '/faq/search', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({query, top_k: 3})
+    });
+    const data = await res.json();
+    if(!data.matches.length){
+      resultsEl.innerHTML = '<div class="empty-small">No confident match found.</div>';
+      return;
+    }
+    resultsEl.innerHTML = '';
+    data.matches.forEach(m => {
+      const pct = Math.round(m.score * 100);
+      const barColor = m.score >= 0.2 ? '#14B8A6' : '#F59E0B';
+      const div = document.createElement('div');
+      div.className = 'match';
+      const linkHtml = m.source_url
+        ? `<a href="${escapeHtml(m.source_url)}" target="_blank" rel="noopener" style="display:block;margin-top:6px;font-size:12px;color:var(--teal);">${escapeHtml(m.source_url)}</a>`
+        : '';
+      div.innerHTML = `
+        <div class="match-head">
+          <span class="match-source">${escapeHtml(m.source_name)} · ${m.source_type}</span>
+          <div class="score-bar-wrap"><div class="score-bar" style="width:${pct}%;background:${barColor}"></div></div>
+        </div>
+        <div class="match-text">${escapeHtml(m.text)}</div>
+        ${linkHtml}
+      `;
+      resultsEl.appendChild(div);
+    });
+  }catch(e){
+    resultsEl.innerHTML = '<div class="empty-small">Could not reach the API.</div>';
+  }
+}
+$('searchBtn').addEventListener('click', runSearch);
+$('searchInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') runSearch(); });
+</script>
+</body>
+</html>
