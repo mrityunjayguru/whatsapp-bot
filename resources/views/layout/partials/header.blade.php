@@ -2,8 +2,8 @@
   <div class="navbar-content">
 
     <div class="logo-mini-wrapper">
-      <img src="{{ url('build/images/logo-mini-light.png') }}" class="logo-mini logo-mini-light" alt="logo">
-      <img src="{{ url('build/images/logo-mini-dark.png') }}" class="logo-mini logo-mini-dark" alt="logo">
+      <img src="{{ url('build/images/loopie-dark.svg') }}" class="logo-mini logo-mini-light" alt="logo">
+      <img src="{{ url('build/images/loopie-light.svg') }}" class="logo-mini logo-mini-dark" alt="logo">
     </div>
 
     <!-- <form class="search-form">

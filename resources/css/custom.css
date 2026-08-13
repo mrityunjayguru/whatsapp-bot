@@ -1,1 +1,8 @@
 /* Write your custom css here */
+
+/* ── Theme-aware logo toggle ──────────────────────────────────────────────── */
+/* .logo-mini-light  = dark-coloured SVG → visible in LIGHT mode only         */
+/* .logo-mini-dark   = light-coloured SVG → visible in DARK  mode only        */
+
+[data-bs-theme='dark']  .logo-mini-light { display: none !important; }
+[data-bs-theme='light'] .logo-mini-dark  { display: none !important; }

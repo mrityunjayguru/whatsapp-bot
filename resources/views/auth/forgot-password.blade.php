@@ -12,7 +12,10 @@
         </div>
         <div class="col-md-8 ps-md-0">
           <div class="auth-form-wrapper px-4 py-5">
-            <a href="#" class="nobleui-logo d-block mb-2">Noble<span>UI</span></a>
+            <a href="#" class="d-block mb-2">
+              <img src="{{ url('build/images/loopie-dark.svg') }}" class="logo-mini-light" alt="Loopie" style="height: 36px; max-width: 150px; object-fit: contain;">
+              <img src="{{ url('build/images/loopie-light.svg') }}" class="logo-mini-dark" alt="Loopie" style="height: 36px; max-width: 150px; object-fit: contain;">
+            </a>
             <h4 class="mb-4">Forgot your password?</h4>
             <p class="mb-4 text-secondary">
               Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.

@@ -12,7 +12,10 @@
         </div>
         <div class="col-md-8 ps-md-0">
           <div class="auth-form-wrapper px-4 py-5">
-            <a href="#" class="nobleui-logo d-block mb-2">Noble<span>UI</span></a>
+            <a href="#" class="d-block mb-2">
+              <img src="{{ url('build/images/loopie-dark.svg') }}" class="logo-mini-light" alt="Loopie" style="height: 36px; max-width: 150px; object-fit: contain;">
+              <img src="{{ url('build/images/loopie-light.svg') }}" class="logo-mini-dark" alt="Loopie" style="height: 36px; max-width: 150px; object-fit: contain;">
+            </a>
             <h5 class="text-secondary fw-normal mb-4">Create a free account.</h5>
             
             <form method="POST" action="{{ route('register') }}" class="forms-sample">

@@ -1,7 +1,8 @@
 <nav class="sidebar">
   <div class="sidebar-header">
-    <a href="#" class="sidebar-brand">
-      Noble<span>UI</span>
+    <a href="{{ url('/') }}" class="sidebar-brand">
+      <img src="{{ url('build/images/loopie-dark.svg') }}" class="logo-mini-light" alt="Loopie" style="height: 32px; max-width: 130px; object-fit: contain;">
+      <img src="{{ url('build/images/loopie-light.svg') }}" class="logo-mini-dark" alt="Loopie" style="height: 32px; max-width: 130px; object-fit: contain;">
     </a>
     <div class="sidebar-toggler not-active">
       <span></span>

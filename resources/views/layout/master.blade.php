@@ -16,7 +16,7 @@ License: You must have a valid license to legally use this template for your pro
 	<meta name="author" content="NobleUI">
 	<meta name="keywords" content="nobleui, bootstrap, bootstrap 5, bootstrap5, admin, dashboard, template, responsive, css, sass, html, laravel, theme, front-end, ui kit, web">
 
-  <title>@yield('title', 'Dashboard') | CRM</title>
+  <title>@yield('title', 'Dashboard') | Loopie</title>
 
   <!-- color-modes:js -->
   @vite(['resources/js/pages/color-modes.js'])
@@ -36,7 +36,8 @@ License: You must have a valid license to legally use this template for your pro
   <!-- CSRF Token -->
   <meta name="_token" content="{{ csrf_token() }}">
   
-  <link rel="shortcut icon" href="{{ asset('/favicon.ico') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ asset('build/images/favicon.svg') }}">
+  <link rel="alternate icon" type="image/png" href="{{ asset('build/images/favicon.png') }}">
 
   <!-- Splash Screen -->
   <link href="{{ asset('splash-screen.css') }}" rel="stylesheet" />
@@ -53,6 +54,12 @@ License: You must have a valid license to legally use this template for your pro
   <!-- @vite(['resources/rtl-css/app-rtl.css', 'resources/rtl-css/custom-rtl.css']) -->
 
   @stack('style')
+
+  {{-- Critical: logo theme toggle (inline so it works on live without rebuild) --}}
+  <style>
+    [data-bs-theme='dark']  .logo-mini-light { display: none !important; }
+    [data-bs-theme='light'] .logo-mini-dark  { display: none !important; }
+  </style>
 </head>
 <body data-base-url="{{url('/')}}">
 
