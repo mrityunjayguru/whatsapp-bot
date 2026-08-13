@@ -254,7 +254,7 @@
                   <a href="tel:{{ $lead->phone_number }}" class="btn btn-sm btn-outline-success me-1" title="Call {{ $lead->phone_number }}">
                     <i data-lucide="phone" class="icon-sm"></i>
                   </a>
-                  <!-- @if(auth()->user()->hasPermission('leads.delete'))
+                  @if(auth()->user()->hasPermission('leads.delete'))
                   <form action="{{ route('leads.destroy', $lead) }}" method="POST" class="d-inline delete-form">
                     @csrf
                     @method('DELETE')
@@ -264,7 +264,7 @@
                       <i data-lucide="trash-2" class="icon-sm"></i>
                     </button>
                   </form>
-                  @endif -->
+                  @endif
                 </td>
                 @endif
               </tr>
