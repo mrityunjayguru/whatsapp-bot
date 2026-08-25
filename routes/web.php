@@ -2,6 +2,18 @@
 
 use Illuminate\Support\Facades\Route;
 
+// ==============================
+// Meta Webhook Endpoints (NO auth, NO CSRF)
+// Must come FIRST so resource params don't capture them
+// ==============================
+Route::get('meta/webhook', [\App\Http\Controllers\MetaWebhookController::class, 'verify'])
+    ->name('meta.webhook.verify');
+
+Route::post('meta/webhook', [\App\Http\Controllers\MetaWebhookController::class, 'handle'])
+    ->middleware('throttle:60,1')
+    ->name('meta.webhook');
+
+// Dashboard — auth required
 Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
@@ -49,6 +61,15 @@ Route::resource('interested-in', \App\Http\Controllers\InterestedInController::c
 Route::resource('roles', \App\Http\Controllers\RoleController::class)
     ->middleware(['auth', 'verified', 'company'])
     ->except(['show']);
+
+// Meta Ads Settings — company owner only
+Route::get('meta-settings', [\App\Http\Controllers\MetaSettingController::class, 'edit'])
+    ->middleware(['auth', 'verified', 'company'])
+    ->name('meta-settings.edit');
+
+Route::put('meta-settings', [\App\Http\Controllers\MetaSettingController::class, 'update'])
+    ->middleware(['auth', 'verified', 'company'])
+    ->name('meta-settings.update');
 
 // Users — managed by company
 Route::resource('users', \App\Http\Controllers\UserController::class)

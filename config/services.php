@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    'meta' => [
+        'app_id'            => env('META_APP_ID'),
+        'app_secret'        => env('META_APP_SECRET'),
+        'page_id'           => env('META_PAGE_ID'),
+        'page_access_token' => env('META_PAGE_ACCESS_TOKEN'),
+        'webhook_verify'    => env('META_WEBHOOK_VERIFY_TOKEN', 'meta_webhook_verify_2026'),
+        'graph_api_version' => env('META_GRAPH_VERSION', 'v18.0'),
+        'default_user_id'   => env('META_DEFAULT_CREATED_BY', 2),
+    ],
+
 ];

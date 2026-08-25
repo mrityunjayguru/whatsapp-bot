@@ -52,6 +52,12 @@
           <span class="link-title">Users</span>
         </a>
       </li>
+      <li class="nav-item {{ active_class(['meta-settings']) }}">
+        <a href="{{ route('meta-settings.edit') }}" class="nav-link">
+          <i class="link-icon" data-lucide="message-circle"></i>
+          <span class="link-title">Meta Ads Settings</span>
+        </a>
+      </li>
       @endif
 
       {{-- Company owner — all modules --}}

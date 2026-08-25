@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'company'    => \App\Http\Middleware\CompanyMiddleware::class,
             'permission' => \App\Http\Middleware\HasPermission::class,
         ]);
+
+        $middleware->validateCsrfTokens(except: [
+            'meta/webhook',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
