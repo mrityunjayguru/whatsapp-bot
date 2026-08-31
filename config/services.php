@@ -45,4 +45,16 @@ return [
         'default_user_id'   => env('META_DEFAULT_CREATED_BY', 2),
     ],
 
+    'whatsapp' => [
+        'access_token' => env('WHATSAPP_ACCESS_TOKEN'),
+    ],
+
+    'chatboat' => [
+        'url' => env('CHATBOAT_URL'),
+    ],
+
+    'webhook' => [
+        'verify_token' => env('WEBHOOK_VERIFY_TOKEN'),
+    ],
+
 ];
