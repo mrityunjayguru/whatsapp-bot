@@ -171,13 +171,12 @@ class WebhookController extends Controller
                     'profile_name' => $profileName,
                 ];
 
-                // 2. Call external chatbot API (Bypassed for testing)
-                // $chatbotResponse = $this->chatbotService->getReply($chatbotRequestPayload);
-                // $chatbotReplyText = data_get($chatbotResponse, 'reply', 'Sorry, I am unable to process your request at the moment.');
+                // 2. Call external chatbot API
+                $chatbotReplyText = $this->chatbotService->getReply($messageBody, $phoneNumber);
                 
-                // Mock response for testing without a real chatbot URL
-                $chatbotResponse = ['reply' => "This is a test reply! You said: '{$messageBody}'"];
-                $chatbotReplyText = $chatbotResponse['reply'];
+                if (empty($chatbotReplyText)) {
+                    $chatbotReplyText = 'Sorry, I am unable to process your request at the moment.';
+                }
 
                 // 3. Send reply back to WhatsApp
                 $this->whatsappService->sendMessage($phoneNumber, $chatbotReplyText);
@@ -186,7 +185,7 @@ class WebhookController extends Controller
                 ChatBoat::create([
                     'phonenumber' => $phoneNumber,
                     'requestpayload' => json_encode($chatbotRequestPayload),
-                    'responsepayload' => json_encode($chatbotResponse),
+                    'responsepayload' => $chatbotReplyText,
                     'payload' => json_encode($data),
                 ]);
 

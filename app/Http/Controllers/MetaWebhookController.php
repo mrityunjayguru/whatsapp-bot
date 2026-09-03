@@ -61,9 +61,54 @@ class MetaWebhookController extends Controller
         ]);
 
         $object = $payload['object'] ?? null;
-        if ($object !== 'page') {
-            Log::warning('[MetaWebhook] Ignoring non-page object', ['object' => $object]);
+        
+        // Allow both Meta Lead Gen Pages and WhatsApp Business Accounts
+        if ($object !== 'page' && $object !== 'whatsapp_business_account') {
+            Log::warning('[MetaWebhook] Ignoring unsupported object', ['object' => $object]);
             return response('IGNORED', 200);
+        }
+
+        // Process WhatsApp Business Account Messages
+        if ($object === 'whatsapp_business_account') {
+            $entries = $payload['entry'] ?? [];
+
+            foreach ($entries as $entry) {
+                foreach ($entry['changes'] ?? [] as $change) {
+                    $value = $change['value'] ?? [];
+
+                    if (!empty($value['messages'])) {
+                        foreach ($value['messages'] as $msg) {
+                            if (($msg['type'] ?? '') === 'text') {
+                                $fromPhone = $msg['from'] ?? null;
+                                $textMessage = $msg['text']['body'] ?? '';
+
+                                if ($fromPhone && $textMessage) {
+                                    // 1. Fetch AI response from Python backend
+                                    $reply = app(\App\Services\ChatbotService::class)->getReply(
+                                        message: $textMessage,
+                                        phone: $fromPhone
+                                    );
+
+                                    // 2. Send reply via WhatsApp API
+                                    if (!empty($reply)) {
+                                        app(\App\Services\WhatsAppService::class)->sendMessage($fromPhone, $reply);
+                                        
+                                        // Log the interaction
+                                        \App\Models\ChatBoat::create([
+                                            'phonenumber' => $fromPhone,
+                                            'requestpayload' => json_encode(['message' => $textMessage, 'phone_number' => $fromPhone]),
+                                            'responsepayload' => $reply,
+                                            'payload' => json_encode($payload),
+                                        ]);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return response('EVENT_RECEIVED', 200);
         }
 
         $entries = $payload['entry'] ?? [];

@@ -51,7 +51,8 @@ return [
     ],
 
     'chatboat' => [
-        'url' => env('CHATBOAT_URL'),
+        'url' => env('CHATBOAT_URL', 'http://127.0.0.1:8000'),
+        'timeout' => env('CHATBOT_TIMEOUT', 15),
     ],
 
     'webhook' => [

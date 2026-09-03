@@ -6,12 +6,12 @@ use Illuminate\Support\Facades\Route;
 // Meta Webhook Endpoints (NO auth, NO CSRF)
 // Must come FIRST so resource params don't capture them
 // ==============================
-Route::get('meta/webhook', [\App\Http\Controllers\MetaWebhookController::class, 'verify'])
-    ->name('meta.webhook.verify');
+// Route::get('meta/webhook', [\App\Http\Controllers\MetaWebhookController::class, 'verify'])
+//     ->name('meta.webhook.verify');
 
-Route::post('meta/webhook', [\App\Http\Controllers\MetaWebhookController::class, 'handle'])
-    ->middleware('throttle:60,1')
-    ->name('meta.webhook');
+// Route::post('meta/webhook', [\App\Http\Controllers\MetaWebhookController::class, 'handle'])
+//     ->middleware('throttle:60,1')
+//     ->name('meta.webhook');
 
 // Dashboard — auth required
 Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])
