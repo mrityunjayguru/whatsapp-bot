@@ -1,8 +1,7 @@
 <nav class="sidebar">
   <div class="sidebar-header">
     <a href="{{ url('/') }}" class="sidebar-brand">
-      <img src="{{ url('build/images/loopie-dark.svg') }}" class="logo-mini-light" alt="Loopie" style="height: 32px; max-width: 130px; object-fit: contain;">
-      <img src="{{ url('build/images/loopie-light.svg') }}" class="logo-mini-dark" alt="Loopie" style="height: 32px; max-width: 130px; object-fit: contain;">
+      <img src="{{ url('build/images/logo.png') }}" class="logo-mini" alt="Design Demonz" style="height: 32px; max-width: 130px; object-fit: contain;">
     </a>
     <div class="sidebar-toggler not-active">
       <span></span>
@@ -84,6 +83,24 @@
         <a href="{{ route('leads.index') }}" class="nav-link">
           <i class="link-icon" data-lucide="user-plus"></i>
           <span class="link-title">Leads</span>
+        </a>
+      </li>
+      <li class="nav-item {{ active_class(['contacts', 'contacts/*']) }}">
+        <a href="{{ route('contacts.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="book-open"></i>
+          <span class="link-title">Contacts</span>
+        </a>
+      </li>
+      <li class="nav-item {{ active_class(['tags', 'tags/*']) }}">
+        <a href="{{ route('tags.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="tag"></i>
+          <span class="link-title">Tags</span>
+        </a>
+      </li>
+      <li class="nav-item {{ active_class(['conversations', 'conversations/*']) }}">
+        <a href="{{ route('conversations.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="message-square"></i>
+          <span class="link-title">Conversations</span>
         </a>
       </li>
       @endif

@@ -57,7 +57,7 @@ class MetaWebhookController extends Controller
 
         Log::info('[MetaWebhook] Incoming event', [
             'ip'      => $request->ip(),
-            'payload' => $payload,
+            'payload' => json_encode($payload),
         ]);
 
         $object = $payload['object'] ?? null;
@@ -81,25 +81,107 @@ class MetaWebhookController extends Controller
                             if (($msg['type'] ?? '') === 'text') {
                                 $fromPhone = $msg['from'] ?? null;
                                 $textMessage = $msg['text']['body'] ?? '';
+                                $profileName = $value['contacts'][0]['profile']['name'] ?? '';
 
-                                if ($fromPhone && $textMessage) {
-                                    // 1. Fetch AI response from Python backend
-                                    $reply = app(\App\Services\ChatbotService::class)->getReply(
-                                        message: $textMessage,
-                                        phone: $fromPhone
+                                $metadata = $change['value']['metadata'] ?? [];
+                                $connectedNumber = $metadata['display_phone_number'] ?? null;
+                                $connectedNumberId = $metadata['phone_number_id'] ?? null;
+
+                                // Existing Tenant Resolution Logic
+                                // Identifies which company (tenant) owns this contact. 
+                                // Resolved automatically from the connected WhatsApp Business number.
+                                $tenantId = 1001; // Placeholder for actual tenant resolution logic based on $connectedNumberId
+
+                                if ($fromPhone) {
+                                    $contact = \App\Models\Contact::firstOrCreate(
+                                        ['phone_number' => $fromPhone],
+                                        [
+                                            'whatsapp_profile_name' => $profileName,
+                                            'tenant_id' => $tenantId
+                                        ]
                                     );
 
-                                    // 2. Send reply via WhatsApp API
-                                    if (!empty($reply)) {
-                                        app(\App\Services\WhatsAppService::class)->sendMessage($fromPhone, $reply);
-                                        
-                                        // Log the interaction
-                                        \App\Models\ChatBoat::create([
-                                            'phonenumber' => $fromPhone,
-                                            'requestpayload' => json_encode(['message' => $textMessage, 'phone_number' => $fromPhone]),
-                                            'responsepayload' => $reply,
-                                            'payload' => json_encode($payload),
+                                    $conversation = \App\Models\Conversation::firstOrCreate(
+                                        [
+                                            'contact_id' => $contact->id,
+                                            'whatsapp_phone_number_id' => $connectedNumberId ?? 0,
+                                        ],
+                                        [
+                                            'tenant_id' => $tenantId,
+                                            'title' => $profileName ?: $fromPhone,
+                                            'status' => 'OPEN',
+                                            'unread_count' => 0,
+                                            'first_message_at' => now(),
+                                        ]
+                                    );
+
+                                    if ($textMessage) {
+                                        $inboundMessage = \App\Models\Message::create([
+                                            'tenant_id' => $tenantId,
+                                            'conversation_id' => $conversation->id,
+                                            'contact_id' => $contact->id,
+                                            'whatsapp_phone_number_id' => $connectedNumberId ?? 0,
+                                            'meta_message_id' => $msg['id'] ?? uniqid('wam_'),
+                                            'reply_to_meta_message_id' => $msg['context']['id'] ?? null,
+                                            'message_type' => 'TEXT',
+                                            'direction' => 'INBOUND',
+                                            'sender_type' => 'CUSTOMER',
+                                            'message_text' => $textMessage,
+                                            'status' => 'RECEIVED',
+                                            'sent_at' => isset($msg['timestamp']) ? \Carbon\Carbon::createFromTimestamp($msg['timestamp'])->timezone(config('app.timezone')) : now(),
                                         ]);
+
+                                        $conversation->update([
+                                            'unread_count' => $conversation->unread_count + 1,
+                                            'last_message_at' => now(),
+                                            'last_message_id' => $inboundMessage->id,
+                                            'last_message_preview' => \Illuminate\Support\Str::limit($textMessage, 50),
+                                        ]);
+
+                                        event(new \App\Events\NewMessage($inboundMessage));
+
+                                        // 1. Fetch AI response from Python backend
+                                        $reply = app(\App\Services\ChatbotService::class)->getReply(
+                                            message: $textMessage,
+                                            phone: $fromPhone
+                                        );
+
+                                        // 2. Send reply via WhatsApp API
+                                        if (!empty($reply)) {
+                                            $whatsappResponse = app(\App\Services\WhatsAppService::class)->sendMessage($fromPhone, $reply);
+                                            
+                                            // Log the interaction
+                                            \App\Models\ChatBoat::create([
+                                                'phonenumber' => $fromPhone,
+                                                'requestpayload' => json_encode(['message' => $textMessage, 'phone_number' => $fromPhone]),
+                                                'responsepayload' => $reply,
+                                                'payload' => json_encode($payload),
+                                            ]);
+
+                                            $outboundMsgId = $whatsappResponse['messages'][0]['id'] ?? uniqid('sys_');
+
+                                            $outboundMessage = \App\Models\Message::create([
+                                                'tenant_id' => $tenantId,
+                                                'conversation_id' => $conversation->id,
+                                                'contact_id' => $contact->id,
+                                                'whatsapp_phone_number_id' => $connectedNumberId ?? 0,
+                                                'meta_message_id' => $outboundMsgId,
+                                                'message_type' => 'TEXT',
+                                                'direction' => 'OUTBOUND',
+                                                'sender_type' => 'SYSTEM',
+                                                'message_text' => $reply,
+                                                'status' => 'SENT',
+                                                'sent_at' => now(),
+                                            ]);
+
+                                            $conversation->update([
+                                                'last_message_at' => now(),
+                                                'last_message_id' => $outboundMessage->id,
+                                                'last_message_preview' => \Illuminate\Support\Str::limit($reply, 50),
+                                            ]);
+
+                                            event(new \App\Events\NewMessage($outboundMessage));
+                                        }
                                     }
                                 }
                             }

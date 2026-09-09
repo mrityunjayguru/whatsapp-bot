@@ -6,12 +6,12 @@ use Illuminate\Support\Facades\Route;
 // Meta Webhook Endpoints (NO auth, NO CSRF)
 // Must come FIRST so resource params don't capture them
 // ==============================
-// Route::get('meta/webhook', [\App\Http\Controllers\MetaWebhookController::class, 'verify'])
-//     ->name('meta.webhook.verify');
+Route::get('meta/webhook', [\App\Http\Controllers\MetaWebhookController::class, 'verify'])
+    ->name('meta.webhook.verify');
 
-// Route::post('meta/webhook', [\App\Http\Controllers\MetaWebhookController::class, 'handle'])
-//     ->middleware('throttle:60,1')
-//     ->name('meta.webhook');
+Route::post('meta/webhook', [\App\Http\Controllers\MetaWebhookController::class, 'handle'])
+    ->middleware('throttle:60,1')
+    ->name('meta.webhook');
 
 // Dashboard — auth required
 Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])
@@ -43,6 +43,34 @@ Route::get('leads/calendar-events', [\App\Http\Controllers\LeadController::class
 Route::resource('leads', \App\Http\Controllers\LeadController::class)
     ->middleware(['auth', 'verified', 'company'])
     ->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
+
+Route::get('contacts', [\App\Http\Controllers\ContactController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('contacts.index');
+
+Route::get('contacts/{contact}', [\App\Http\Controllers\ContactController::class, 'show'])
+    ->middleware(['auth', 'verified'])
+    ->name('contacts.show');
+
+Route::put('contacts/{contact}', [\App\Http\Controllers\ContactController::class, 'update'])
+    ->middleware(['auth', 'verified'])
+    ->name('contacts.update');
+
+Route::put('contacts/{contact}/tags', [\App\Http\Controllers\ContactController::class, 'updateTags'])
+    ->middleware(['auth', 'verified'])
+    ->name('contacts.updateTags');
+
+Route::resource('tags', \App\Http\Controllers\TagController::class)
+    ->middleware(['auth', 'verified'])
+    ->only(['index', 'store']);
+
+Route::resource('conversations', \App\Http\Controllers\ConversationController::class)
+    ->middleware(['auth', 'verified'])
+    ->only(['index', 'show']);
+
+Route::post('conversations/{conversation}/messages', [\App\Http\Controllers\ConversationController::class, 'sendMessage'])
+    ->middleware(['auth', 'verified'])
+    ->name('conversations.messages.store');
 
 Route::patch('leads/{lead}/close', [\App\Http\Controllers\LeadController::class, 'close'])
     ->middleware(['auth', 'verified', 'company'])

@@ -2,8 +2,7 @@
   <div class="navbar-content">
 
     <div class="logo-mini-wrapper">
-      <img src="{{ url('build/images/loopie-dark.svg') }}" class="logo-mini logo-mini-light" alt="logo">
-      <img src="{{ url('build/images/loopie-light.svg') }}" class="logo-mini logo-mini-dark" alt="logo">
+      <img src="{{ url('build/images/logo.png') }}" class="logo-mini" alt="logo" style="height: 32px; max-width: 130px; object-fit: contain;">
     </div>
 
     <!-- <form class="search-form">

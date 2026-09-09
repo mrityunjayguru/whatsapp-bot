@@ -30,15 +30,31 @@ class WhatsAppService
                     'body'        => $message,
                 ],
             ]);
+            
+        $data = $response->json();
+        if (!$response->successful()) {
+            \Illuminate\Support\Facades\Log::error('WhatsApp API Error', [
+                'status' => $response->status(),
+                'response' => $data,
+            ]);
+        }
 
-        return $response->json();
+        return $data;
     }
 
     public function sendMultipartMessage(string $to, ?string $message = null, array $files = [])
     {
+        $sentMessageIds = [];
+
         // 1. Send Text if present
         if (!empty($message)) {
-            $this->sendMessage($to, $message);
+            $textResponse = $this->sendMessage($to, $message);
+            if (isset($textResponse['messages'][0]['id'])) {
+                $sentMessageIds[] = [
+                    'type' => 'TEXT',
+                    'id' => $textResponse['messages'][0]['id']
+                ];
+            }
         }
 
         // 2. Upload and send media files
@@ -54,6 +70,8 @@ class WhatsAppService
                 ]);
 
             $mediaId = $uploadResponse->json('id');
+            if (!$mediaId) continue;
+
             $mimeType = $file->getClientMimeType();
 
             // Determine WhatsApp media type
@@ -67,20 +85,31 @@ class WhatsAppService
             // Step 2B: Build media payload
             $mediaPayload = ['id' => $mediaId];
             if ($mediaType !== 'audio' && !empty($message)) {
-                $mediaPayload['caption'] = $message;
+                // If we want the caption on the media, we can add it. But we already sent text separately above.
+                // It's usually better to just send them separately to avoid duplicating text if there are multiple files.
             }
             if ($mediaType === 'document') {
                 $mediaPayload['filename'] = $file->getClientOriginalName();
             }
 
             // Step 2C: Send media message
-            Http::withToken($this->accessToken)
+            $mediaMsgResponse = Http::withToken($this->accessToken)
                 ->post("{$this->baseUrl}/messages", [
                     'messaging_product' => 'whatsapp',
                     'to'                => $to,
                     'type'              => $mediaType,
                     $mediaType          => $mediaPayload,
                 ]);
+                
+            $mediaData = $mediaMsgResponse->json();
+            if (isset($mediaData['messages'][0]['id'])) {
+                $sentMessageIds[] = [
+                    'type' => strtoupper($mediaType),
+                    'id' => $mediaData['messages'][0]['id']
+                ];
+            }
         }
+        
+        return $sentMessageIds;
     }
 }

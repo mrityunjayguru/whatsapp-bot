@@ -16,7 +16,7 @@ License: You must have a valid license to legally use this template for your pro
 	<meta name="author" content="NobleUI">
 	<meta name="keywords" content="nobleui, bootstrap, bootstrap 5, bootstrap5, admin, dashboard, template, responsive, css, sass, html, laravel, theme, front-end, ui kit, web">
 
-  <title>@yield('title', 'Dashboard') | Loopie</title>
+  <title>@yield('title', 'Dashboard') | DesignDemonz</title>
 
   <!-- color-modes:js -->
   @vite(['resources/js/pages/color-modes.js'])

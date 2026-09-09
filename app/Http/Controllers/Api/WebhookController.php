@@ -9,6 +9,7 @@ use App\Models\ContactEntity;
 use App\Models\ConversationEntity;
 use App\Models\MessageEntity;
 use App\Models\ChatBoat;
+use App\Models\Contact;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -155,6 +156,16 @@ class WebhookController extends Controller
             'contacts.0.profile.name',
             ''
         );
+
+        if (!empty($phoneNumber)) {
+            Contact::firstOrCreate(
+                ['phone_number' => $phoneNumber],
+                [
+                    'whatsapp_profile_name' => $profileName,
+                    'tenant_id' => 1001
+                ]
+            );
+        }
 
         /*
         |--------------------------------------------------------------------------

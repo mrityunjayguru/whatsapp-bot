@@ -13,8 +13,7 @@
         <div class="col-md-8 ps-md-0">
           <div class="auth-form-wrapper px-4 py-5">
             <a href="#" class="d-block mb-2">
-              <img src="{{ url('build/images/loopie-dark.svg') }}" class="logo-mini-light" alt="Loopie" style="height: 36px; max-width: 150px; object-fit: contain;">
-              <img src="{{ url('build/images/loopie-light.svg') }}" class="logo-mini-dark" alt="Loopie" style="height: 36px; max-width: 150px; object-fit: contain;">
+              <img src="{{ url('build/images/logo.png') }}" class="logo-mini" alt="Design Demonz" style="height: 36px; max-width: 150px; object-fit: contain;">
             </a>
             <h4 class="mb-4">Forgot your password?</h4>
             <p class="mb-4 text-secondary">
