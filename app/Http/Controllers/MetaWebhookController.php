@@ -158,6 +158,7 @@ class MetaWebhookController extends Controller
                                                 'payload' => json_encode($payload),
                                             ]);
 
+                                            $isFailed = isset($whatsappResponse['error']);
                                             $outboundMsgId = $whatsappResponse['messages'][0]['id'] ?? uniqid('sys_');
 
                                             $outboundMessage = \App\Models\Message::create([
@@ -170,7 +171,8 @@ class MetaWebhookController extends Controller
                                                 'direction' => 'OUTBOUND',
                                                 'sender_type' => 'SYSTEM',
                                                 'message_text' => $reply,
-                                                'status' => 'SENT',
+                                                'status' => $isFailed ? 'FAILED' : 'SENT',
+                                                'failure_reason' => $isFailed ? json_encode($whatsappResponse['error']) : null,
                                                 'sent_at' => now(),
                                             ]);
 

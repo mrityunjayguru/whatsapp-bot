@@ -42,9 +42,9 @@
         <div class="text-muted small">Conversation#{{ $conversation->id }}</div>
         <h4 class="mb-0">{{ $conversation->contact->custom_name ?? $conversation->contact->whatsapp_profile_name ?? 'Unknown' }}</h4>
     </div>
-    <div class="d-flex align-items-center">
+    <!-- <div class="d-flex align-items-center">
         <span class="bg-success rounded-circle me-2" style="width: 8px; height: 8px;"></span> <span class="text-muted small">Live</span>
-    </div>
+    </div> -->
 </div>
 
 <div class="row">
@@ -97,12 +97,12 @@
                     </div>
                 </div>
                 
-                <div class="d-flex gap-2 border-top pt-3">
+                <!-- <div class="d-flex gap-2 border-top pt-3">
                     <button class="btn btn-sm btn-outline-secondary fw-bold">Assign</button>
                     <button class="btn btn-sm btn-outline-secondary fw-bold">Resolve</button>
                     <button class="btn btn-sm btn-outline-secondary fw-bold">Close</button>
                     <button class="btn btn-sm btn-outline-secondary fw-bold">Reopen</button>
-                </div>
+                </div> -->
             </div>
         </div>
 
@@ -111,9 +111,9 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div class="section-title mb-0">SECTION 2: CUSTOMER INFORMATION</div>
-                    <div class="d-flex align-items-center">
+                    <!-- <div class="d-flex align-items-center">
                         <span class="bg-success rounded-circle me-1" style="width: 6px; height: 6px;"></span> <small class="text-muted" style="font-size: 10px;">Live</small>
-                    </div>
+                    </div> -->
                 </div>
                 
                 <div class="d-flex align-items-center mb-4 bg-light p-2 rounded">
@@ -184,9 +184,9 @@
                 </div>
                 
                 <div class="chat-timeline flex-grow-1 p-4">
-                    <div class="text-center mb-4">
+                    <!-- <div class="text-center mb-4">
                         <span class="bg-success rounded-circle d-inline-block me-1" style="width: 8px; height: 8px;"></span> <span class="text-muted small fw-bold">Connected</span>
-                    </div>
+                    </div> -->
 
                     @php
                         $messages = \App\Models\Message::where('conversation_id', $conversation->id)->orderBy('sent_at', 'asc')->get();
@@ -194,8 +194,25 @@
                     
                     @forelse($messages as $msg)
                         <div class="chat-bubble {{ $msg->direction === 'INBOUND' ? 'chat-inbound' : 'chat-outbound' }}">
-                            {{ $msg->message_text }}
-                            <div class="chat-time">{{ \Carbon\Carbon::parse($msg->sent_at)->format('h:i A') }}</div>
+                            @if($msg->message_type === 'IMAGE' && $msg->media_url)
+                                <a href="{{ $msg->media_url }}" target="_blank">
+                                    <img src="{{ $msg->media_url }}" alt="Image" style="max-width: 200px; border-radius: 8px; margin-bottom: 5px; display: block;">
+                                </a>
+                            @elseif(in_array($msg->message_type, ['DOCUMENT', 'VIDEO', 'AUDIO']) && $msg->media_url)
+                                <a href="{{ $msg->media_url }}" target="_blank" class="d-flex align-items-center mb-2 {{ $msg->direction === 'INBOUND' ? 'text-dark' : 'text-white' }}" style="text-decoration: underline;">
+                                    <i data-lucide="paperclip" class="icon-sm me-1"></i> {{ $msg->file_name ?? 'Attachment' }}
+                                </a>
+                            @endif
+                            
+                            @if(!empty($msg->message_text))
+                                {{ $msg->message_text }}
+                            @endif
+                            <div class="chat-time">
+                                {{ \Carbon\Carbon::parse($msg->sent_at)->format('h:i A') }}
+                                @if($msg->direction === 'OUTBOUND' && $msg->status === 'FAILED')
+                                    <span class="text-danger ms-1" title="Failed to send to WhatsApp"><i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i></span>
+                                @endif
+                            </div>
                         </div>
                     @empty
                         <!-- Dummy data to match screenshot -->
@@ -860,11 +877,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     if (data.messages && data.messages.length > 0) {
                         data.messages.forEach(msg => {
-                            appendMessageToChat(msg.message_text, 'OUTBOUND', msg.sent_at);
+                            appendMessageToChat(msg);
                         });
                     } else if (data.message) {
-                        // fallback for previous structure
-                        appendMessageToChat(data.message.message_text, 'OUTBOUND', data.message.sent_at);
+                        appendMessageToChat(data.message);
                     }
                 } else {
                     alert('Error: ' + (data.error || 'Could not send'));
@@ -878,20 +894,36 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function appendMessageToChat(text, direction, timeStr) {
-        const isOutbound = direction === 'OUTBOUND';
-        const time = new Date(timeStr);
+    function appendMessageToChat(msg) {
+        const isOutbound = msg.direction === 'OUTBOUND';
+        const time = new Date(msg.sent_at);
         const timeFormatted = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         const bubble = document.createElement('div');
         bubble.className = `chat-bubble ${isOutbound ? 'chat-outbound' : 'chat-inbound'}`;
         
-        // Escape HTML
-        const safeText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        let contentHTML = '';
+        
+        if (msg.message_type === 'IMAGE' && msg.media_url) {
+            contentHTML += `<a href="${msg.media_url}" target="_blank"><img src="${msg.media_url}" alt="Image" style="max-width: 200px; border-radius: 8px; margin-bottom: 5px; display: block;"></a>`;
+        } else if (['DOCUMENT', 'VIDEO', 'AUDIO'].includes(msg.message_type) && msg.media_url) {
+            contentHTML += `<a href="${msg.media_url}" target="_blank" class="d-flex align-items-center mb-2 ${isOutbound ? 'text-white' : 'text-dark'}" style="text-decoration: underline;">
+                <i data-lucide="paperclip" class="icon-sm me-1"></i> ${msg.file_name || 'Attachment'}
+            </a>`;
+        }
+        
+        if (msg.message_text) {
+            contentHTML += msg.message_text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+        
+        let errorHtml = '';
+        if (isOutbound && msg.status === 'FAILED') {
+            errorHtml = `<span class="text-danger ms-1" title="Failed to send to WhatsApp"><i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i></span>`;
+        }
         
         bubble.innerHTML = `
-            ${safeText}
-            <div class="chat-time">${timeFormatted}</div>
+            ${contentHTML}
+            <div class="chat-time">${timeFormatted}${errorHtml}</div>
         `;
 
         const clearDiv = chatTimeline.querySelector('div[style="clear:both;"]');
@@ -903,6 +935,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         chatTimeline.scrollTop = chatTimeline.scrollHeight;
+        if (typeof lucide !== 'undefined') lucide.createIcons({ root: bubble });
     }
 
     // WebSocket Integration
@@ -910,7 +943,7 @@ document.addEventListener('DOMContentLoaded', function() {
         Echo.channel('conversation.{{ $conversation->id }}')
             .listen('NewMessage', (e) => {
                 if (e.message && e.message.direction === 'INBOUND') {
-                    appendMessageToChat(e.message.message_text, e.message.direction, e.message.sent_at);
+                    appendMessageToChat(e.message);
                 }
             });
     }

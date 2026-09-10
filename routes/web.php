@@ -178,7 +178,6 @@ Route::group(['prefix' => 'icons'], function(){
 
 Route::group(['prefix' => 'general'], function(){
     Route::get('blank-page', function () { return view('pages.general.blank-page'); });
-    Route::get('faq', function () { return view('pages.general.faq'); });
     Route::get('invoice', function () { return view('pages.general.invoice'); });
     Route::get('profile', function () { return view('pages.general.profile'); });
     Route::get('pricing', function () { return view('pages.general.pricing'); });
@@ -195,6 +194,12 @@ Route::group(['prefix' => 'error'], function(){
 Route::get('/clear-cache', function() {
     Artisan::call('cache:clear');
     return "Cache is cleared";
+});
+
+// FAQ Management Routes
+Route::middleware(['auth'])->group(function () {
+    Route::resource('faqs', App\Http\Controllers\FaqController::class);
+    Route::patch('faqs/{faq}/toggle-status', [App\Http\Controllers\FaqController::class, 'toggleStatus'])->name('faqs.toggle-status');
 });
 
 require __DIR__.'/auth.php';

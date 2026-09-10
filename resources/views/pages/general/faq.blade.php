@@ -1,92 +1,116 @@
 @extends('layout.master')
 
 @section('content')
-<nav class="page-breadcrumb">
-  <ol class="breadcrumb">
-    <li class="breadcrumb-item"><a href="#">Special pages</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Faq</li>
+<nav class="page-breadcrumb d-flex justify-content-between align-items-center">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="#">Faqs</a></li>
+    <li class="breadcrumb-item active" aria-current="page">FAQ</li>
   </ol>
+  <a href="{{ route('faqs.create') }}" class="btn btn-primary"><i data-lucide="plus" class="icon-sm me-2"></i> Add FAQ</a>
 </nav>
 
 <div class="row">
-  <div class="col-md-12">
+  <div class="col-md-12 grid-margin stretch-card">
     <div class="card">
       <div class="card-body">
-        <h6 class="card-title">Frequently Asked Questions</h6>
-        <div class="accordion" id="FaqAccordion">
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="headingOne">
-              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                Why is the moon sometimes out during the day?
-              </button>
-            </h2>
-            <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#FaqAccordion">
-              <div class="accordion-body">
-                <strong>Pariatur cliche reprehenderit,</strong> enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS
-              </div>
-            </div>
-          </div>
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="headingTwo">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                Why is the sky blue?
-              </button>
-            </h2>
-            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#FaqAccordion">
-              <div class="accordion-body">
-                Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident.
-              </div>
-            </div>
-          </div>
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="headingThree">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                Will we ever discover aliens?
-              </button>
-            </h2>
-            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#FaqAccordion">
-              <div class="accordion-body">
-                High life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.
-              </div>
-            </div>
-          </div>
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="headingFour">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
-                How much does the Earth weigh?
-              </button>
-            </h2>
-            <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#FaqAccordion">
-              <div class="accordion-body">
-                3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.
-              </div>
-            </div>
-          </div>
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="headingFive">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
-                How do airplanes stay up?
-              </button>
-            </h2>
-            <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#FaqAccordion">
-              <div class="accordion-body">
-                Life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.
-              </div>
-            </div>
-          </div>
-          <div class="accordion-item">
-            <h2 class="accordion-header" id="headingSix">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSix" aria-expanded="false" aria-controls="collapseSix">
-                How can go to star?
-              </button>
-            </h2>
-            <div id="collapseSix" class="accordion-collapse collapse" aria-labelledby="headingSix" data-bs-parent="#FaqAccordion">
-              <div class="accordion-body">
-                Richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.
-              </div>
-            </div>
-          </div>
+        
+        <div class="d-flex justify-content-between mb-3 align-items-center">
+            <h6 class="card-title mb-0">FAQ List</h6>
+            <button class="btn btn-outline-secondary btn-sm" onclick="window.location.reload()"><i data-lucide="refresh-cw" class="icon-sm me-2"></i> Refresh</button>
         </div>
+
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr class="bg-light">
+                <th>FAQ ID</th>
+                <th>QUESTION</th>
+                <th>CATEGORY</th>
+                <th>KEYWORDS</th>
+                <th>ANSWER PREVIEW</th>
+                <th>ATTACHMENT</th>
+                <th>URL</th>
+                <th>MATCH TYPE</th>
+                <th>PRIORITY</th>
+                <th>STATUS</th>
+                <th>CREATED BY</th>
+                <th>CREATED AT</th>
+                <th>UPDATED AT</th>
+                <th>ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              @forelse($faqs as $faq)
+              <tr>
+                <td>{{ $faq->faq_hash_id }}</td>
+                <td class="fw-bold">{{ $faq->question }}</td>
+                <td><span class="badge bg-light text-dark border">{{ $faq->category ?? 'General' }}</span></td>
+                <td>{{ $faq->keywords ?? '--' }}</td>
+                <td>{{ \Illuminate\Support\Str::limit($faq->answer, 30) }}</td>
+                <td>
+                    @if($faq->attachment)
+                        <a href="{{ $faq->attachment }}" target="_blank" class="text-primary text-decoration-underline"><i data-lucide="paperclip" class="icon-sm"></i> {{ basename($faq->attachment) }}</a>
+                    @else
+                        --
+                    @endif
+                </td>
+                <td>
+                    @if($faq->url)
+                        <a href="{{ $faq->url }}" target="_blank" class="text-primary text-decoration-underline">Link</a>
+                    @else
+                        --
+                    @endif
+                </td>
+                <td><span class="badge" style="background-color: #e0d4f5; color: #7f32d3;">{{ $faq->match_type ?? 'AI Semantic' }}</span></td>
+                <td><span class="badge" style="background-color: #fdf3e7; color: #e4913c;">{{ $faq->priority ?? 'Medium' }}</span></td>
+                <td>
+                    <span class="badge {{ $faq->is_active ? 'bg-success' : 'bg-secondary' }} text-white" style="opacity: 0.8;">{{ $faq->is_active ? 'Active' : 'Inactive' }}</span>
+                </td>
+                <td>{{ $faq->created_by ?? '--' }}</td>
+                <td>{{ $faq->created_at->format('Y-m-d') }}</td>
+                <td>{{ $faq->updated_at->format('Y-m-d') }}</td>
+                <td>
+                    <div class="dropdown">
+                        <button class="btn btn-link p-0 text-muted" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i data-lucide="more-horizontal" class="icon-sm"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ route('faqs.edit', $faq->id) }}"><i data-lucide="edit" class="icon-sm me-2 text-warning"></i> Edit FAQ</a></li>
+                            <li>
+                                <form action="{{ route('faqs.toggle-status', $faq->id) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="dropdown-item"><i data-lucide="power" class="icon-sm me-2 {{ $faq->is_active ? 'text-danger' : 'text-success' }}"></i> {{ $faq->is_active ? 'Deactivate' : 'Activate' }}</button>
+                                </form>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="{{ route('faqs.destroy', $faq->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this FAQ?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="dropdown-item text-danger"><i data-lucide="trash" class="icon-sm me-2 text-danger"></i> Delete</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </td>
+              </tr>
+              @empty
+              <tr>
+                <td colspan="14" class="text-center text-muted py-4">No FAQs found. Click "Add FAQ" to create one.</td>
+              </tr>
+              @endforelse
+            </tbody>
+          </table>
+        </div>
+        
       </div>
     </div>
   </div>

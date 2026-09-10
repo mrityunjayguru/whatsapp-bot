@@ -103,6 +103,12 @@
           <span class="link-title">Conversations</span>
         </a>
       </li>
+      <li class="nav-item {{ active_class(['faqs', 'faqs/*']) }}">
+        <a href="{{ route('faqs.index') }}" class="nav-link">
+          <i class="link-icon" data-lucide="help-circle"></i>
+          <span class="link-title">FAQs</span>
+        </a>
+      </li>
       @endif
 
       {{-- Sub-user — show menu items based on permissions --}}

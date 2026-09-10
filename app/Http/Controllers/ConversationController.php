@@ -14,6 +14,11 @@ class ConversationController extends Controller
 
     public function show(\App\Models\Conversation $conversation)
     {
+        // Reset unread count when opening the conversation
+        if ($conversation->unread_count > 0) {
+            $conversation->update(['unread_count' => 0]);
+        }
+
         $allTags = \App\Models\Tag::all();
         $allContacts = \App\Models\Contact::all();
         return view('conversations.show', compact('conversation', 'allTags', 'allContacts'));
@@ -45,11 +50,27 @@ class ConversationController extends Controller
             return response()->json(['error' => 'Failed to send message: ' . $e->getMessage()], 500);
         }
 
+        if (empty($sentMessageIds)) {
+            return response()->json(['error' => 'Failed to send message to Meta API. Token may be expired or invalid.'], 500);
+        }
+
         $savedMessages = [];
 
         foreach ($sentMessageIds as $sentMsg) {
             $type = $sentMsg['type']; // 'TEXT', 'IMAGE', 'DOCUMENT', etc.
             $outboundMsgId = $sentMsg['id'];
+            
+            $mediaUrl = null;
+            $mimeType = null;
+            $fileName = null;
+
+            if (isset($sentMsg['file'])) {
+                $file = $sentMsg['file'];
+                $path = $file->store('attachments', 'public');
+                $mediaUrl = \Illuminate\Support\Facades\Storage::url($path);
+                $mimeType = $file->getClientMimeType();
+                $fileName = $file->getClientOriginalName();
+            }
 
             // Save Message to DB
             $message = \App\Models\Message::create([
@@ -61,7 +82,10 @@ class ConversationController extends Controller
                 'message_type' => $type,
                 'direction' => 'OUTBOUND',
                 'sender_type' => 'EMPLOYEE',
-                'message_text' => $type === 'TEXT' ? $text : "[$type Attachment sent]",
+                'message_text' => $type === 'TEXT' ? $text : '',
+                'media_url' => $mediaUrl,
+                'mime_type' => $mimeType,
+                'file_name' => $fileName,
                 'status' => 'SENT',
                 'sent_at' => now(),
             ]);

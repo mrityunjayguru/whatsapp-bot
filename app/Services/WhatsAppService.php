@@ -20,7 +20,8 @@ class WhatsAppService
 
     public function sendMessage(string $to, string $message)
     {
-        $response = Http::withToken($this->accessToken)
+        $response = Http::withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4]])
+            ->withToken($this->accessToken)
             ->post("{$this->baseUrl}/messages", [
                 'messaging_product' => 'whatsapp',
                 'to'                => $to,
@@ -62,7 +63,8 @@ class WhatsAppService
             if (!$file->isValid()) continue;
 
             // Step 2A: Upload media file to WhatsApp
-            $uploadResponse = Http::withToken($this->accessToken)
+            $uploadResponse = Http::withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4]])
+                ->withToken($this->accessToken)
                 ->attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName())
                 ->post("{$this->baseUrl}/media", [
                     'messaging_product' => 'whatsapp',
@@ -93,7 +95,8 @@ class WhatsAppService
             }
 
             // Step 2C: Send media message
-            $mediaMsgResponse = Http::withToken($this->accessToken)
+            $mediaMsgResponse = Http::withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4]])
+                ->withToken($this->accessToken)
                 ->post("{$this->baseUrl}/messages", [
                     'messaging_product' => 'whatsapp',
                     'to'                => $to,
@@ -105,7 +108,8 @@ class WhatsAppService
             if (isset($mediaData['messages'][0]['id'])) {
                 $sentMessageIds[] = [
                     'type' => strtoupper($mediaType),
-                    'id' => $mediaData['messages'][0]['id']
+                    'id' => $mediaData['messages'][0]['id'],
+                    'file' => $file
                 ];
             }
         }
