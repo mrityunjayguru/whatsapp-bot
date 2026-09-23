@@ -1,0 +1,142 @@
+<?php
+
+namespace App\Services;
+
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+class FaqApiService
+{
+    protected string $baseUrl;
+
+    public function __construct()
+    {
+        $this->baseUrl = env('PUBLIC_BASE_URL', 'http://127.0.0.1:5000') . '/faq';
+    }
+
+    public function uploadText(string $name, string $text, ?string $sourceUrl = null, bool $sendAsLink = false, ?array $keywords = null): ?string
+    {
+        $payload = [
+            'name' => $name,
+            'text' => $text,
+            'send_as_link' => $sendAsLink,
+        ];
+        
+        if ($sourceUrl) {
+            $payload['source_url'] = $sourceUrl;
+        }
+
+        if (!empty($keywords)) {
+            $payload['keywords'] = $keywords;
+        }
+
+        try {
+            $response = Http::post("{$this->baseUrl}/upload/text", $payload);
+            
+            if ($response->successful()) {
+                return $response->json('id');
+            }
+            
+            Log::error('FaqApiService uploadText failed', ['response' => $response->body()]);
+        } catch (\Exception $e) {
+            Log::error('FaqApiService uploadText exception', ['message' => $e->getMessage()]);
+        }
+        
+        return null;
+    }
+
+    public function uploadDocument(string $filePath, string $filename, bool $sendAsLink = true): ?array
+    {
+        try {
+            $response = Http::attach(
+                'file', file_get_contents($filePath), $filename
+            )->post("{$this->baseUrl}/upload/document", [
+                'send_as_link' => $sendAsLink ? 'true' : 'false'
+            ]);
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                // Fix proxy URL if python returned without /pybot
+                if (isset($data['source_url']) && str_contains($this->baseUrl, '/pybot')) {
+                    $data['source_url'] = str_replace('.com/faq/files/', '.com/pybot/faq/files/', $data['source_url']);
+                }
+                return $data;
+            }
+            
+            Log::error('FaqApiService uploadDocument failed', ['response' => $response->body()]);
+        } catch (\Exception $e) {
+            Log::error('FaqApiService uploadDocument exception', ['message' => $e->getMessage()]);
+        }
+        
+        return null;
+    }
+
+    public function uploadUrl(string $url, ?string $name = null): ?string
+    {
+        $payload = ['url' => $url];
+        if ($name) $payload['name'] = $name;
+
+        // Simple check to determine if it's a Youtube video
+        $endpoint = (str_contains($url, 'youtube.com') || str_contains($url, 'youtu.be')) 
+            ? 'upload/video' 
+            : 'upload/url';
+
+        try {
+            $response = Http::post("{$this->baseUrl}/{$endpoint}", $payload);
+            
+            if ($response->successful()) {
+                return $response->json('id');
+            }
+            
+            Log::error("FaqApiService {$endpoint} failed", ['response' => $response->body()]);
+        } catch (\Exception $e) {
+            Log::error("FaqApiService {$endpoint} exception", ['message' => $e->getMessage()]);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Store a file as an attachment on ONE specific FAQ answer, without
+     * indexing its content as its own separately-searchable source. Use
+     * this instead of uploadDocument() for the "attach a file to this
+     * question" flow - uploadDocument() creates an independent,
+     * competing search entry, which is why an unrelated query could
+     * previously win over the document and return the wrong link.
+     */
+    public function attachFile(string $filePath, string $filename): ?array
+    {
+        try {
+            $response = Http::attach(
+                'file', file_get_contents($filePath), $filename
+            )->post("{$this->baseUrl}/files/attach");
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            Log::error('FaqApiService attachFile failed', ['response' => $response->body()]);
+        } catch (\Exception $e) {
+            Log::error('FaqApiService attachFile exception', ['message' => $e->getMessage()]);
+        }
+
+        return null;
+    }
+
+    public function deleteSource(string $sourceId): bool
+    {
+        try {
+            $response = Http::delete("{$this->baseUrl}/sources/{$sourceId}");
+            
+            if ($response->successful() || $response->status() == 404) {
+                return true;
+            }
+            
+            Log::error("FaqApiService deleteSource failed", ['response' => $response->body()]);
+        } catch (\Exception $e) {
+            Log::error("FaqApiService deleteSource exception", ['message' => $e->getMessage()]);
+        }
+        
+        return false;
+    }
+}
