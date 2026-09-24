@@ -112,7 +112,13 @@
                     </div>
                   </td>
                   <td>{{ $contact->whatsapp_profile_name ?? '-' }}</td>
-                  <td>{{ $contact->phone_number }}</td>
+                  <td>
+                    @if(str_starts_with($contact->phone_number ?? '', 'web:'))
+                      -
+                    @else
+                      {{ $contact->phone_number }}
+                    @endif
+                  </td>
                   <td>{{ $contact->email ?? '-' }}</td>
                   <td>
                     @php

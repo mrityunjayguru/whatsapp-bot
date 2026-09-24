@@ -61,6 +61,7 @@ Route::resource('companies', \App\Http\Controllers\CompanyController::class)->mi
 Route::patch('companies/{company}/toggle-status', [\App\Http\Controllers\CompanyController::class, 'toggleStatus'])->middleware(['auth', 'verified'])->name('companies.toggle-status');
 Route::resource('conversations', \App\Http\Controllers\ConversationController::class)->middleware(['auth', 'verified'])->only(['index', 'show']);
 Route::put('conversations/{conversation}/assign', [\App\Http\Controllers\ConversationController::class, 'assign'])->middleware(['auth', 'verified'])->name('conversations.assign');
+Route::put('conversations/{conversation}/toggle-bot', [\App\Http\Controllers\ConversationController::class, 'toggleBot'])->middleware(['auth', 'verified'])->name('conversations.toggleBot');
 Route::post('conversations/{conversation}/messages', [\App\Http\Controllers\ConversationController::class, 'sendMessage'])->middleware(['auth', 'verified'])->name('conversations.messages.store');
 Route::put('conversations/{conversation}/status', [\App\Http\Controllers\ConversationController::class, 'updateStatus'])->middleware(['auth', 'verified'])->name('conversations.updateStatus');
 Route::middleware(['auth'])->group(function () {

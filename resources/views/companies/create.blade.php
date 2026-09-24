@@ -57,6 +57,19 @@
             </div>
 
             <div class="mb-4">
+                <label class="form-label d-block">What you want to use for bot? <span class="text-danger">*</span></label>
+                <div class="form-check form-check-inline">
+                    <input type="radio" class="form-check-input @error('bot_usage_type') is-invalid @enderror" name="bot_usage_type" id="bot_whatsapp" value="whatsapp" {{ old('bot_usage_type', 'whatsapp') == 'whatsapp' ? 'checked' : '' }} required>
+                    <label class="form-check-label" for="bot_whatsapp">Whatsapp bot</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input type="radio" class="form-check-input @error('bot_usage_type') is-invalid @enderror" name="bot_usage_type" id="bot_widget" value="widget" {{ old('bot_usage_type') == 'widget' ? 'checked' : '' }} required>
+                    <label class="form-check-label" for="bot_widget">Widget bot</label>
+                </div>
+                @error('bot_usage_type') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+            </div>
+
+            <div class="mb-4">
                 <label class="form-label">Status <span class="text-danger">*</span></label>
                 <select class="form-select @error('status') is-invalid @enderror" name="status" required>
                     <option value="ACTIVE" {{ old('status') == 'ACTIVE' ? 'selected' : '' }}>Active</option>

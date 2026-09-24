@@ -32,6 +32,29 @@ class WidgetMessageController extends Controller
      * send(), history(), and close() so all three agree on exactly which
      * conversation a (token, session_id) pair refers to.
      */
+        private function checkCompany(string $token)
+    {
+        // Compare as plain dates, not against a full timestamp: expiry_date
+        // is a DATE column, so MySQL reads it as midnight on that day. With
+        // "now()" (a full timestamp) on the other side, a widget set to
+        // expire on the 25th would actually go dark at 12:00 AM on the
+        // 25th instead of staying valid through that whole day - and the
+        // same off-by-a-few-hours risk applies to valid_from too. This
+        // mirrors how the Python side compares its own dates (see
+        // WidgetConfig.is_currently_active) so both enforcement points
+        // agree on the same day boundary.
+        $today = now()->toDateString();
+        return \App\Models\Company::where('widget_token', $token)
+            ->where('is_active', true)
+            ->where(function ($q) use ($today) {
+                $q->whereNull('valid_from')->orWhereDate('valid_from', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('expiry_date')->orWhereDate('expiry_date', '>=', $today);
+            })
+            ->first();
+    }
+
     private function findConversation(string $token, string $sessionId): ?Conversation
     {
         $syntheticId = 'web:' . $token . ':' . $sessionId;
@@ -58,6 +81,10 @@ class WidgetMessageController extends Controller
             'token' => 'required|string',
             'session_id' => 'required|string',
         ]);
+
+        if (!$this->checkCompany($validated['token'])) {
+            return response()->json(['error' => 'Unknown or inactive widget.'], 404);
+        }
 
         $conversation = $this->findConversation($validated['token'], $validated['session_id']);
 
@@ -112,6 +139,10 @@ class WidgetMessageController extends Controller
             'session_id' => 'required|string',
         ]);
 
+        if (!$this->checkCompany($validated['token'])) {
+            return response()->json(['error' => 'Unknown or inactive widget.'], 404);
+        }
+
         $conversation = $this->findConversation($validated['token'], $validated['session_id']);
 
         if ($conversation) {
@@ -126,12 +157,15 @@ class WidgetMessageController extends Controller
         $validated = $request->validate([
             'token' => 'required|string',
             'session_id' => 'required|string',
-            'message' => 'required|string',
+            'message' => 'nullable|string',
+            'attachment' => 'nullable|file|max:10240',
         ]);
 
-        $company = Company::where('widget_token', $validated['token'])
-            ->where('is_active', true)
-            ->first();
+        if (empty($validated['message']) && !$request->hasFile('attachment')) {
+            return response()->json(['error' => 'Message or attachment is required.'], 400);
+        }
+
+        $company = $this->checkCompany($validated['token']);
 
         if (!$company) {
             return response()->json(['error' => 'Unknown or inactive widget.'], 404);
@@ -152,6 +186,10 @@ class WidgetMessageController extends Controller
 
         // One Conversation per (widget, visitor) - reopens if it was
         // resolved, exactly like MetaWebhookController's WhatsApp logic.
+        if (!$this->checkCompany($validated['token'])) {
+            return response()->json(['error' => 'Unknown or inactive widget.'], 404);
+        }
+
         $conversation = $this->findConversation($validated['token'], $validated['session_id']);
 
         if (!$conversation || $conversation->status === 'CLOSED') {
@@ -170,6 +208,18 @@ class WidgetMessageController extends Controller
             $conversation->update(['status' => 'OPEN']);
         }
 
+        $mediaUrl = null;
+        $fileName = null;
+        $messageType = 'TEXT';
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $fileName = $file->getClientOriginalName();
+            $path = $file->store('widget_attachments', 'public');
+            $mediaUrl = asset('storage/' . $path);
+            $mime = $file->getMimeType();
+            $messageType = str_starts_with($mime, 'image/') ? 'IMAGE' : 'DOCUMENT';
+        }
+
         // 1. Save + broadcast the visitor's own message.
         $inbound = Message::create([
             'tenant_id' => $company->id,
@@ -178,19 +228,23 @@ class WidgetMessageController extends Controller
             'contact_id' => $contact->id,
             'whatsapp_phone_number_id' => null,
             'meta_message_id' => 'web_' . (string) Str::uuid(),
-            'message_type' => 'TEXT',
+            'message_type' => $messageType,
             'direction' => 'INBOUND',
             'sender_type' => 'CUSTOMER',
-            'message_text' => $validated['message'],
+            'message_text' => $validated['message'] ?? '',
+            'media_url' => $mediaUrl,
+            'file_name' => $fileName,
             'status' => 'RECEIVED',
             'sent_at' => now(),
         ]);
+
+        $msgPreview = $fileName ? 'Attachment: ' . $fileName : Str::limit($validated['message'] ?? '', 50);
 
         $conversation->update([
             'unread_count' => $conversation->unread_count + 1,
             'last_message_at' => now(),
             'last_message_id' => $inbound->id,
-            'last_message_preview' => Str::limit($validated['message'], 50),
+            'last_message_preview' => $msgPreview,
         ]);
 
         event(new NewMessage($inbound));
@@ -212,7 +266,8 @@ class WidgetMessageController extends Controller
         }
 
         // 3. Ask the bot for an answer.
-        $botResponse = $api->sendMessage($validated['token'], $validated['session_id'], $validated['message']);
+        $messageForBot = $validated['message'] ?? '[Attachment]';
+        $botResponse = $api->sendMessage($validated['token'], $validated['session_id'], $messageForBot);
         $replyText = $botResponse['reply'] ?? "Sorry, I'm having trouble right now - please try again in a moment.";
         $escalated = $botResponse['escalated'] ?? false;
         $options = $botResponse['options'] ?? null;
@@ -252,6 +307,101 @@ class WidgetMessageController extends Controller
             'reply' => $replyText,
             'escalated' => $escalated,
             'options' => $options,
+            'conversation_id' => $conversation->id,
+        ]);
+    }
+
+    /**
+     * Called when a visitor taps one of the option buttons shown after
+     * an ambiguous match (see send() above) - saves both the tapped
+     * question and the bot's exact answer as real Messages, the same as
+     * any other exchange. Previously the widget called Python's
+     * /api/web/select directly for this, bypassing Laravel entirely -
+     * meaning a clicked option's question and answer were never saved
+     * at all, invisible in the CRM's conversation history even though
+     * everything else in the conversation showed up correctly.
+     */
+    public function select(Request $request, WidgetApiService $api)
+    {
+        $validated = $request->validate([
+            'token' => 'required|string',
+            'session_id' => 'required|string',
+            'source_id' => 'required|string',
+            'title' => 'required|string',
+        ]);
+
+        if (!$this->checkCompany($validated['token'])) {
+            return response()->json(['error' => 'Unknown or inactive widget.'], 404);
+        }
+
+        $conversation = $this->findConversation($validated['token'], $validated['session_id']);
+
+        if (!$conversation) {
+            return response()->json(['error' => 'No conversation found for this session.'], 404);
+        }
+
+        // 1. Save + broadcast the tapped option as the visitor's message
+        // - the option's title IS what the visitor is effectively
+        // "saying" by tapping it, same as if they'd typed the question.
+        $inbound = Message::create([
+            'tenant_id' => $conversation->tenant_id,
+            'channel' => 'web_widget',
+            'conversation_id' => $conversation->id,
+            'contact_id' => $conversation->contact_id,
+            'whatsapp_phone_number_id' => null,
+            'meta_message_id' => 'web_' . (string) Str::uuid(),
+            'message_type' => 'TEXT',
+            'direction' => 'INBOUND',
+            'sender_type' => 'CUSTOMER',
+            'message_text' => $validated['title'],
+            'status' => 'RECEIVED',
+            'sent_at' => now(),
+        ]);
+        event(new NewMessage($inbound));
+
+        // 2. Same bot-pause rule as send() - a human already handling
+        // this conversation shouldn't have the bot jump in just because
+        // an old option list is still on screen and got tapped.
+        if ($conversation->assigned_tenant_user_id) {
+            $conversation->update([
+                'unread_count' => $conversation->unread_count + 1,
+                'last_message_at' => now(),
+                'last_message_id' => $inbound->id,
+                'last_message_preview' => Str::limit($validated['title'], 50),
+            ]);
+            return response()->json(['reply' => null, 'human_assigned' => true, 'conversation_id' => $conversation->id]);
+        }
+
+        // 3. Get that exact FAQ's answer and save + broadcast it too.
+        $botResponse = $api->selectOption($validated['token'], $validated['source_id']);
+        $replyText = $botResponse['reply'] ?? "Sorry, I'm having trouble right now - please try again in a moment.";
+
+        $outbound = Message::create([
+            'tenant_id' => $conversation->tenant_id,
+            'channel' => 'web_widget',
+            'conversation_id' => $conversation->id,
+            'contact_id' => $conversation->contact_id,
+            'whatsapp_phone_number_id' => null,
+            'meta_message_id' => 'web_' . (string) Str::uuid(),
+            'message_type' => 'TEXT',
+            'direction' => 'OUTBOUND',
+            'sender_type' => 'BOT',
+            'message_text' => $replyText,
+            'status' => 'SENT',
+            'sent_at' => now(),
+        ]);
+
+        $conversation->update([
+            'unread_count' => $conversation->unread_count + 1,
+            'last_message_at' => now(),
+            'last_message_id' => $outbound->id,
+            'last_message_preview' => Str::limit($replyText, 50),
+        ]);
+
+        event(new NewMessage($outbound));
+
+        return response()->json([
+            'reply' => $replyText,
             'conversation_id' => $conversation->id,
         ]);
     }

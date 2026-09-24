@@ -55,9 +55,36 @@ class WidgetApiService
             if ($response->successful()) {
                 return $response->json();
             }
+            
             Log::error('WidgetApiService sendMessage failed', ['status' => $response->status(), 'body' => $response->body()]);
         } catch (\Throwable $e) {
             Log::error('WidgetApiService sendMessage exception', ['message' => $e->getMessage()]);
+        }
+        return null;
+    }
+
+    /**
+     * Get the exact answer for a tapped option from a previous
+     * sendMessage() response's `options` list - called server-to-server
+     * from WidgetMessageController::select(), which is what the widget
+     * now calls instead of hitting this Python endpoint directly. That
+     * used to bypass Laravel entirely, so a clicked option's question
+     * and answer were never saved as Messages - invisible in the CRM's
+     * conversation history, unlike every other message.
+     */
+    public function selectOption(string $token, string $sourceId): ?array
+    {
+        try {
+            $response = Http::timeout(15)
+                ->post("{$this->baseUrl}/api/web/select?token=" . urlencode($token), [
+                    'source_id' => $sourceId,
+                ]);
+            if ($response->successful()) {
+                return $response->json();
+            }
+            Log::error('WidgetApiService selectOption failed', ['status' => $response->status(), 'body' => $response->body()]);
+        } catch (\Throwable $e) {
+            Log::error('WidgetApiService selectOption exception', ['message' => $e->getMessage()]);
         }
         return null;
     }

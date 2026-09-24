@@ -61,7 +61,13 @@
 
         <div class="row mb-3">
           <div class="col-sm-4 text-muted">Phone Number</div>
-          <div class="col-sm-8 fw-bold">{{ $contact->phone_number }}</div>
+          <div class="col-sm-8 fw-bold">
+            @if(str_starts_with($contact->phone_number ?? '', 'web:'))
+              -
+            @else
+              {{ $contact->phone_number }}
+            @endif
+          </div>
         </div>
 
         <div class="row mb-3">

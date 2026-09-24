@@ -4,6 +4,7 @@
     $publicApiBase = rtrim(config('app.url'), '/') . '/pybot';
     $embedSnippet = '<script src="' . $publicApiBase . '/widget/widget.js?token=' . $token . '" async></script>';
     $previewUrl = $publicApiBase . '/widget/preview?token=' . $token;
+    $isCompanyUser = !is_null(auth()->user()->company_id);
 @endphp
 
 @section('content')
@@ -59,6 +60,19 @@
           @csrf
           @method('PUT')
 
+          @if(!$isCompanyUser)
+          <div class="mb-3">
+            <label class="form-label">Company</label>
+            <select name="company_id" class="form-select">
+              <option value="">-- No Company --</option>
+              @foreach($companies as $c)
+                <option value="{{ $c->id }}" @selected($company && $company->id == $c->id)>{{ $c->name }}</option>
+              @endforeach
+            </select>
+            <small class="text-muted">Reassign this widget to a different company, or unassign it.</small>
+          </div>
+          @endif
+
           <div class="mb-3">
             <label class="form-label">Site name</label>
             <input type="text" class="form-control" name="site_name" value="{{ old('site_name', $widget['site_name']) }}" required>
@@ -98,11 +112,19 @@
             <textarea class="form-control" name="fallback_message" rows="2" required>{{ old('fallback_message', $widget['fallback_message']) }}</textarea>
           </div>
 
-          <div class="mb-4">
-            <label class="form-label">Expiry Date <span class="text-muted small">(Leave empty for no expiry)</span></label>
-            <input type="date" class="form-control" name="expiry_date" value="{{ old('expiry_date', $widget['expiry_date'] ?? '') }}" {{ $isRegularEmployee ? 'readonly' : '' }}>
-            @if($isRegularEmployee)
-              <small class="form-text text-muted">Only Company Admins can change the expiry date.</small>
+          <div class="row mb-4">
+            <div class="col-md-6 mb-3 mb-md-0">
+              <label class="form-label">Valid From <span class="text-muted small">(Leave empty for no start date)</span></label>
+              <input type="date" class="form-control" name="valid_from" value="{{ old('valid_from', $company->valid_from ?? '') }}" {{ ($isRegularEmployee || $isCompanyUser) ? 'readonly' : '' }}>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Valid To (Expiry) <span class="text-muted small">(Leave empty for no expiry)</span></label>
+              <input type="date" class="form-control" name="expiry_date" value="{{ old('expiry_date', $company->expiry_date ?? '') }}" {{ ($isRegularEmployee || $isCompanyUser) ? 'readonly' : '' }}>
+            </div>
+            @if($isRegularEmployee || $isCompanyUser)
+              <div class="col-12 mt-1">
+                <small class="form-text text-muted">Only Super Admins can change the validity dates.</small>
+              </div>
             @endif
           </div>
 
@@ -123,6 +145,7 @@
       </div>
     </div>
 
+    @if(!$isCompanyUser)
     <div class="card mt-3 border-danger">
       <div class="card-body">
         <h6 class="card-title text-danger mb-3 border-bottom pb-2">DANGER ZONE</h6>
@@ -135,6 +158,7 @@
         </form>
       </div>
     </div>
+    @endif
   </div>
 
   <!-- Right: FAQ knowledge base -->

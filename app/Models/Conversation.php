@@ -21,6 +21,7 @@ class Conversation extends Model
         'last_message_at',
         'first_message_at',
         'resolved_at',
+        'bot_stopped',
     ];
 
     public function contact()

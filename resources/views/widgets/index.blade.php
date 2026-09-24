@@ -5,9 +5,11 @@
   <ol class="breadcrumb mb-0">
     <li class="breadcrumb-item active" aria-current="page">Website Widgets</li>
   </ol>
+  @if(is_null(auth()->user()->company_id))
   <a href="{{ route('widgets.create') }}" class="btn btn-primary">
     <i data-lucide="plus" class="icon-sm me-1"></i> Add Widget
   </a>
+  @endif
 </nav>
 
 @if (session('success'))
@@ -22,12 +24,17 @@
     <h6 class="card-title text-muted mb-4 border-bottom pb-2">WIDGET LIST</h6>
 
     @if (empty($widgets))
-      <p class="text-muted mb-0">No widgets yet - click "Add Widget" to create one for a site.</p>
+      @if(is_null(auth()->user()->company_id))
+        <p class="text-muted mb-0">No widgets yet - click "Add Widget" to create one for a site.</p>
+      @else
+        <p class="text-muted mb-0">No widgets found for your company. Please contact support or your administrator.</p>
+      @endif
     @else
       <div class="table-responsive">
         <table class="table align-middle">
           <thead>
             <tr>
+              <th>Company</th>
               <th>Site</th>
               <th>Contact</th>
               <th>Bot Name</th>
@@ -39,7 +46,8 @@
           <tbody>
             @foreach ($widgets as $widget)
               <tr>
-                <td class="fw-bold">{{ $widget['site_name'] }}</td>
+                <td class="fw-bold">{{ $widget['company_name'] }}</td>
+                <td>{{ $widget['site_name'] }}</td>
                 <td class="text-muted small">{{ $widget['contact_email'] ?: '--' }}</td>
                 <td>{{ $widget['bot_name'] }}</td>
                 <td>
@@ -51,13 +59,17 @@
                 </td>
                 <td><code class="small">{{ $widget['token'] }}</code></td>
                 <td class="text-end">
-                  <a href="{{ route('widgets.edit', $widget['token']) }}" class="btn btn-sm btn-outline-secondary">Manage</a>
-                  <form action="{{ route('widgets.destroy', $widget['token']) }}" method="POST" class="d-inline"
-                        onsubmit="return confirm('Permanently delete this widget, its config, and ALL of its FAQs/files? This cannot be undone.');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                  </form>
+                  @if(is_null(auth()->user()->company_id))
+                    <a href="{{ route('widgets.edit', $widget['token']) }}" class="btn btn-sm btn-outline-secondary">Manage</a>
+                    <form action="{{ route('widgets.destroy', $widget['token']) }}" method="POST" class="d-inline"
+                          onsubmit="return confirm('Permanently delete this widget, its config, and ALL of its FAQs/files? This cannot be undone.');">
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                    </form>
+                  @else
+                    <a href="{{ route('widgets.edit', $widget['token']) }}" class="btn btn-sm btn-outline-secondary">View</a>
+                  @endif
                 </td>
               </tr>
             @endforeach

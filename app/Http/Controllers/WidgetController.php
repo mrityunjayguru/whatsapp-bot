@@ -10,19 +10,35 @@ class WidgetController extends Controller
     public function index(WidgetApiService $api)
     {
         $widgets = $api->listWidgets();
+        
+        $companies = \App\Models\Company::whereNotNull('widget_token')->pluck('name', 'widget_token');
+
+        foreach ($widgets as &$widget) {
+            $widget['company_name'] = $companies[$widget['token']] ?? '--';
+        }
+        
+        if (!is_null(auth()->user()->company_id)) {
+            $token = auth()->user()->company->widget_token;
+            $widgets = collect($widgets)->filter(fn($w) => $w['token'] === $token)->values()->all();
+        }
+
         return view('widgets.index', compact('widgets'));
     }
 
     public function create()
     {
-        return view('widgets.create');
+        $companies = \App\Models\Company::where('bot_usage_type', 'widget')->get();
+        return view('widgets.create', compact('companies'));
     }
 
     public function store(Request $request, WidgetApiService $api)
     {
         $validated = $request->validate([
+            'company_id' => 'required|exists:companies,id',
             'site_name' => 'required|string|max:255',
             'contact_email' => 'nullable|email|max:255',
+            'valid_from' => 'nullable|date',
+            'expiry_date' => 'nullable|date|after_or_equal:valid_from',
         ]);
 
         $widget = $api->createWidget($validated['site_name'], $validated['contact_email'] ?? null);
@@ -31,22 +47,23 @@ class WidgetController extends Controller
             return back()->withInput()->with('error', 'Could not create the widget - check the bot service is running.');
         }
 
-        // The widget only exists in Python's own storage at this point.
-        // WidgetMessageController (the endpoint every visitor message
-        // actually goes through) requires a matching Company row here
-        // in Laravel before it'll process anything for this token - this
-        // used to be a manual tinker step per widget, easy to forget,
-        // which meant a brand new widget silently failed every message
-        // until someone remembered to run it by hand. Creating it here
-        // means every widget works immediately, with nothing else to do.
-        \App\Models\Company::firstOrCreate(
-            ['widget_token' => $widget['token']],
-            [
-                'name' => $validated['site_name'],
-                'contact_email' => $validated['contact_email'] ?? null,
-                'is_active' => true,
-            ]
-        );
+        $company = \App\Models\Company::findOrFail($validated['company_id']);
+        $company->update([
+            'widget_token' => $widget['token'],
+            'is_active' => true,
+            'valid_from' => $validated['valid_from'] ?? null,
+            'expiry_date' => $validated['expiry_date'] ?? null,
+        ]);
+
+        // The Python side is what actually serves widget.js and answers
+        // messages for this token directly to the visitor's browser, so
+        // it - not this admin panel - has to be the one enforcing the
+        // date window. Push the dates there now rather than waiting for
+        // the first settings edit.
+        $api->updateWidgetConfig($widget['token'], [
+            'valid_from' => $validated['valid_from'] ?? null,
+            'expiry_date' => $validated['expiry_date'] ?? null,
+        ]);
 
         return redirect()->route('widgets.edit', $widget['token'])
             ->with('success', 'Widget created. Configure it and add some FAQs below, then copy the embed script onto your site.');
@@ -55,7 +72,6 @@ class WidgetController extends Controller
     public function edit(string $token, WidgetApiService $api)
     {
         $widget = $api->getWidgetConfig($token);
-
         if (!$widget) {
             abort(404, 'No widget with that token.');
         }
@@ -66,9 +82,21 @@ class WidgetController extends Controller
         $isRegularEmployee = $employee && $employee->role !== 'ADMIN';
 
         $company = \App\Models\Company::where('widget_token', $token)->first();
-        $widget['expiry_date'] = $company ? $company->expiry_date : null;
+        // Explicit ->format('Y-m-d'): $company->valid_from is a Carbon
+        // instance (it's cast as a date), and both Blade's {{ }} and a
+        // bare (string) cast on Carbon default to "Y-m-d H:i:s" - which
+        // an <input type="date"> silently refuses to populate. This is
+        // exactly the bug we're fixing, so don't let it back in here.
+        $widget['valid_from'] = $company && $company->valid_from ? $company->valid_from->format('Y-m-d') : null;
+        $widget['expiry_date'] = $company && $company->expiry_date ? $company->expiry_date->format('Y-m-d') : null;
 
-        return view('widgets.edit', compact('widget', 'faqs', 'token', 'isRegularEmployee'));
+        $companies = collect();
+        $isCompanyUser = !is_null(auth()->user()->company_id);
+        if (!$isCompanyUser) {
+            $companies = \App\Models\Company::where('bot_usage_type', 'widget')->get();
+        }
+
+        return view('widgets.edit', compact('widget', 'faqs', 'token', 'isRegularEmployee', 'company', 'companies'));
     }
 
     public function updateConfig(Request $request, string $token, WidgetApiService $api)
@@ -83,10 +111,16 @@ class WidgetController extends Controller
             'fallback_message' => 'required|string|max:500',
             'human_handoff_message' => 'nullable|string|max:500',
             'is_active' => 'nullable|boolean',
-            'expiry_date' => 'nullable|date',
+            'valid_from' => 'nullable|date',
+            'expiry_date' => 'nullable|date|after_or_equal:valid_from',
         ]);
         
         $validated['is_active'] = $request->has('is_active');
+        $isCompanyUser = !is_null(auth()->user()->company_id);
+
+        if (!$isCompanyUser) {
+            $request->validate(['company_id' => 'nullable|exists:companies,id']);
+        }
 
         // Check if user is a regular employee (not an admin or super admin)
         $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
@@ -94,14 +128,42 @@ class WidgetController extends Controller
 
         $company = \App\Models\Company::where('widget_token', $token)->first();
 
-        // Regular employees cannot change the expiry date
-        if ($isRegularEmployee) {
-            $validated['expiry_date'] = $company ? $company->expiry_date : null;
+        // Handle company reassignment by super admin
+        if (!$isCompanyUser && $request->has('company_id')) {
+            $newCompanyId = $request->input('company_id');
+            if (!$company || $company->id != $newCompanyId) {
+                if ($company) {
+                    $company->update(['widget_token' => null]);
+                }
+                if ($newCompanyId) {
+                    $company = \App\Models\Company::find($newCompanyId);
+                    if ($company) {
+                        $company->update(['widget_token' => $token]);
+                    }
+                } else {
+                    $company = null;
+                }
+            }
         }
 
-        // We do NOT send expiry_date to Python anymore. We store it locally.
+        // Regular employees or Company Users cannot change the dates -
+        // fall back to whatever's already saved (formatted plain, same
+        // reasoning as in edit() above: $company->valid_from is a Carbon
+        // instance because of the date cast).
+        if ($isRegularEmployee || $isCompanyUser) {
+            $validated['valid_from'] = $company && $company->valid_from ? $company->valid_from->format('Y-m-d') : null;
+            $validated['expiry_date'] = $company && $company->expiry_date ? $company->expiry_date->format('Y-m-d') : null;
+        }
+
+        // Pull the dates out for the local Company update below, but keep
+        // them IN $validated too - the Python service is what actually
+        // serves widget.js and answers messages straight to the visitor's
+        // browser, so it has to know the window as well, not just this
+        // admin panel. Sending null explicitly (not just omitting the
+        // key) is what lets a client clear a previously-set date back to
+        // "no start date" / "no expiry".
+        $validFrom = $validated['valid_from'];
         $expiryDate = $validated['expiry_date'];
-        unset($validated['expiry_date']);
 
         $updated = $api->updateWidgetConfig($token, $validated);
 
@@ -111,9 +173,8 @@ class WidgetController extends Controller
 
         if ($company) {
             $company->update([
-                'name' => $validated['site_name'],
-                'contact_email' => $validated['contact_email'] ?? null,
                 'is_active' => $validated['is_active'],
+                'valid_from' => $validFrom,
                 'expiry_date' => $expiryDate,
             ]);
         }

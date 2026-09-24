@@ -33,7 +33,13 @@
   <ol class="breadcrumb mb-0">
     <li class="breadcrumb-item"><a href="{{ route('dashboard') }}"><i data-lucide="home" class="icon-sm"></i></a></li>
     <li class="breadcrumb-item"><a href="{{ route('conversations.index') }}">Conversations</a></li>
-    <li class="breadcrumb-item active" aria-current="page">{{ $conversation->contact->phone_number ?? 'Unknown' }}</li>
+    <li class="breadcrumb-item active" aria-current="page">
+      @if(str_starts_with($conversation->contact->phone_number ?? '', 'web:'))
+        Widget Visitor
+      @else
+        {{ $conversation->contact->phone_number ?? 'Unknown' }}
+      @endif
+    </li>
   </ol>
 </nav>
 
@@ -42,9 +48,15 @@
         <div class="text-muted small">Conversation#{{ $conversation->id }}</div>
         <h4 class="mb-0">{{ $conversation->contact->custom_name ?? $conversation->contact->whatsapp_profile_name ?? 'Unknown' }}</h4>
     </div>
-    <!-- <div class="d-flex align-items-center">
-        <span class="bg-success rounded-circle me-2" style="width: 8px; height: 8px;"></span> <span class="text-muted small">Live</span>
-    </div> -->
+    <div class="d-flex align-items-center">
+        <form action="{{ route('conversations.toggleBot', $conversation->id) }}" method="POST" class="m-0 p-0">
+            @csrf
+            @method('PUT')
+            <button type="submit" class="btn btn-sm {{ $conversation->bot_stopped ? 'btn-success' : 'btn-danger' }} fw-bold">
+                {{ $conversation->bot_stopped ? 'Start Bot Reply' : 'Stop Bot Reply' }}
+            </button>
+        </form>
+    </div>
 </div>
 
 <div class="row">
@@ -230,10 +242,35 @@
                     </div> -->
 
                     @php
-                        $messages = \App\Models\Message::where('conversation_id', $conversation->id)->orderBy('sent_at', 'asc')->get();
+                        $messages = \App\Models\Message::where('conversation_id', $conversation->id)->orderBy('sent_at', 'asc')->orderBy('id', 'asc')->get();
+                        $lastDate = null;
                     @endphp
                     
                     @forelse($messages as $msg)
+                        @php
+                            $msgDateObj = \Carbon\Carbon::parse($msg->sent_at);
+                            $msgDateStr = $msgDateObj->format('Y-m-d');
+                            $displayDate = '';
+                            if ($msgDateStr !== $lastDate) {
+                                $lastDate = $msgDateStr;
+                                if ($msgDateObj->isToday()) {
+                                    $displayDate = 'Today';
+                                } elseif ($msgDateObj->isYesterday()) {
+                                    $displayDate = 'Yesterday';
+                                } elseif ($msgDateObj->isTomorrow()) {
+                                    $displayDate = 'Tomorrow';
+                                } else {
+                                    $displayDate = $msgDateObj->format('d/m/Y');
+                                }
+                            }
+                        @endphp
+
+                        @if($displayDate)
+                            <div class="text-center my-3 chat-date-divider" data-date="{{ $msgDateStr }}" style="clear:both;">
+                                <span class="badge bg-light text-muted border px-3 py-2 rounded-pill">{{ $displayDate }}</span>
+                            </div>
+                        @endif
+
                         <div class="chat-bubble {{ $msg->direction === 'INBOUND' ? 'chat-inbound' : 'chat-outbound' }}">
                             @if($msg->message_type === 'IMAGE' && $msg->media_url)
                                 <a href="{{ $msg->media_url }}" target="_blank">
@@ -261,7 +298,7 @@
                             <p>No messages yet. Start the conversation!</p>
                         </div>
                     @endforelse
-                    <div style="clear:both;"></div>
+                    <div id="chat-end-anchor" style="clear:both;"></div>
                 </div>
                 
                 <div class="p-3 border-top bg-white position-relative">
@@ -288,10 +325,14 @@
                             </ul>
                         </div>
 
-                        <input type="file" id="chatAttachmentInput" class="d-none" multiple>
+                        @php
+                            $isDisabled = (!$conversation->bot_stopped && is_null($conversation->assigned_tenant_user_id));
+                        @endphp
 
-                        <input type="text" id="chatMessageInput" class="chat-input px-2" placeholder="Type a message...">
-                        <button id="chatSendBtn" class="btn btn-success rounded-circle p-0 ms-2 d-flex align-items-center justify-content-center border-0" style="width: 35px; height: 35px; background-color: #00c853;">
+                        <input type="file" id="chatAttachmentInput" class="d-none" multiple {{ $isDisabled ? 'disabled' : '' }}>
+
+                        <input type="text" id="chatMessageInput" class="chat-input px-2" placeholder="{{ $isDisabled ? 'Assign an employee or stop bot to reply...' : 'Type a message...' }}" {{ $isDisabled ? 'disabled' : '' }}>
+                        <button id="chatSendBtn" class="btn btn-success rounded-circle p-0 ms-2 d-flex align-items-center justify-content-center border-0" style="width: 35px; height: 35px; background-color: #00c853;" {{ $isDisabled ? 'disabled' : '' }}>
                             <i data-lucide="mic" id="chatSendIcon" class="text-white" style="width: 16px; height: 16px;"></i>
                         </button>
                     </div>
@@ -978,6 +1019,33 @@ document.addEventListener('DOMContentLoaded', function() {
         const time = new Date(msg.sent_at);
         const timeFormatted = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+        const dateStr = time.getFullYear() + '-' + String(time.getMonth() + 1).padStart(2, '0') + '-' + String(time.getDate()).padStart(2, '0');
+        const dividers = chatTimeline.querySelectorAll('.chat-date-divider');
+        const lastDivider = dividers.length ? dividers[dividers.length - 1] : null;
+        
+        let clearDiv = document.getElementById('chat-end-anchor');
+        
+        if (!lastDivider || lastDivider.getAttribute('data-date') !== dateStr) {
+            const today = new Date();
+            const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+            const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+            const yesterdayStr = yesterday.getFullYear() + '-' + String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + String(yesterday.getDate()).padStart(2, '0');
+            
+            let displayDate = '';
+            if (dateStr === todayStr) displayDate = 'Today';
+            else if (dateStr === yesterdayStr) displayDate = 'Yesterday';
+            else displayDate = String(time.getDate()).padStart(2, '0') + '/' + String(time.getMonth() + 1).padStart(2, '0') + '/' + time.getFullYear();
+            
+            const divider = document.createElement('div');
+            divider.className = 'text-center my-3 chat-date-divider';
+            divider.setAttribute('data-date', dateStr);
+            divider.style.clear = 'both';
+            divider.innerHTML = `<span class="badge bg-light text-muted border px-3 py-2 rounded-pill">${displayDate}</span>`;
+            
+            if (clearDiv) chatTimeline.insertBefore(divider, clearDiv);
+            else chatTimeline.appendChild(divider);
+        }
+
         const bubble = document.createElement('div');
         bubble.className = `chat-bubble ${isOutbound ? 'chat-outbound' : 'chat-inbound'}`;
         
@@ -1005,12 +1073,12 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="chat-time">${timeFormatted}${errorHtml}</div>
         `;
 
-        const clearDiv = chatTimeline.querySelector('div[style="clear:both;"]');
+        clearDiv = document.getElementById('chat-end-anchor');
         if (clearDiv) {
             chatTimeline.insertBefore(bubble, clearDiv);
         } else {
             chatTimeline.appendChild(bubble);
-            chatTimeline.insertAdjacentHTML('beforeend', '<div style="clear:both;"></div>');
+            chatTimeline.insertAdjacentHTML('beforeend', '<div id="chat-end-anchor" style="clear:both;"></div>');
         }
         
         chatTimeline.scrollTop = chatTimeline.scrollHeight;

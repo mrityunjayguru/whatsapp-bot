@@ -33,6 +33,7 @@ class MetaWebhookController extends Controller
     //     if ($settings) {
     //         $verifyToken = $settings->credential('webhook_verify_token');
     //     }
+    
     //     if (!$verifyToken) {
     //         $verifyToken = config('services.meta.webhook_verify');
     //     }
@@ -144,7 +145,20 @@ class MetaWebhookController extends Controller
                             // Existing Tenant Resolution Logic
                             // Identifies which company (tenant) owns this contact. 
                             // Resolved automatically from the connected WhatsApp Business number.
-                            $tenantId = 1001; // Placeholder for actual tenant resolution logic based on $connectedNumberId
+                            $tenantId = 1001;
+                            
+                            $company = null;
+                            if ($connectedNumber) {
+                                // Try to find by contact_number matching display_phone_number
+                                $company = \App\Models\Company::where('contact_number', $connectedNumber)->first();
+                            }
+                            if (!$company) {
+                                // Fallback to the latest company
+                                $company = \App\Models\Company::latest('id')->first();
+                            }
+                            if ($company) {
+                                $tenantId = $company->id;
+                            }
 
                             if ($fromPhone) {
                                 $contact = \App\Models\Contact::firstOrCreate(
@@ -210,6 +224,14 @@ class MetaWebhookController extends Controller
 
                                     event(new \App\Events\NewMessage($inboundMessage));
 
+                                    // If a human agent has already taken this
+                                    // conversation over, the bot stays silent -
+                                    // just the inbound message above gets
+                                    // saved+broadcast, same as the widget side
+                                    // (see WidgetMessageController::send()).
+                                    // Previously the bot replied to EVERY
+                                    // message regardless of assignment.
+                                    if (!$conversation->assigned_tenant_user_id && !$conversation->bot_stopped) {
                                     // 1. Fetch the bot's response - either the
                                     // exact answer for a tapped option, or a
                                     // normal text-matched reply (which may
@@ -227,6 +249,23 @@ class MetaWebhookController extends Controller
                                         );
                                         $replyText = $botResponse['reply'] ?? null;
                                         $replyOptions = $botResponse['options'] ?? null;
+
+                                        // The visitor explicitly asked for a
+                                        // human (bot_engine.py's human_handoff
+                                        // intent, keyword-matched on "agent",
+                                        // "human", etc. - not just "bot
+                                        // couldn't answer") - fire the same
+                                        // instant, app-wide alert the widget
+                                        // side already uses, so an agent sees
+                                        // this immediately wherever they are
+                                        // in the CRM.
+                                        if (($botResponse['intent'] ?? null) === 'human_handoff') {
+                                            event(new \App\Events\HumanSupportRequested(
+                                                $conversation->id,
+                                                $conversation->company->name ?? 'WhatsApp',
+                                                $textMessage,
+                                            ));
+                                        }
                                     }
 
                                     // 2. Send the reply - as a tappable List
@@ -291,6 +330,7 @@ class MetaWebhookController extends Controller
                                         ]);
 
                                         event(new \App\Events\NewMessage($outboundMessage));
+                                    }
                                     }
                                 }
                             }

@@ -28,8 +28,20 @@
               <span class="link-title">Companies</span>
             </a>
           </li>
+          <li class="nav-item {{ active_class(['widgets', 'widgets/*']) }}">
+            <a href="{{ route('widgets.index') }}" class="nav-link">
+              <i class="link-icon" data-lucide="layout-template"></i>
+              <span class="link-title">Widgets</span>
+            </a>
+          </li>
         @else
           {{-- Company Menu --}}
+          @php
+            $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
+            $isRegularEmployee = $employee && $employee->role !== 'ADMIN';
+          @endphp
+
+          @if(!$isRegularEmployee)
           <li class="nav-item {{ active_class(['contacts', 'contacts/*']) }}">
             <a href="{{ route('contacts.index') }}" class="nav-link">
               <i class="link-icon" data-lucide="book-open"></i>
@@ -42,36 +54,45 @@
               <span class="link-title">Tags</span>
             </a>
           </li>
+          @endif
+
           <li class="nav-item {{ active_class(['conversations', 'conversations/*']) }}">
             <a href="{{ route('conversations.index') }}" class="nav-link">
               <i class="link-icon" data-lucide="message-square"></i>
               <span class="link-title">Conversations</span>
             </a>
           </li>
+
+          @if(!$isRegularEmployee)
           <li class="nav-item {{ active_class(['faqs', 'faqs/*']) }}">
             <a href="{{ route('faqs.index') }}" class="nav-link">
               <i class="link-icon" data-lucide="help-circle"></i>
               <span class="link-title">FAQs</span>
             </a>
           </li>
+          @if(auth()->user()->company->bot_usage_type === 'whatsapp')
           <li class="nav-item {{ active_class(['bot-config', 'bot-config/*']) }}">
             <a href="{{ route('bot-config.edit') }}" class="nav-link">
               <i class="link-icon" data-lucide="settings"></i>
               <span class="link-title">WhatsApp Bot Settings</span>
             </a>
           </li>
+          @endif
           <li class="nav-item {{ active_class(['employees', 'employees/*']) }}">
             <a href="{{ url('/employees') }}" class="nav-link">
               <i class="link-icon" data-lucide="users"></i>
               <span class="link-title">Employees</span>
             </a>
           </li>
+          @if(auth()->user()->company->bot_usage_type === 'widget')
           <li class="nav-item {{ active_class(['widgets', 'widgets/*']) }}">
             <a href="{{ route('widgets.index') }}" class="nav-link">
               <i class="link-icon" data-lucide="users"></i>
               <span class="link-title">Widget</span>
             </a>
           </li>
+          @endif
+          @endif
         @endif
       @endauth
     </ul>

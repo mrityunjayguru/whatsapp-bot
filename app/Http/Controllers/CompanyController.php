@@ -50,6 +50,7 @@ class CompanyController extends Controller
             'email' => 'required|email|unique:companies,contact_email|unique:users,email',
             'contact_number' => 'nullable|string|max:20',
             'password' => 'required|string|min:8|confirmed',
+            'bot_usage_type' => 'required|in:whatsapp,widget',
             'status' => 'required|in:ACTIVE,INACTIVE',
         ]);
 
@@ -57,6 +58,7 @@ class CompanyController extends Controller
             'name' => $request->name,
             'contact_email' => $request->email,
             'contact_number' => $request->contact_number,
+            'bot_usage_type' => $request->bot_usage_type,
             'is_active' => $request->status === 'ACTIVE',
         ]);
 
@@ -89,6 +91,7 @@ class CompanyController extends Controller
             'email' => 'required|email|unique:companies,contact_email,' . $company->id,
             'contact_number' => 'nullable|string|max:20',
             'password' => 'nullable|string|min:8|confirmed',
+            'bot_usage_type' => 'required|in:whatsapp,widget',
             'status' => 'required|in:ACTIVE,INACTIVE',
         ]);
 
@@ -104,6 +107,7 @@ class CompanyController extends Controller
             'name' => $request->name,
             'contact_email' => $request->email,
             'contact_number' => $request->contact_number,
+            'bot_usage_type' => $request->bot_usage_type,
             'is_active' => $request->status === 'ACTIVE',
         ]);
 

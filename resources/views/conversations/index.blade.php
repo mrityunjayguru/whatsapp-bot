@@ -45,9 +45,9 @@
             <div class="col-md-2">
               <select name="assigned_to" class="form-select form-select-sm" onchange="document.getElementById('filterForm').submit()">
                 <option value="">Assigned To</option>
-                @foreach($allUsers as $user)
-                    <option value="{{ $user->id }}" {{ request('assigned_to') == $user->id ? 'selected' : '' }}>{{ $user->name }}</option>
-                @endforeach
+                @foreach($allEmployees as $employee)
+                      <option value="{{ $employee->id }}" {{ request('assigned_to') == $employee->id ? 'selected' : '' }}>{{ $employee->display_name ?? ($employee->first_name . ' ' . $employee->last_name) }}</option>
+                  @endforeach
               </select>
             </div>
             
@@ -127,7 +127,13 @@
                       <span>{{ $contactName }}</span>
                     </div>
                   </td>
-                  <td>{{ $conversation->contact->phone_number ?? '-' }}</td>
+                  <td>
+                    @if(str_starts_with($conversation->contact->phone_number ?? '', 'web:'))
+                      -
+                    @else
+                      {{ $conversation->contact->phone_number ?? '-' }}
+                    @endif
+                  </td>
                   <td>
                     @if($conversation->contact && $conversation->contact->tags && $conversation->contact->tags->count() > 0)
                       <span class="badge bg-secondary">{{ $conversation->contact->tags->first()->tag_name }}</span>
@@ -143,7 +149,11 @@
                   <td>
                     @if($conversation->assignedUser)
                       <div class="d-flex align-items-center">
-                        <img src="{{ url('https://ui-avatars.com/api/?name=' . urlencode($conversation->assignedUser->name) . '&background=random&rounded=true') }}" alt="avatar" class="wd-30 ht-30 rounded-circle" title="{{ $conversation->assignedUser->name }}">
+                        @php
+                          $empName = $conversation->assignedUser->display_name ?? ($conversation->assignedUser->first_name . ' ' . $conversation->assignedUser->last_name) ?? 'Employee';
+                        @endphp
+                        <img src="{{ url('https://ui-avatars.com/api/?name=' . urlencode($empName) . '&background=random&rounded=true') }}" alt="avatar" class="wd-30 ht-30 rounded-circle me-2" title="{{ $empName }}">
+                        <span>{{ $empName }}</span>
                       </div>
                     @else
                       -

@@ -128,7 +128,7 @@ class ConversationController extends Controller
             if (!empty($files)) {
                 foreach ($files as $file) {
                     $path = $file->store('attachments', 'public');
-                    $mediaUrl = \Illuminate\Support\Facades\Storage::url($path);
+                    $mediaUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($path);
                     $mimeType = $file->getClientMimeType();
                     $fileName = $file->getClientOriginalName();
                     
@@ -180,6 +180,17 @@ class ConversationController extends Controller
             return response()->json(['error' => 'Contact does not have a phone number.'], 400);
         }
 
+        // WhatsApp has no separate UI to show who's replying (unlike the
+        // widget, which labels the sender above the bubble) - the only way
+        // the customer can tell a human answered, and which one, is if the
+        // name is actually part of the message text itself.
+        if (!empty($text) && $conversation->assigned_tenant_user_id) {
+            $employee = \App\Models\Employee::find($conversation->assigned_tenant_user_id);
+            if ($employee) {
+                $text = "*{$employee->display_name}*: {$text}";
+            }
+        }
+
         try {
             $sentMessageIds = app(\App\Services\WhatsAppService::class)->sendMultipartMessage($contact->phone_number, $text, $files);
         } catch (\Exception $e) {
@@ -203,7 +214,7 @@ class ConversationController extends Controller
             if (isset($sentMsg['file'])) {
                 $file = $sentMsg['file'];
                 $path = $file->store('attachments', 'public');
-                $mediaUrl = \Illuminate\Support\Facades\Storage::url($path);
+                $mediaUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($path);
                 $mimeType = $file->getClientMimeType();
                 $fileName = $file->getClientOriginalName();
             }
@@ -262,6 +273,52 @@ class ConversationController extends Controller
             'resolved_at' => in_array($request->status, ['RESOLVED', 'CLOSED']) ? now() : null,
         ]);
 
+        if (in_array($request->status, ['RESOLVED', 'CLOSED'])) {
+            $msgText = "ended conversation";
+            $contact = $conversation->contact;
+            
+            if ($conversation->channel === 'web_widget') {
+                $message = \App\Models\Message::create([
+                    'tenant_id' => $conversation->tenant_id,
+                    'channel' => 'web_widget',
+                    'conversation_id' => $conversation->id,
+                    'contact_id' => $contact->id,
+                    'whatsapp_phone_number_id' => null,
+                    'meta_message_id' => 'web_' . (string) \Illuminate\Support\Str::uuid(),
+                    'message_type' => 'TEXT',
+                    'direction' => 'OUTBOUND',
+                    'sender_type' => 'SYSTEM',
+                    'message_text' => $msgText,
+                    'status' => 'SENT',
+                    'sent_at' => now(),
+                ]);
+                event(new \App\Events\NewMessage($message));
+            } else {
+                try {
+                    $whatsappService = app(\App\Services\WhatsAppService::class);
+                    $whatsappResponse = $whatsappService->sendMessage($contact->phone_number, $msgText);
+                    if (!empty($whatsappResponse) && isset($whatsappResponse['messages'][0]['id'])) {
+                        $message = \App\Models\Message::create([
+                            'tenant_id' => $conversation->tenant_id,
+                            'conversation_id' => $conversation->id,
+                            'contact_id' => $contact->id,
+                            'whatsapp_phone_number_id' => $conversation->whatsapp_phone_number_id,
+                            'meta_message_id' => $whatsappResponse['messages'][0]['id'],
+                            'message_type' => 'TEXT',
+                            'direction' => 'OUTBOUND',
+                            'sender_type' => 'SYSTEM',
+                            'message_text' => $msgText,
+                            'status' => 'SENT',
+                            'sent_at' => now(),
+                        ]);
+                        event(new \App\Events\NewMessage($message));
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send status update message: ' . $e->getMessage());
+                }
+            }
+        }
+
         return back()->with('success', 'Conversation status updated to ' . $request->status);
     }
 
@@ -290,8 +347,119 @@ class ConversationController extends Controller
             \App\Models\Employee::where('id', $newEmployeeId)->increment('assigned_conversation_count');
         }
 
+        // Send a message indicating assignment change
+        if ($newEmployeeId && $newEmployeeId != $previousEmployeeId) {
+            $employee = \App\Models\Employee::find($newEmployeeId);
+            $msgText = $employee->display_name . " joined conversation";
+        } elseif (!$newEmployeeId && $previousEmployeeId) {
+            $employee = \App\Models\Employee::find($previousEmployeeId);
+            $msgText = "ended conversation with " . $employee->display_name;
+        }
+
+        if (isset($msgText)) {
+            $contact = $conversation->contact;
+            if ($conversation->channel === 'web_widget') {
+                $message = \App\Models\Message::create([
+                    'tenant_id' => $conversation->tenant_id,
+                    'channel' => 'web_widget',
+                    'conversation_id' => $conversation->id,
+                    'contact_id' => $contact->id,
+                    'whatsapp_phone_number_id' => null,
+                    'meta_message_id' => 'web_' . (string) \Illuminate\Support\Str::uuid(),
+                    'message_type' => 'TEXT',
+                    'direction' => 'OUTBOUND',
+                    'sender_type' => 'SYSTEM',
+                    'message_text' => $msgText,
+                    'status' => 'SENT',
+                    'sent_at' => now(),
+                ]);
+                event(new \App\Events\NewMessage($message));
+            } else {
+                try {
+                    $whatsappService = app(\App\Services\WhatsAppService::class);
+                    $whatsappResponse = $whatsappService->sendMessage($contact->phone_number, $msgText);
+                    if (!empty($whatsappResponse) && isset($whatsappResponse['messages'][0]['id'])) {
+                        $message = \App\Models\Message::create([
+                            'tenant_id' => $conversation->tenant_id,
+                            'conversation_id' => $conversation->id,
+                            'contact_id' => $contact->id,
+                            'whatsapp_phone_number_id' => $conversation->whatsapp_phone_number_id,
+                            'meta_message_id' => $whatsappResponse['messages'][0]['id'],
+                            'message_type' => 'TEXT',
+                            'direction' => 'OUTBOUND',
+                            'sender_type' => 'SYSTEM',
+                            'message_text' => $msgText,
+                            'status' => 'SENT',
+                            'sent_at' => now(),
+                        ]);
+                        event(new \App\Events\NewMessage($message));
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send assignment message: ' . $e->getMessage());
+                }
+            }
+        }
+
         return back()->with('success', $newEmployeeId
             ? 'Conversation assigned - the bot will no longer auto-reply here.'
             : 'Conversation unassigned - handed back to the bot.');
+    }
+
+    public function toggleBot(Request $request, $id)
+    {
+        $companyId = auth()->user()->company_id;
+        $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
+
+        $botWasActive = !$conversation->bot_stopped;
+        $conversation->update(['bot_stopped' => !$conversation->bot_stopped]);
+
+        if ($botWasActive && $conversation->bot_stopped) {
+            $handoffMessage = "A human agent will take over this conversation shortly.";
+            $contact = $conversation->contact;
+
+            if ($conversation->channel === 'web_widget') {
+                $message = \App\Models\Message::create([
+                    'tenant_id' => $conversation->tenant_id,
+                    'channel' => 'web_widget',
+                    'conversation_id' => $conversation->id,
+                    'contact_id' => $contact->id,
+                    'whatsapp_phone_number_id' => null,
+                    'meta_message_id' => 'web_' . (string) \Illuminate\Support\Str::uuid(),
+                    'message_type' => 'TEXT',
+                    'direction' => 'OUTBOUND',
+                    'sender_type' => 'SYSTEM',
+                    'message_text' => $handoffMessage,
+                    'status' => 'SENT',
+                    'sent_at' => now(),
+                ]);
+                event(new \App\Events\NewMessage($message));
+            } else {
+                try {
+                    $whatsappService = app(\App\Services\WhatsAppService::class);
+                    $whatsappResponse = $whatsappService->sendMessage($contact->phone_number, $handoffMessage);
+                    
+                    if (!empty($whatsappResponse) && isset($whatsappResponse['messages'][0]['id'])) {
+                        $message = \App\Models\Message::create([
+                            'tenant_id' => $conversation->tenant_id,
+                            'conversation_id' => $conversation->id,
+                            'contact_id' => $contact->id,
+                            'whatsapp_phone_number_id' => $conversation->whatsapp_phone_number_id,
+                            'meta_message_id' => $whatsappResponse['messages'][0]['id'],
+                            'message_type' => 'TEXT',
+                            'direction' => 'OUTBOUND',
+                            'sender_type' => 'SYSTEM',
+                            'message_text' => $handoffMessage,
+                            'status' => 'SENT',
+                            'sent_at' => now(),
+                        ]);
+                        event(new \App\Events\NewMessage($message));
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send handoff message: ' . $e->getMessage());
+                }
+            }
+        }
+
+        return back()->with('success', $conversation->bot_stopped ? 'Bot stopped for this conversation.' : 'Bot resumed for this conversation.');
     }
 }

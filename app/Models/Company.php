@@ -10,12 +10,17 @@ class Company extends Model
         'name',
         'contact_email',
         'contact_number',
+        'bot_usage_type',
         'widget_token',
         'is_active',
+        'valid_from',
+        'expiry_date',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'valid_from' => 'date:Y-m-d',
+        'expiry_date' => 'date:Y-m-d',
     ];
 
     public function users()
