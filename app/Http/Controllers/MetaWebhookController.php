@@ -108,6 +108,10 @@ class MetaWebhookController extends Controller
                             $textMessage = null;
                             $tappedOptionId = null;
 
+                            $isMedia = false;
+                            $mediaId = null;
+                            $mediaType = null;
+                            
                             if ($msgType === 'text') {
                                 $textMessage = $msg['text']['body'] ?? '';
                             } elseif ($msgType === 'interactive' && in_array($msg['interactive']['type'] ?? '', ['list_reply', 'button_reply'], true)) {
@@ -122,9 +126,15 @@ class MetaWebhookController extends Controller
                                 $interactiveType = $msg['interactive']['type'];
                                 $tappedOptionId = $msg['interactive'][$interactiveType]['id'] ?? null;
                                 $textMessage = $msg['interactive'][$interactiveType]['title'] ?? '(selected an option)';
+                            } elseif (in_array($msgType, ['image', 'document', 'audio', 'video'], true)) {
+                                $isMedia = true;
+                                $mediaId = $msg[$msgType]['id'] ?? null;
+                                $mediaType = strtoupper($msgType);
+                                if (!empty($msg[$msgType]['caption'])) {
+                                    $textMessage = $msg[$msgType]['caption'];
+                                }
                             } else {
-                                // Unsupported message type (image, audio,
-                                // location, etc.) - skip, same as before.
+                                // Unsupported message type (location, etc.) - skip, same as before.
                                 continue;
                             }
 
@@ -190,7 +200,7 @@ class MetaWebhookController extends Controller
                                     $conversation->save();
                                 }
 
-                                if ($textMessage) {
+                                if ($textMessage !== null || $isMedia) {
                                     $metaMessageId = $msg['id'] ?? uniqid('wam_');
                                     
                                     // Check if we already processed this message (Meta webhook retry protection)
@@ -200,6 +210,27 @@ class MetaWebhookController extends Controller
                                         continue;
                                     }
 
+                                    $mediaUrl = null;
+                                    $fileName = null;
+
+                                    if ($isMedia && $mediaId) {
+                                        $whatsappService = app(\App\Services\WhatsAppService::class);
+                                        $mediaData = $whatsappService->downloadMedia($mediaId);
+                                        if ($mediaData && $mediaData['binary']) {
+                                            if ($msgType === 'document') {
+                                                $fileName = $msg['document']['filename'] ?? 'attachment';
+                                            } else {
+                                                $ext = explode('/', $mediaData['mime_type'])[1] ?? 'bin';
+                                                if (str_contains($ext, 'whatsapp')) $ext = 'ogg';
+                                                if (str_contains($ext, 'jpeg')) $ext = 'jpg';
+                                                $fileName = $mediaId . '.' . $ext;
+                                            }
+                                            $path = 'whatsapp_attachments/' . $fileName;
+                                            \Illuminate\Support\Facades\Storage::disk('public')->put($path, $mediaData['binary']);
+                                            $mediaUrl = asset('storage/' . $path);
+                                        }
+                                    }
+
                                     $inboundMessage = \App\Models\Message::create([
                                         'tenant_id' => $tenantId,
                                         'conversation_id' => $conversation->id,
@@ -207,19 +238,23 @@ class MetaWebhookController extends Controller
                                         'whatsapp_phone_number_id' => $connectedNumberId ?? 0,
                                         'meta_message_id' => $metaMessageId,
                                         'reply_to_meta_message_id' => $msg['context']['id'] ?? null,
-                                        'message_type' => 'TEXT',
+                                        'message_type' => $isMedia ? $mediaType : 'TEXT',
                                         'direction' => 'INBOUND',
                                         'sender_type' => 'CUSTOMER',
-                                        'message_text' => $textMessage,
+                                        'message_text' => $textMessage ?? '',
+                                        'media_url' => $mediaUrl,
+                                        'file_name' => $fileName,
                                         'status' => 'RECEIVED',
                                         'sent_at' => isset($msg['timestamp']) ? \Carbon\Carbon::createFromTimestamp($msg['timestamp'])->timezone(config('app.timezone')) : now(),
                                     ]);
+
+                                    $msgPreview = $isMedia ? ('[Attachment] ' . ($textMessage ?: '')) : \Illuminate\Support\Str::limit($textMessage, 50);
 
                                     $conversation->update([
                                         'unread_count' => $conversation->unread_count + 1,
                                         'last_message_at' => now(),
                                         'last_message_id' => $inboundMessage->id,
-                                        'last_message_preview' => \Illuminate\Support\Str::limit($textMessage, 50),
+                                        'last_message_preview' => mb_substr($msgPreview, 0, 50),
                                     ]);
 
                                     event(new \App\Events\NewMessage($inboundMessage));

@@ -308,6 +308,10 @@ class WidgetMessageController extends Controller
             'escalated' => $escalated,
             'options' => $options,
             'conversation_id' => $conversation->id,
+            // So the widget can remember "I already showed this one
+            // myself" and skip it if the live broadcast for this exact
+            // message also arrives a moment later - see widget.js.
+            'message_id' => $outbound->id,
         ]);
     }
 
@@ -403,6 +407,7 @@ class WidgetMessageController extends Controller
         return response()->json([
             'reply' => $replyText,
             'conversation_id' => $conversation->id,
+            'message_id' => $outbound->id,
         ]);
     }
 }

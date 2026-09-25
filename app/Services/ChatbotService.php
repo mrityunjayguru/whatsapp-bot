@@ -28,6 +28,10 @@ class ChatbotService
             'message'         => $message,
             'conversation_id' => $conversationId,
         ];
+        
+        if ($companyId !== null) {
+            $payload['tenant_id'] = $companyId;
+        }
 
         try {
             // 3. Add ngrok-skip-browser-warning header to bypass ngrok's free tier landing page
@@ -80,6 +84,10 @@ class ChatbotService
             'message'         => $message,
             'conversation_id' => $conversationId,
         ];
+        
+        if ($companyId !== null) {
+            $payload['tenant_id'] = $companyId;
+        }
 
         try {
             $response = Http::withHeaders([

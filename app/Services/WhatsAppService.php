@@ -94,6 +94,43 @@ class WhatsAppService
     }
 
     /**
+     * Download a media file from WhatsApp Cloud API using its media ID.
+     */
+    public function downloadMedia(string $mediaId)
+    {
+        // 1. Get the media URL from the ID
+        $response = \Illuminate\Support\Facades\Http::withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4]])
+            ->withToken($this->accessToken)
+            ->get("https://graph.facebook.com/v19.0/{$mediaId}");
+            
+        if (!$response->successful()) {
+            return null;
+        }
+
+        $mediaData = $response->json();
+        $mediaUrl = $mediaData['url'] ?? null;
+        $mimeType = $mediaData['mime_type'] ?? null;
+
+        if (!$mediaUrl) {
+            return null;
+        }
+
+        // 2. Download the binary data
+        $binaryResponse = \Illuminate\Support\Facades\Http::withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4]])
+            ->withToken($this->accessToken)
+            ->get($mediaUrl);
+            
+        if (!$binaryResponse->successful()) {
+            return null;
+        }
+
+        return [
+            'binary' => $binaryResponse->body(),
+            'mime_type' => $mimeType
+        ];
+    }
+
+    /**
      * Send a WhatsApp List Message - up to 10 tappable rows, each with a
      * short title AND a longer description, used when the bot's
      * /bot/reply returned `options` (several FAQs matched closely).

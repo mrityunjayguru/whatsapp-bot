@@ -37,7 +37,7 @@
       @if(str_starts_with($conversation->contact->phone_number ?? '', 'web:'))
         Widget Visitor
       @else
-        {{ $conversation->contact->phone_number ?? 'Unknown' }}
+        {{ $conversation->contact->phone_number ?? '-' }}
       @endif
     </li>
   </ol>
@@ -49,7 +49,11 @@
         <h4 class="mb-0">{{ $conversation->contact->custom_name ?? $conversation->contact->whatsapp_profile_name ?? 'Unknown' }}</h4>
     </div>
     <div class="d-flex align-items-center">
-        <form action="{{ route('conversations.toggleBot', $conversation->id) }}" method="POST" class="m-0 p-0">
+        <form action="{{ route('conversations.toggleBot', $conversation->id) }}" method="POST" class="m-0 p-0"
+            @if($conversation->bot_stopped && $conversation->assigned_tenant_user_id)
+                onsubmit="alert('A human agent is currently assigned to this conversation. Please unassign them first before starting the bot again.'); return false;"
+            @endif
+        >
             @csrf
             @method('PUT')
             <button type="submit" class="btn btn-sm {{ $conversation->bot_stopped ? 'btn-success' : 'btn-danger' }} fw-bold">
@@ -165,7 +169,13 @@
                 <div class="row mb-3">
                     <div class="col-6">
                         <small class="text-muted d-block">Phone</small>
-                        <strong>{{ $conversation->contact->phone_number }}</strong>
+                        <strong>
+                            @if(str_starts_with($conversation->contact->phone_number ?? '', 'web:'))
+                                -
+                            @else
+                                {{ $conversation->contact->phone_number ?? '-' }}
+                            @endif
+                        </strong>
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block">Email</small>
