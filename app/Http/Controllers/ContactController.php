@@ -25,7 +25,8 @@ class ContactController extends Controller
             $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
             if ($employee && $employee->role !== 'ADMIN') {
                 $query->whereHas('conversations', function($q) use ($employee) {
-                    $q->where('assigned_tenant_user_id', $employee->id);
+                    $q->where('assigned_tenant_user_id', $employee->id)
+                      ->orWhereJsonContains('assignment_history', ['employee_id' => $employee->id]);
                 });
             } elseif (!$employee) {
                 $query->whereHas('conversations', function($q) {
@@ -91,7 +92,8 @@ class ContactController extends Controller
             $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
             if ($employee && $employee->role !== 'ADMIN') {
                 $contactQuery->whereHas('conversations', function($q) use ($employee) {
-                    $q->where('assigned_tenant_user_id', $employee->id);
+                    $q->where('assigned_tenant_user_id', $employee->id)
+                      ->orWhereJsonContains('assignment_history', ['employee_id' => $employee->id]);
                 });
             } elseif (!$employee) {
                 $contactQuery->whereHas('conversations', function($q) {
@@ -114,7 +116,7 @@ class ContactController extends Controller
         $request->validate([
             'custom_name' => 'nullable|string|max:255',
             'whatsapp_profile_name' => 'nullable|string|max:255',
-            'phone_number' => 'required|string|max:255',
+            'phone_number' => (str_starts_with($contact->phone_number ?? '', 'web:') || str_starts_with($contact->whatsapp_profile_name ?? '', 'web:')) ? 'nullable|string|max:255' : 'required|string|max:255',
             'email' => 'nullable|email|max:255',
             'whatsapp_phone_number_id' => 'nullable|string|max:255',
             'country' => 'nullable|string|max:255',
@@ -123,12 +125,32 @@ class ContactController extends Controller
             'pincode' => 'nullable|string|max:20',
         ]);
 
+        $phoneNumber = $request->phone_number;
+        $whatsappProfileName = $request->whatsapp_profile_name;
+        
+        // If this is a widget contact, preserve the synthetic ID in whatsapp_profile_name
+        // so that the WidgetMessageController can still find it even if phone_number is changed.
+        $isWidgetContact = str_starts_with($contact->phone_number ?? '', 'web:') || str_starts_with($contact->whatsapp_profile_name ?? '', 'web:');
+        
+        if ($isWidgetContact) {
+            $syntheticId = str_starts_with($contact->whatsapp_profile_name ?? '', 'web:') ? $contact->whatsapp_profile_name : $contact->phone_number;
+            $whatsappProfileName = $syntheticId;
+            
+            if (empty($phoneNumber)) {
+                $phoneNumber = $syntheticId;
+            }
+        }
+
+        if (!str_starts_with($phoneNumber ?? '', 'web:')) {
+            $phoneNumber = preg_replace('/\D/', '', $phoneNumber);
+        }
+
         $contact->update([
             'custom_name' => $request->custom_name,
-            'whatsapp_profile_name' => $request->whatsapp_profile_name,
-            'phone_number' => $request->phone_number,
+            'whatsapp_profile_name' => $whatsappProfileName,
+            'phone_number' => $phoneNumber,
             'email' => $request->email,
-            'whatsapp_phone_number_id' => $request->whatsapp_phone_number_id,
+            'whatsapp_phone_number_id' => $request->whatsapp_phone_number_id ?? $contact->whatsapp_phone_number_id,
             'country' => $request->country,
             'state' => $request->state,
             'city' => $request->city,

@@ -54,6 +54,17 @@ class CompanyRegisteredUserController extends Controller
             'bot_usage_type' => 'widget',
         ]);
 
+        // Widget row is the real source of truth for company ownership
+        // now (see the 2026_09_29_000001 migration) - WidgetMessageController
+        // resolves incoming messages through this table, so without it this
+        // brand-new widget would be rejected as "Unknown or inactive widget."
+        // the moment the first visitor tried to chat.
+        \App\Models\Widget::create([
+            'company_id' => $company->id,
+            'token' => $widget['token'],
+            'is_active' => true,
+        ]);
+
         $user = User::create([
             'name' => $request->company_name,
             'email' => $request->email,

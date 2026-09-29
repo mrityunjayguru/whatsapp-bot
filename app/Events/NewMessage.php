@@ -51,6 +51,8 @@ class NewMessage implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         $payload = $this->message->toArray();
+        
+        $payload['is_conversation_event'] = \App\Models\Message::isConversationEvent($this->message->sender_type, $this->message->message_text);
 
         if ($this->message->sender_type === 'EMPLOYEE') {
             $conversation = \App\Models\Conversation::find($this->message->conversation_id);

@@ -10,16 +10,23 @@ class WidgetController extends Controller
     public function index(WidgetApiService $api)
     {
         $widgets = $api->listWidgets();
-        
-        $companies = \App\Models\Company::whereNotNull('widget_token')->pluck('name', 'widget_token');
+
+        // Company names now come from the widgets table (one row per
+        // widget, see the 2026_09_29_000001 migration) so every widget a
+        // company owns - not just its first/latest one - shows the right
+        // company here.
+        $companyNames = \App\Models\Widget::whereNotNull('token')
+            ->with('company')
+            ->get()
+            ->mapWithKeys(fn($w) => [$w->token => $w->company->name ?? '--']);
 
         foreach ($widgets as &$widget) {
-            $widget['company_name'] = $companies[$widget['token']] ?? '--';
+            $widget['company_name'] = $companyNames[$widget['token']] ?? '--';
         }
-        
+
         if (!is_null(auth()->user()->company_id)) {
-            $token = auth()->user()->company->widget_token;
-            $widgets = collect($widgets)->filter(fn($w) => $w['token'] === $token)->values()->all();
+            $tokens = \App\Models\Widget::where('company_id', auth()->user()->company_id)->pluck('token')->all();
+            $widgets = collect($widgets)->filter(fn($w) => in_array($w['token'], $tokens, true))->values()->all();
         }
 
         return view('widgets.index', compact('widgets'));
@@ -48,12 +55,29 @@ class WidgetController extends Controller
         }
 
         $company = \App\Models\Company::findOrFail($validated['company_id']);
-        $company->update([
-            'widget_token' => $widget['token'],
+
+        // One row per widget, not one column on the company - this is
+        // what actually lets a company own more than one widget. Each
+        // widget carries its own is_active/valid_from/expiry_date now
+        // (matching how the Python side already keys those per-token),
+        // instead of every widget of a company being forced to share a
+        // single date window.
+        \App\Models\Widget::create([
+            'company_id' => $company->id,
+            'token' => $widget['token'],
             'is_active' => true,
             'valid_from' => $validated['valid_from'] ?? null,
             'expiry_date' => $validated['expiry_date'] ?? null,
         ]);
+
+        // Keep the legacy single-widget column in sync only for a
+        // company's very first widget, so anything older that still
+        // reads companies.widget_token directly (e.g. self-registration)
+        // keeps working. A second+ widget must NOT touch it - overwriting
+        // it here is exactly the bug that made earlier widgets vanish.
+        if (empty($company->widget_token)) {
+            $company->update(['widget_token' => $widget['token'], 'is_active' => true]);
+        }
 
         // The Python side is what actually serves widget.js and answers
         // messages for this token directly to the visitor's browser, so
@@ -81,14 +105,22 @@ class WidgetController extends Controller
         $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
         $isRegularEmployee = $employee && $employee->role !== 'ADMIN';
 
-        $company = \App\Models\Company::where('widget_token', $token)->first();
-        // Explicit ->format('Y-m-d'): $company->valid_from is a Carbon
-        // instance (it's cast as a date), and both Blade's {{ }} and a
-        // bare (string) cast on Carbon default to "Y-m-d H:i:s" - which
-        // an <input type="date"> silently refuses to populate. This is
+        // Widget row is the source of truth for which company owns this
+        // token (see the 2026_09_29_000001 migration); fall back to the
+        // legacy companies.widget_token match only for a widget that
+        // predates that migration and somehow has no row of its own.
+        $widgetRow = \App\Models\Widget::where('token', $token)->first();
+        $company = $widgetRow && $widgetRow->company
+            ? $widgetRow->company
+            : \App\Models\Company::where('widget_token', $token)->first();
+
+        // Explicit ->format('Y-m-d'): valid_from/expiry_date are Carbon
+        // instances (cast as dates), and both Blade's {{ }} and a bare
+        // (string) cast on Carbon default to "Y-m-d H:i:s" - which an
+        // <input type="date"> silently refuses to populate. This is
         // exactly the bug we're fixing, so don't let it back in here.
-        $widget['valid_from'] = $company && $company->valid_from ? $company->valid_from->format('Y-m-d') : null;
-        $widget['expiry_date'] = $company && $company->expiry_date ? $company->expiry_date->format('Y-m-d') : null;
+        $widget['valid_from'] = $widgetRow && $widgetRow->valid_from ? $widgetRow->valid_from->format('Y-m-d') : null;
+        $widget['expiry_date'] = $widgetRow && $widgetRow->expiry_date ? $widgetRow->expiry_date->format('Y-m-d') : null;
 
         $companies = collect();
         $isCompanyUser = !is_null(auth()->user()->company_id);
@@ -126,36 +158,39 @@ class WidgetController extends Controller
         $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
         $isRegularEmployee = $employee && $employee->role !== 'ADMIN';
 
-        $company = \App\Models\Company::where('widget_token', $token)->first();
+        // Widget row is the source of truth for company ownership now
+        // (see the 2026_09_29_000001 migration) - fall back to the legacy
+        // column match only for a widget that predates it.
+        $widgetRow = \App\Models\Widget::where('token', $token)->first();
+        $company = $widgetRow && $widgetRow->company
+            ? $widgetRow->company
+            : \App\Models\Company::where('widget_token', $token)->first();
 
-        // Handle company reassignment by super admin
+        // Handle company reassignment by super admin - re-points just
+        // THIS widget's own row at a different company. Never touches
+        // widget_token on any Company row, so it can't disturb any other
+        // widget the old or new company owns.
         if (!$isCompanyUser && $request->has('company_id')) {
-            $newCompanyId = $request->input('company_id');
-            if (!$company || $company->id != $newCompanyId) {
-                if ($company) {
-                    $company->update(['widget_token' => null]);
-                }
-                if ($newCompanyId) {
-                    $company = \App\Models\Company::find($newCompanyId);
-                    if ($company) {
-                        $company->update(['widget_token' => $token]);
-                    }
-                } else {
-                    $company = null;
-                }
+            $newCompanyId = $request->input('company_id') ?: null;
+            if (!$widgetRow) {
+                $widgetRow = \App\Models\Widget::create(['token' => $token, 'is_active' => true]);
             }
+            if ($widgetRow->company_id != $newCompanyId) {
+                $widgetRow->update(['company_id' => $newCompanyId]);
+            }
+            $company = $newCompanyId ? \App\Models\Company::find($newCompanyId) : null;
         }
 
         // Regular employees or Company Users cannot change the dates -
         // fall back to whatever's already saved (formatted plain, same
-        // reasoning as in edit() above: $company->valid_from is a Carbon
-        // instance because of the date cast).
+        // reasoning as in edit() above: valid_from/expiry_date are Carbon
+        // instances because of the date cast).
         if ($isRegularEmployee || $isCompanyUser) {
-            $validated['valid_from'] = $company && $company->valid_from ? $company->valid_from->format('Y-m-d') : null;
-            $validated['expiry_date'] = $company && $company->expiry_date ? $company->expiry_date->format('Y-m-d') : null;
+            $validated['valid_from'] = $widgetRow && $widgetRow->valid_from ? $widgetRow->valid_from->format('Y-m-d') : null;
+            $validated['expiry_date'] = $widgetRow && $widgetRow->expiry_date ? $widgetRow->expiry_date->format('Y-m-d') : null;
         }
 
-        // Pull the dates out for the local Company update below, but keep
+        // Pull the dates out for the local Widget update below, but keep
         // them IN $validated too - the Python service is what actually
         // serves widget.js and answers messages straight to the visitor's
         // browser, so it has to know the window as well, not just this
@@ -171,8 +206,13 @@ class WidgetController extends Controller
             return back()->withInput()->with('error', 'Could not save the widget config.');
         }
 
-        if ($company) {
-            $company->update([
+        // This widget's own row, not the whole company - is_active and
+        // the date window are per-widget now (matching how the Python
+        // side already keys them per-token), so toggling or expiring one
+        // of a company's widgets can never take its other widgets down
+        // with it.
+        if ($widgetRow) {
+            $widgetRow->update([
                 'is_active' => $validated['is_active'],
                 'valid_from' => $validFrom,
                 'expiry_date' => $expiryDate,
@@ -185,11 +225,13 @@ class WidgetController extends Controller
     public function destroy(string $token, WidgetApiService $api)
     {
         $api->deleteWidget($token);
-        // Deactivate rather than delete the Company row - keeps past
-        // conversation history intact and viewable in the CRM, just
-        // stops it from accepting new messages (WidgetMessageController
+        // Deactivate just THIS widget's own row, not its company - a
+        // company can now own several independent widgets, and deleting
+        // one must never take the others offline. Keeps past conversation
+        // history intact and viewable in the CRM either way, just stops
+        // this widget from accepting new messages (WidgetMessageController
         // already checks is_active before processing anything).
-        \App\Models\Company::where('widget_token', $token)->update(['is_active' => false]);
+        \App\Models\Widget::where('token', $token)->update(['is_active' => false]);
         return redirect()->route('widgets.index')->with('success', 'Widget permanently deleted, including all of its FAQs and uploaded files.');
     }
 
@@ -200,20 +242,29 @@ class WidgetController extends Controller
             'answer' => 'required|string',
             'attachment' => 'nullable|file|max:10240',
             'url' => 'nullable|url|max:255',
+            'link_text' => 'nullable|string|max:100',
             'keywords' => 'nullable|string|max:255',
+            'is_active' => 'nullable|boolean',
         ]);
 
-        // Same pattern as FaqController: an attached file (stored, not
-        // indexed) wins over the plain reference URL field - only one
-        // ever becomes source_url, and exactly ONE Python source gets
-        // created per FAQ.
-        $sourceUrl = $validated['url'] ?? null;
+        // Normalize a left-blank field to null (a submitted-but-empty
+        // input comes through as '', which ?? does NOT treat the same
+        // as an absent/null value).
+        $sourceUrl = !empty($validated['url']) ? $validated['url'] : null;
+        $attachmentUrl = null;
 
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
             $attachResult = $api->attachFile($token, $file->getPathname(), $file->getClientOriginalName());
+            // The attached file's own link is stored separately as
+            // attachment_url now, independent of the Hyperlink URL field
+            // - a FAQ can have BOTH a typed hyperlink AND an attached
+            // file at once, and the bot includes both in its reply (see
+            // bot_engine.py's _format_attachment_link). This used to
+            // fall back into $sourceUrl, which is exactly why attaching
+            // a document could silently replace a hyperlink you'd set.
             if ($attachResult && isset($attachResult['url'])) {
-                $sourceUrl = $attachResult['url'];
+                $attachmentUrl = $attachResult['url'];
             }
         }
 
@@ -221,7 +272,10 @@ class WidgetController extends Controller
             ? array_values(array_filter(array_map('trim', explode(',', $validated['keywords']))))
             : [];
 
-        $result = $api->uploadFaqText($token, $validated['question'], $validated['answer'], $sourceUrl, false, $keywordList);
+        $isActive = $request->has('is_active');
+        $linkText = !empty($validated['link_text']) ? $validated['link_text'] : null;
+
+        $result = $api->uploadFaqText($token, $validated['question'], $validated['answer'], $sourceUrl, false, $keywordList, $isActive, $linkText, $attachmentUrl);
 
         if (!$result) {
             return back()->withInput()->with('error', 'Could not save that FAQ - check the bot service is running.');
@@ -259,7 +313,9 @@ class WidgetController extends Controller
             'answer' => 'required|string',
             'attachment' => 'nullable|file|max:10240',
             'url' => 'nullable|url|max:255',
+            'link_text' => 'nullable|string|max:100',
             'keywords' => 'nullable|string|max:255',
+            'is_active' => 'nullable|boolean',
         ]);
 
         $faq = $api->getFaqSource($token, $sourceId);
@@ -268,13 +324,34 @@ class WidgetController extends Controller
             return redirect()->route('widgets.edit', $token)->with('error', 'FAQ not found.');
         }
 
-        $sourceUrl = $validated['url'] ?? $faq['source_url'] ?? null;
+        // The edit form always pre-fills Hyperlink URL with the FAQ's
+        // current source_url (see faq-edit.blade.php), so a blank
+        // submission here is never "the person didn't touch this field" -
+        // it can ONLY happen if they deliberately deleted the pre-filled
+        // text. That means blank must actually clear it, not fall back to
+        // the old value - falling back (the previous behavior) is exactly
+        // why clearing the field and saving appeared to do nothing.
+        $submittedUrl = !empty($validated['url']) ? $validated['url'] : null;
+        $sourceUrl = $submittedUrl;
+        // null here (as opposed to WidgetApiService::updateFaqSource()'s
+        // default) is meaningful and gets passed through as-is: it tells
+        // the Python side "no new file was attached this time, keep
+        // whatever attachment_url this FAQ already had" - see
+        // faq_store.py's update_source(). Only set when a NEW file is
+        // actually uploaded in this submission.
+        $attachmentUrl = null;
 
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
             $attachResult = $api->attachFile($token, $file->getPathname(), $file->getClientOriginalName());
+            // Stored separately from the Hyperlink URL field entirely -
+            // a FAQ can have BOTH an attached file AND its own typed
+            // hyperlink, and the bot includes both in its reply. This
+            // used to overwrite $sourceUrl, which is exactly why
+            // attaching a new file could silently replace a hyperlink
+            // you'd already set.
             if ($attachResult && isset($attachResult['url'])) {
-                $sourceUrl = $attachResult['url'];
+                $attachmentUrl = $attachResult['url'];
             }
         }
 
@@ -282,13 +359,23 @@ class WidgetController extends Controller
             ? array_values(array_filter(array_map('trim', explode(',', $validated['keywords']))))
             : [];
 
+        $isActive = $request->has('is_active');
+        // Same reasoning as $sourceUrl above - Link Text is also always
+        // pre-filled with the FAQ's current label, so a blank submission
+        // means it was deliberately cleared, not left untouched. Also,
+        // faq_store.py's update_source() discards this on its own if
+        // $sourceUrl ends up empty (a label with nothing to link to is
+        // never kept), so a stale label can't outlive its link even if
+        // both were somehow passed together.
+        $linkText = !empty($validated['link_text']) ? $validated['link_text'] : null;
+
         // Edit in place - same id afterwards. NOT delete-then-recreate:
         // that older pattern assigned a brand new id on every edit,
         // which is exactly what caused "FAQ not found" on a stale edit
         // link right after a successful save, and was a genuine
         // data-loss risk if the re-create step ever failed right after
         // the delete had already gone through.
-        $result = $api->updateFaqSource($token, $sourceId, $validated['question'], $validated['answer'], $sourceUrl, false, $keywordList);
+        $result = $api->updateFaqSource($token, $sourceId, $validated['question'], $validated['answer'], $sourceUrl, false, $keywordList, $isActive, $linkText, $attachmentUrl);
 
         if (!$result) {
             return redirect()->route('widgets.edit', $token)->with('error', 'Could not update FAQ - check the bot service is running.');

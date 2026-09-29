@@ -92,7 +92,9 @@
               <tr>
                 <th class="pt-0">CONTACT ID</th>
                 <th class="pt-0">CUSTOMER NAME</th>
+                @if(auth()->user()->company?->bot_usage_type !== 'widget')
                 <th class="pt-0">WHATSAPP PROFILE NAME</th>
+                @endif
                 <th class="pt-0">MOBILE NUMBER</th>
                 <th class="pt-0">EMAIL</th>
                 <th class="pt-0">OTHER TAGS</th>
@@ -107,11 +109,13 @@
                   <td>#CUS-{{ $contact->id }}</td>
                   <td>
                     <div class="d-flex align-items-center">
-                      <img src="{{ url('https://ui-avatars.com/api/?name=' . urlencode($contact->custom_name ?? $contact->whatsapp_profile_name ?? 'User') . '&background=random&rounded=true') }}" alt="avatar" class="wd-30 ht-30 rounded-circle me-2">
-                      <span>{{ $contact->custom_name ?? '-' }}</span>
+                      <img src="{{ url('https://ui-avatars.com/api/?name=' . urlencode($contact->custom_name ?: $contact->whatsapp_profile_name ?: 'User') . '&background=random&rounded=true') }}" alt="avatar" class="wd-30 ht-30 rounded-circle me-2">
+                      <span>{{ $contact->custom_name ?: $contact->whatsapp_profile_name ?: $contact->phone_number ?: '-' }}</span>
                     </div>
                   </td>
+                  @if(auth()->user()->company?->bot_usage_type !== 'widget')
                   <td>{{ $contact->whatsapp_profile_name ?? '-' }}</td>
+                  @endif
                   <td>
                     @if(str_starts_with($contact->phone_number ?? '', 'web:'))
                       -

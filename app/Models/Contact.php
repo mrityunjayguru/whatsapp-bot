@@ -39,4 +39,13 @@ class Contact extends Model
     {
         return $this->hasMany(ChatBoat::class, 'phonenumber', 'phone_number');
     }
+
+    public function getDisplayNameAttribute()
+    {
+        $name = $this->custom_name ?: $this->whatsapp_profile_name ?: $this->phone_number ?: '-';
+        if (str_starts_with($name, 'web:')) {
+            return '-';
+        }
+        return $name;
+    }
 }

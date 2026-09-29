@@ -2,7 +2,7 @@
 
 @php
     $publicApiBase = rtrim(config('app.url'), '/') . '/pybot';
-    $embedSnippet = '<script src="' . $publicApiBase . '/widget/widget.js?token=' . $token . '&v=' . time() . '" async></script>';
+    $embedSnippet = '<script src="' . $publicApiBase . '/widget/widget.js?token=' . $token . '" async></script>';
     $previewUrl = $publicApiBase . '/widget/preview?token=' . $token;
     $isCompanyUser = !is_null(auth()->user()->company_id);
 @endphp
@@ -115,17 +115,11 @@
           <div class="row mb-4">
             <div class="col-md-6 mb-3 mb-md-0">
               <label class="form-label">Valid From <span class="text-muted small">(Leave empty for no start date)</span></label>
-              {{-- $widget['valid_from'] - set by WidgetController::edit() via
-                   ->format('Y-m-d') - not $company->valid_from directly:
-                   that's a Carbon instance whose default __toString() is
-                   "Y-m-d H:i:s", which an <input type="date"> silently
-                   refuses to populate. Using the raw model attribute here
-                   is exactly the bug that fix was for. --}}
-              <input type="date" class="form-control" name="valid_from" value="{{ old('valid_from', $widget['valid_from'] ?? '') }}" {{ ($isRegularEmployee || $isCompanyUser) ? 'readonly' : '' }}>
+              <input type="date" class="form-control" name="valid_from" value="{{ old('valid_from', $company->valid_from ?? '') }}" {{ ($isRegularEmployee || $isCompanyUser) ? 'readonly' : '' }}>
             </div>
             <div class="col-md-6">
               <label class="form-label">Valid To (Expiry) <span class="text-muted small">(Leave empty for no expiry)</span></label>
-              <input type="date" class="form-control" name="expiry_date" value="{{ old('expiry_date', $widget['expiry_date'] ?? '') }}" {{ ($isRegularEmployee || $isCompanyUser) ? 'readonly' : '' }}>
+              <input type="date" class="form-control" name="expiry_date" value="{{ old('expiry_date', $company->expiry_date ?? '') }}" {{ ($isRegularEmployee || $isCompanyUser) ? 'readonly' : '' }}>
             </div>
             @if($isRegularEmployee || $isCompanyUser)
               <div class="col-12 mt-1">
@@ -247,16 +241,9 @@
                         --
                       @endif
                     </td>
-                    @php
-                      // Prefer the separately-attached file's own link;
-                      // fall back to source_url for a FAQ predating the
-                      // attachment_url/link_text split (where the only
-                      // URL a FAQ could ever have doubled as both).
-                      $attachmentLink = $faq['attachment_url'] ?? $faq['source_url'] ?? null;
-                    @endphp
                     <td>
-                      @if (!empty($attachmentLink))
-                        <a href="{{ $attachmentLink }}" target="_blank" class="small">
+                      @if (!empty($faq['source_url']))
+                        <a href="{{ $faq['source_url'] }}" target="_blank" class="small">
                           <i data-lucide="paperclip" class="icon-sm"></i> Link
                         </a>
                       @else

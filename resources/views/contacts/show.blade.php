@@ -39,25 +39,27 @@
         
         <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
           @if($contact->custom_name || $contact->whatsapp_profile_name)
-            <img src="{{ url('https://ui-avatars.com/api/?name=' . urlencode($contact->custom_name ?? $contact->whatsapp_profile_name) . '&background=random&rounded=true') }}" alt="profile" class="wd-50 ht-50 rounded-circle me-3">
+            <img src="{{ url('https://ui-avatars.com/api/?name=' . urlencode($contact->custom_name ?: $contact->whatsapp_profile_name ?: $contact->phone_number ?: '-') . '&background=random&rounded=true') }}" alt="profile" class="wd-50 ht-50 rounded-circle me-3">
           @else
             <img src="{{ url('https://ui-avatars.com/api/?name=User&background=random&rounded=true') }}" alt="profile" class="wd-50 ht-50 rounded-circle me-3">
           @endif
           <div>
-            <h5 class="mb-1">{{ $contact->custom_name ?? $contact->whatsapp_profile_name ?? 'Unknown Customer' }}</h5>
+            <h5 class="mb-1">{{ $contact->custom_name ?: $contact->whatsapp_profile_name ?: $contact->phone_number ?: '-' }}</h5>
             <p class="text-muted tx-13 mb-0">Since {{ $contact->created_at->format('d M Y, h:i A') }}</p>
           </div>
         </div>
 
         <div class="row mb-3">
           <div class="col-sm-4 text-muted">Custom Name</div>
-          <div class="col-sm-8">{{ $contact->custom_name ?? $contact->whatsapp_profile_name ?? 'Unknown Customer' }}</div>
+          <div class="col-sm-8">{{ $contact->custom_name ?: $contact->whatsapp_profile_name ?: $contact->phone_number ?: '-' }}</div>
         </div>
         
+        @if(auth()->user()->company?->bot_usage_type !== 'widget')
         <div class="row mb-3">
           <div class="col-sm-4 text-muted">WhatsApp Profile Name</div>
           <div class="col-sm-8 text-primary">{{ $contact->whatsapp_profile_name ?? '-' }}</div>
         </div>
+        @endif
 
         <div class="row mb-3">
           <div class="col-sm-4 text-muted">Phone Number</div>
@@ -449,12 +451,14 @@
         <div class="modal-body">
           <div class="mb-3">
             <label for="custom_name" class="form-label text-muted">Custom Name</label>
-            <input type="text" class="form-control" id="custom_name" name="custom_name" value="{{ $contact->custom_name ?? $contact->whatsapp_profile_name }}">
+            <input type="text" class="form-control" id="custom_name" name="custom_name" value="{{ $contact->custom_name ?: $contact->whatsapp_profile_name }}">
           </div>
+          @if(auth()->user()->company?->bot_usage_type !== 'widget')
           <div class="mb-3">
             <label for="whatsapp_profile_name" class="form-label text-muted">WhatsApp Profile Name</label>
             <input type="text" class="form-control" id="whatsapp_profile_name" name="whatsapp_profile_name" value="{{ $contact->whatsapp_profile_name }}">
           </div>
+          @endif
           <div class="mb-3">
             <label for="phone_number" class="form-label text-muted">Phone Number</label>
             <input type="text" class="form-control" id="phone_number" name="phone_number" value="{{ $contact->phone_number }}">

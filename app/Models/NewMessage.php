@@ -40,13 +40,14 @@ class NewMessage implements ShouldBroadcastNow
     }
 
     /**
-     * Customize exactly what goes over the wire. Adds `sender_name` for
-     * EMPLOYEE-sent messages (looked up from whichever Employee the
-     * conversation is currently assigned to) - the widget uses this to
-     * show who a visitor is actually talking to once a human takes over,
-     * instead of an anonymous "bot"-styled bubble. No new column needed:
-     * this is computed fresh at broadcast time, so it always reflects
-     * whoever was assigned at the moment the message was sent.
+     * Customize exactly what goes over the wire. Adds `sender_name` (and
+     * `sender_role`, from the employee's `designation`) for EMPLOYEE-sent
+     * messages (looked up from whichever Employee the conversation is
+     * currently assigned to) - the widget uses this to show who a
+     * visitor is actually talking to once a human takes over, instead of
+     * an anonymous "bot"-styled bubble. No new column needed: this is
+     * computed fresh at broadcast time, so it always reflects whoever
+     * was assigned at the moment the message was sent.
      */
     public function broadcastWith(): array
     {
@@ -58,7 +59,18 @@ class NewMessage implements ShouldBroadcastNow
                 ? \App\Models\Employee::find($conversation->assigned_tenant_user_id)
                 : null;
             $payload['sender_name'] = $employee?->display_name;
+            $payload['sender_role'] = $employee?->designation;
         }
+
+        // See Message::isConversationEvent() - lets the widget draw
+        // these as a small centered divider ("Sapna Das joined
+        // conversation", "AI Support is now assisting you") instead of
+        // a normal chat bubble, live, the same way the history endpoint
+        // already flags them for messages loaded on reopen.
+        $payload['is_conversation_event'] = \App\Models\Message::isConversationEvent(
+            $this->message->sender_type,
+            $this->message->message_text
+        );
 
         return ['message' => $payload];
     }

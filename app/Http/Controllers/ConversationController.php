@@ -13,9 +13,11 @@ class ConversationController extends Controller
 
         if (auth()->id() !== 1) {
             $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
-            // If they are an employee but NOT an admin, restrict their view
             if ($employee && $employee->role !== 'ADMIN') {
-                $query->where('assigned_tenant_user_id', $employee->id);
+                $query->where(function($q) use ($employee) {
+                    $q->where('assigned_tenant_user_id', $employee->id)
+                      ->orWhereJsonContains('assignment_history', ['employee_id' => $employee->id]);
+                });
             }
             // If they don't have an employee record, they are the primary company owner (Admin), so they see all.
         }
@@ -65,6 +67,25 @@ class ConversationController extends Controller
     {
         $companyId = auth()->user()->company_id;
         $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
+
+        if (auth()->id() !== 1) {
+            $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
+            if ($employee && $employee->role !== 'ADMIN') {
+                $isCurrentlyAssigned = ($conversation->assigned_tenant_user_id === $employee->id);
+                $hasHistory = false;
+                $history = is_array($conversation->assignment_history) ? $conversation->assignment_history : json_decode($conversation->assignment_history, true) ?? [];
+                foreach ($history as $record) {
+                    if (isset($record['employee_id']) && $record['employee_id'] == $employee->id) {
+                        $hasHistory = true;
+                        break;
+                    }
+                }
+                
+                if (!$isCurrentlyAssigned && !$hasHistory) {
+                    abort(403, 'Unauthorized access to this conversation.');
+                }
+            }
+        }
 
         // Reset unread count when opening the conversation
         if ($conversation->unread_count > 0) {
@@ -259,6 +280,25 @@ class ConversationController extends Controller
         ]);
     }
 
+    public function updateDetails(Request $request, $id)
+    {
+        $companyId = auth()->user()->company_id;
+        $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
+
+        $oldStatus = $conversation->status;
+        $previousEmployeeId = $conversation->assigned_tenant_user_id;
+
+        if ($request->has('status') && $oldStatus !== $request->status) {
+            $this->updateStatus($request, $id);
+        }
+
+        if ($request->has('employee_id') && $previousEmployeeId != $request->employee_id) {
+            $this->assign($request, $id);
+        }
+
+        return back()->with('success', 'Conversation details updated successfully.');
+    }
+
     public function updateStatus(Request $request, $id)
     {
         $companyId = auth()->user()->company_id;
@@ -334,7 +374,36 @@ class ConversationController extends Controller
         $previousEmployeeId = $conversation->assigned_tenant_user_id;
         $newEmployeeId = $request->employee_id ?: null;
 
-        $conversation->update(['assigned_tenant_user_id' => $newEmployeeId]);
+        $history = is_array($conversation->assignment_history) ? $conversation->assignment_history : json_decode($conversation->assignment_history, true) ?? [];
+        
+        if ($previousEmployeeId && $previousEmployeeId != $newEmployeeId) {
+            foreach ($history as &$record) {
+                if ($record['employee_id'] == $previousEmployeeId && empty($record['unassigned_at'])) {
+                    $record['unassigned_at'] = now()->toIso8601String();
+                }
+            }
+        }
+        
+        if ($newEmployeeId && $newEmployeeId != $previousEmployeeId) {
+            $history[] = [
+                'employee_id' => $newEmployeeId,
+                'assigned_at' => now()->toIso8601String(),
+                'unassigned_at' => null,
+            ];
+        }
+
+        $updateData = [
+            'assigned_tenant_user_id' => $newEmployeeId,
+            'assignment_history' => $history,
+        ];
+        
+        if ($newEmployeeId) {
+            $updateData['bot_stopped'] = true;
+        } else {
+            $updateData['bot_stopped'] = false;
+        }
+
+        $conversation->update($updateData);
 
         // Keep each Employee's own counters roughly in sync - these
         // columns already exist on the employees table
@@ -348,12 +417,20 @@ class ConversationController extends Controller
         }
 
         // Send a message indicating assignment change
+        // $handedBackToAI: true only for the unassign case - this is the
+        // exact moment control genuinely returns to the bot (send()
+        // above only auto-replies when assigned_tenant_user_id is
+        // empty), so it's also the right moment to tell the visitor the
+        // bot is answering again - see the second, follow-up message
+        // sent below.
+        $handedBackToAI = false;
         if ($newEmployeeId && $newEmployeeId != $previousEmployeeId) {
             $employee = \App\Models\Employee::find($newEmployeeId);
             $msgText = $employee->display_name . " joined conversation";
         } elseif (!$newEmployeeId && $previousEmployeeId) {
             $employee = \App\Models\Employee::find($previousEmployeeId);
             $msgText = "ended conversation with " . $employee->display_name;
+            $handedBackToAI = true;
         }
 
         if (isset($msgText)) {
@@ -374,6 +451,30 @@ class ConversationController extends Controller
                     'sent_at' => now(),
                 ]);
                 event(new \App\Events\NewMessage($message));
+
+                // Widget-only, and only on hand-back (not on a human
+                // joining) - lets the visitor know the bot, not a
+                // person, is reading their next message. Deliberately
+                // NOT sent on WhatsApp: every outbound WhatsApp message
+                // is a billed conversation message, and this is purely
+                // a widget UI cue, not something worth that cost there.
+                if ($handedBackToAI) {
+                    $resumedMessage = \App\Models\Message::create([
+                        'tenant_id' => $conversation->tenant_id,
+                        'channel' => 'web_widget',
+                        'conversation_id' => $conversation->id,
+                        'contact_id' => $contact->id,
+                        'whatsapp_phone_number_id' => null,
+                        'meta_message_id' => 'web_' . (string) \Illuminate\Support\Str::uuid(),
+                        'message_type' => 'TEXT',
+                        'direction' => 'OUTBOUND',
+                        'sender_type' => 'SYSTEM',
+                        'message_text' => 'AI Support is now assisting you',
+                        'status' => 'SENT',
+                        'sent_at' => now(),
+                    ]);
+                    event(new \App\Events\NewMessage($resumedMessage));
+                }
             } else {
                 try {
                     $whatsappService = app(\App\Services\WhatsAppService::class);
@@ -402,7 +503,7 @@ class ConversationController extends Controller
 
         return back()->with('success', $newEmployeeId
             ? 'Conversation assigned - the bot will no longer auto-reply here.'
-            : 'Conversation unassigned - handed back to the bot.');
+            : 'Conversation unassigned.');
     }
 
     public function toggleBot(Request $request, $id)
@@ -411,7 +512,16 @@ class ConversationController extends Controller
         $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
 
         $botWasActive = !$conversation->bot_stopped;
-        $conversation->update(['bot_stopped' => !$conversation->bot_stopped]);
+        $willStopBot = !$conversation->bot_stopped; // True if it's currently active and will be stopped
+        
+        $updateData = ['bot_stopped' => $willStopBot];
+        
+        // If we are starting the bot manually, unassign the employee
+        if (!$willStopBot && $conversation->assigned_tenant_user_id) {
+            $updateData['assigned_tenant_user_id'] = null;
+        }
+        
+        $conversation->update($updateData);
 
         if ($botWasActive && $conversation->bot_stopped) {
             $handoffMessage = "A human agent will take over this conversation shortly.";

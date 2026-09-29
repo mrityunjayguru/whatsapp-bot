@@ -86,13 +86,17 @@
                 </th>
                 <th class="pt-0">CONTACT ID</th>
                 <th class="pt-0">CUSTOM NAME</th>
+                @if(auth()->user()->company?->bot_usage_type !== 'widget')
                 <th class="pt-0">WHATSAPP NAME</th>
+                @endif
                 <th class="pt-0">MOBILE</th>
                 <th class="pt-0">EMAIL</th>
                 <th class="pt-0">TAGS</th>
                 <th class="pt-0">TOTAL CONVERSATIONS</th>
                 <th class="pt-0">TOTAL MESSAGES</th>
+                @if(auth()->user()->company?->bot_usage_type !== 'widget')
                 <th class="pt-0">WHATSAPP PHONE NUMBER ID</th>
+                @endif
                 <th class="pt-0">LAST CONVERSATION</th>
                 <th class="pt-0">CREATED AT</th>
                 <th class="pt-0 text-center">ACTION VIEW</th>
@@ -111,15 +115,17 @@
                     <div class="d-flex align-items-center">
                       <div class="me-2">
                         @if($contact->custom_name || $contact->whatsapp_profile_name)
-                          <img src="{{ url('https://ui-avatars.com/api/?name=' . urlencode($contact->custom_name ?? $contact->whatsapp_profile_name) . '&background=random&rounded=true') }}" alt="avatar" class="wd-30 ht-30 rounded-circle">
+                          <img src="{{ url('https://ui-avatars.com/api/?name=' . urlencode($contact->custom_name ?: $contact->whatsapp_profile_name ?: $contact->phone_number ?: '-') . '&background=random&rounded=true') }}" alt="avatar" class="wd-30 ht-30 rounded-circle">
                         @else
                           <img src="{{ url('https://ui-avatars.com/api/?name=User&background=random&rounded=true') }}" alt="avatar" class="wd-30 ht-30 rounded-circle">
                         @endif
                       </div>
-                      <span>{{ $contact->custom_name ?? '-' }}</span>
+                      <span>{{ $contact->custom_name ?: $contact->whatsapp_profile_name ?: $contact->phone_number ?: '-' }}</span>
                     </div>
                   </td>
+                  @if(auth()->user()->company?->bot_usage_type !== 'widget')
                   <td>{{ $contact->whatsapp_profile_name ?? '-' }}</td>
+                  @endif
                   <td>
                     @if(str_starts_with($contact->phone_number ?? '', 'web:'))
                       -
@@ -146,7 +152,9 @@
                   <td>
                     <div>{{ $contact->messages_count }}</div>
                   </td>
+                  @if(auth()->user()->company?->bot_usage_type !== 'widget')
                   <td>{{ $contact->whatsapp_phone_number_id ?? '-' }}</td>
+                  @endif
                   <td>{{ $contact->conversations->first() ? $contact->conversations->first()->created_at->format('d M Y, h:i A') : '-' }}</td>
                   <td>{{ $contact->created_at->format('d M Y, h:i A') }}</td>
                   <td class="text-center">

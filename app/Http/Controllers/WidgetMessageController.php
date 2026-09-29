@@ -44,7 +44,14 @@ class WidgetMessageController extends Controller
         // WidgetConfig.is_currently_active) so both enforcement points
         // agree on the same day boundary.
         $today = now()->toDateString();
-        return \App\Models\Company::where('widget_token', $token)
+
+        // Resolved through the widgets table now, not companies.widget_token
+        // (see the 2026_09_29_000001 migration) - a company can own several
+        // widgets, each with its own independent is_active/valid_from/
+        // expiry_date, so gating has to be per-widget-token, not per-company.
+        // The company itself is still checked as a top-level kill switch
+        // (a suspended company takes all of its widgets down with it).
+        $widget = \App\Models\Widget::where('token', $token)
             ->where('is_active', true)
             ->where(function ($q) use ($today) {
                 $q->whereNull('valid_from')->orWhereDate('valid_from', '<=', $today);
@@ -52,13 +59,23 @@ class WidgetMessageController extends Controller
             ->where(function ($q) use ($today) {
                 $q->whereNull('expiry_date')->orWhereDate('expiry_date', '>=', $today);
             })
+            ->with('company')
             ->first();
+
+        if (!$widget || !$widget->company || !$widget->company->is_active) {
+            return null;
+        }
+
+        return $widget->company;
     }
 
     private function findConversation(string $token, string $sessionId): ?Conversation
     {
         $syntheticId = 'web:' . $token . ':' . $sessionId;
-        $contact = Contact::where('phone_number', $syntheticId)->first();
+        $contact = Contact::where(function($q) use ($syntheticId) {
+            $q->where('phone_number', $syntheticId)
+              ->orWhere('whatsapp_profile_name', $syntheticId);
+        })->first();
         if (!$contact) {
             return null;
         }
@@ -113,6 +130,20 @@ class WidgetMessageController extends Controller
                 // it does for ones arriving live, when history is
                 // restored on reopen.
                 'sender_name' => $m->sender_type === 'EMPLOYEE' ? $assignedEmployee?->display_name : null,
+                // Job title/role shown alongside the name (e.g. "Sapna Das
+                // • Support Specialist"). Null when the employee record
+                // has no designation set - the widget just omits it and
+                // shows the name alone in that case, same as before this
+                // field existed.
+                'sender_role' => $m->sender_type === 'EMPLOYEE' ? $assignedEmployee?->designation : null,
+                // True for "X joined conversation" / "ended conversation
+                // with X" / "AI Support is now assisting you" - the
+                // widget renders these as a small centered divider
+                // instead of a normal chat bubble. See
+                // Message::isConversationEvent() for why this can't just
+                // be sender_type === 'SYSTEM' on its own (an ordinary
+                // escalation/fallback reply also uses SYSTEM).
+                'is_conversation_event' => \App\Models\Message::isConversationEvent($m->sender_type, $m->message_text),
             ]);
 
         return response()->json([
@@ -120,6 +151,7 @@ class WidgetMessageController extends Controller
             'status' => $conversation->status,
             'human_assigned' => (bool) $conversation->assigned_tenant_user_id,
             'assigned_employee_name' => $assignedEmployee?->display_name,
+            'assigned_employee_role' => $assignedEmployee?->designation,
             'messages' => $messages,
         ]);
     }
@@ -176,13 +208,21 @@ class WidgetMessageController extends Controller
         // id from the token + their client-generated session_id, the
         // same way MetaWebhookController looks contacts up by phone_number.
         $syntheticId = 'web:' . $validated['token'] . ':' . $validated['session_id'];
-        $contact = Contact::firstOrCreate(
-            ['phone_number' => $syntheticId],
-            [
+        
+        $contact = Contact::where('tenant_id', $company->id)
+            ->where(function ($query) use ($syntheticId) {
+                $query->where('phone_number', $syntheticId)
+                      ->orWhere('whatsapp_profile_name', $syntheticId);
+            })->first();
+
+        if (!$contact) {
+            $contact = Contact::create([
+                'phone_number' => $syntheticId,
+                'whatsapp_profile_name' => $syntheticId,
                 'tenant_id' => $company->id,
                 'custom_name' => 'Website visitor',
-            ]
-        );
+            ]);
+        }
 
         // One Conversation per (widget, visitor) - reopens if it was
         // resolved, exactly like MetaWebhookController's WhatsApp logic.

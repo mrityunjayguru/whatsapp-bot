@@ -34,4 +34,12 @@ class Company extends Model
         // duplication, just a meaningful relationship name on top of it.
         return $this->hasMany(Conversation::class, 'tenant_id');
     }
+
+    public function widgets()
+    {
+        // A company can now own any number of widgets (see the
+        // 2026_09_29_000001 migration) - this, not the legacy
+        // widget_token column below, is the source of truth for that.
+        return $this->hasMany(Widget::class);
+    }
 }

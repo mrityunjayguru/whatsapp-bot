@@ -172,10 +172,9 @@ class MetaWebhookController extends Controller
 
                             if ($fromPhone) {
                                 $contact = \App\Models\Contact::firstOrCreate(
-                                    ['phone_number' => $fromPhone],
+                                    ['phone_number' => $fromPhone, 'tenant_id' => $tenantId],
                                     [
-                                        'whatsapp_profile_name' => $profileName,
-                                        'tenant_id' => $tenantId
+                                        'whatsapp_profile_name' => $profileName
                                     ]
                                 );
 

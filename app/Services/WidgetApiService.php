@@ -207,14 +207,27 @@ class WidgetApiService
         return null;
     }
 
-    public function uploadFaqText(string $token, string $name, string $text, ?string $sourceUrl = null, bool $sendAsLink = false, ?array $keywords = null): ?array
+    public function uploadFaqText(string $token, string $name, string $text, ?string $sourceUrl = null, bool $sendAsLink = false, ?array $keywords = null, bool $isActive = true, ?string $linkText = null, ?string $attachmentUrl = null): ?array
     {
-        $payload = ['name' => $name, 'text' => $text, 'send_as_link' => $sendAsLink];
+        $payload = ['name' => $name, 'text' => $text, 'send_as_link' => $sendAsLink, 'is_active' => $isActive];
         if ($sourceUrl) {
             $payload['source_url'] = $sourceUrl;
         }
         if (!empty($keywords)) {
             $payload['keywords'] = $keywords;
+        }
+        // Only meaningful alongside source_url - a label with nothing to
+        // link to is never sent, same rule the Python side enforces on
+        // its own (see faq_store.py's clean_link_text).
+        if ($linkText && $sourceUrl) {
+            $payload['link_text'] = $linkText;
+        }
+        // Separate from source_url/link_text (the manually-typed
+        // hyperlink) - this is a file the FAQ has attached independent
+        // of that, so a FAQ can carry both without one overwriting the
+        // other's single source_url slot.
+        if ($attachmentUrl) {
+            $payload['attachment_url'] = $attachmentUrl;
         }
 
         try {
@@ -238,14 +251,27 @@ class WidgetApiService
      * data-loss risk if the re-create step ever failed right after the
      * delete had already succeeded.
      */
-    public function updateFaqSource(string $token, string $sourceId, string $name, string $text, ?string $sourceUrl = null, bool $sendAsLink = false, ?array $keywords = null): ?array
+    public function updateFaqSource(string $token, string $sourceId, string $name, string $text, ?string $sourceUrl = null, bool $sendAsLink = false, ?array $keywords = null, bool $isActive = true, ?string $linkText = null, ?string $attachmentUrl = null): ?array
     {
-        $payload = ['name' => $name, 'text' => $text, 'send_as_link' => $sendAsLink];
+        $payload = ['name' => $name, 'text' => $text, 'send_as_link' => $sendAsLink, 'is_active' => $isActive];
         if ($sourceUrl) {
             $payload['source_url'] = $sourceUrl;
         }
         if (!empty($keywords)) {
             $payload['keywords'] = $keywords;
+        }
+        if ($linkText && $sourceUrl) {
+            $payload['link_text'] = $linkText;
+        }
+        // Omitted entirely (not sent as null) when no NEW file was
+        // attached this time - faq_store.py's update_source() treats an
+        // absent attachment_url as "keep whatever was already there",
+        // unlike source_url/link_text which a blank submission clears.
+        // See WidgetController::updateFaq() for why: this field, unlike
+        // those two, is never pre-filled in the edit form, so there's no
+        // way to tell "left untouched" from "deliberately cleared" here.
+        if ($attachmentUrl) {
+            $payload['attachment_url'] = $attachmentUrl;
         }
 
         try {

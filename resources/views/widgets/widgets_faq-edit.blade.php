@@ -50,15 +50,8 @@
             <div class="col-md-6 mb-3">
               <label class="form-label"><i data-lucide="paperclip" class="icon-sm text-muted me-1"></i> Replace Attachment</label>
               <input type="file" class="form-control" name="attachment">
-              @php
-                // attachment_url (the separately-attached file) - not
-                // source_url, which is now the manually-typed Hyperlink
-                // URL field below. Falls back to source_url only for a
-                // FAQ that predates that split.
-                $currentAttachment = $faq['attachment_url'] ?? $faq['source_url'] ?? null;
-              @endphp
-              @if(!empty($currentAttachment))
-                <small class="form-text text-muted">Current: <a href="{{ $currentAttachment }}" target="_blank">View File</a></small>
+              @if(!empty($faq['source_url']))
+                <small class="form-text text-muted">Current: <a href="{{ $faq['source_url'] }}" target="_blank">View File</a></small>
               @endif
             </div>
             <div class="col-md-6 mb-3">

@@ -47,4 +47,9 @@ class Conversation extends Model
     {
         return $this->belongsTo(Company::class, 'tenant_id');
     }
+
+    public function getFormattedIdAttribute()
+    {
+        return 'CONV-' . str_pad($this->id, 4, '0', STR_PAD_LEFT);
+    }
 }

@@ -34,10 +34,10 @@
     <li class="breadcrumb-item"><a href="{{ route('dashboard') }}"><i data-lucide="home" class="icon-sm"></i></a></li>
     <li class="breadcrumb-item"><a href="{{ route('conversations.index') }}">Conversations</a></li>
     <li class="breadcrumb-item active" aria-current="page">
-      @if(str_starts_with($conversation->contact->phone_number ?? '', 'web:'))
+      @if(str_starts_with($conversation->contact?->phone_number ?? '', 'web:'))
         Widget Visitor
       @else
-        {{ $conversation->contact->phone_number ?? '-' }}
+        {{ $conversation->contact?->phone_number ?? '-' }}
       @endif
     </li>
   </ol>
@@ -45,8 +45,8 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <div class="text-muted small">Conversation#{{ $conversation->id }}</div>
-        <h4 class="mb-0">{{ $conversation->contact->custom_name ?? $conversation->contact->whatsapp_profile_name ?? 'Unknown' }}</h4>
+        <div class="text-muted small">{{ $conversation->formatted_id }}</div>
+        <h4 class="mb-0">{{ $conversation->contact?->display_name ?? '-' }}</h4>
     </div>
     <div class="d-flex align-items-center">
         <form action="{{ route('conversations.toggleBot', $conversation->id) }}" method="POST" class="m-0 p-0"
@@ -70,41 +70,38 @@
         <div class="card mb-4 shadow-sm border-0">
             <div class="card-body">
                 <div class="section-title">SECTION 1: CONVERSATION HEADER</div>
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <small class="text-muted d-block">Conversation No.</small>
-                        <strong>#{{ $conversation->id }}</strong>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted d-block">Status</small>
-                        <form action="{{ route('conversations.updateStatus', $conversation->id) }}" method="POST" class="d-inline-block m-0 p-0">
-                            @csrf
-                            @method('PUT')
-                            <select name="status" class="form-select form-select-sm border-0 bg-primary-subtle text-primary rounded-pill fw-bold" onchange="this.form.submit()" style="width:auto; padding-right: 30px; font-size: 0.75rem;">
+                <form action="{{ route('conversations.updateDetails', $conversation->id) }}" method="POST">
+                    @csrf
+                    @method('PUT')
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Conversation No.</small>
+                            <strong>{{ $conversation->formatted_id }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Status</small>
+                            <select name="status" class="form-select form-select-sm border-0 bg-primary-subtle text-primary rounded-pill fw-bold" style="width:auto; padding-right: 30px; font-size: 0.75rem;">
                                 <option value="OPEN" {{ $conversation->status === 'OPEN' ? 'selected' : '' }}>OPEN</option>
                                 <option value="PENDING" {{ $conversation->status === 'PENDING' ? 'selected' : '' }}>PENDING</option>
                                 <option value="RESOLVED" {{ $conversation->status === 'RESOLVED' ? 'selected' : '' }}>RESOLVED</option>
                                 <option value="CLOSED" {{ $conversation->status === 'CLOSED' ? 'selected' : '' }}>CLOSED</option>
                             </select>
-                        </form>                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <small class="text-muted d-block">Title</small>
-                        <strong>{{ $conversation->title ?? '-' }}</strong>
+                        </div>
                     </div>
-                    <div class="col-6">
-                        <small class="text-muted d-block">Department</small>
-                        <strong>-</strong>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Title</small>
+                            <strong>{{ $conversation->title ?? '-' }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Department</small>
+                            <strong>-</strong>
+                        </div>
                     </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <small class="text-muted d-block mb-1">Assigned</small>
-                        <form action="{{ route('conversations.assign', $conversation) }}" method="POST" class="d-flex align-items-center gap-2">
-                            @csrf
-                            @method('PUT')
-                            <select name="employee_id" class="form-select form-select-sm" onchange="this.form.submit()" style="max-width:200px;">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block mb-1">Assigned</small>
+                            <select name="employee_id" class="form-select form-select-sm" style="max-width:200px;">
                                 <option value="">Unassigned (bot answers)</option>
                                 @foreach($activeEmployees as $employee)
                                     <option value="{{ $employee->id }}" @selected($conversation->assigned_tenant_user_id == $employee->id)>
@@ -112,20 +109,23 @@
                                     </option>
                                 @endforeach
                             </select>
-                        </form>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Created</small>
+                            <strong>{{ $conversation->created_at->format('d M Y, h:i A') }}</strong>
+                        </div>
                     </div>
-                    <div class="col-6">
-                        <small class="text-muted d-block">Created</small>
-                        <strong>{{ $conversation->created_at->format('d M Y, h:i A') }}</strong>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Last Activity</small>
+                            <strong>{{ $conversation->last_message_at ? \Carbon\Carbon::parse($conversation->last_message_at)->format('d M Y, h:i A') : '-' }}</strong>
+                        </div>
                     </div>
-                </div>
-                <div class="row mb-4">
-                    <div class="col-6">
-                        <small class="text-muted d-block">Last Activity</small>
-                        <strong>{{ $conversation->last_message_at ? \Carbon\Carbon::parse($conversation->last_message_at)->format('d M Y, h:i A') : '-' }}</strong>
+                    
+                    <div class="border-top pt-3">
+                        <button type="submit" class="btn btn-sm btn-primary fw-bold px-3">Save Changes</button>
                     </div>
-                </div>
-                
+                </form>
                 <!-- <div class="d-flex gap-2 border-top pt-3">
                     <button class="btn btn-sm btn-outline-secondary fw-bold">Assign</button>
                     <button class="btn btn-sm btn-outline-secondary fw-bold">Resolve</button>
@@ -146,13 +146,13 @@
                 </div>
                 
                 <div class="d-flex align-items-center mb-4 bg-light p-2 rounded">
-                    @php $contactName = $conversation->contact->custom_name ?? $conversation->contact->whatsapp_profile_name ?? 'Unknown'; @endphp
+                    @php $contactName = $conversation->contact?->display_name ?? '-'; @endphp
                     <div class="me-3">
                         <span class="badge bg-white text-dark border rounded-circle p-2 fs-6">{{ substr($contactName, 0, 2) }}</span>
                     </div>
                     <div>
                         <h6 class="mb-0 fw-bold">{{ $contactName }}</h6>
-                        <small class="text-muted">Since {{ $conversation->contact->created_at->format('M d, Y') }}</small>
+                        <small class="text-muted">Since {{ $conversation->contact?->created_at?->format('M d, Y') ?? '-' }}</small>
                     </div>
                 </div>
                 
@@ -161,25 +161,27 @@
                         <small class="text-muted d-block">Name</small>
                         <strong>{{ $contactName }}</strong>
                     </div>
+                    @if(auth()->user()->company->bot_usage_type !== 'widget')
                     <div class="col-6">
                         <small class="text-muted d-block">WhatsApp</small>
-                        <a href="#" class="text-primary fw-bold">{{ $conversation->contact->whatsapp_profile_name ?? $contactName }}</a>
+                        <a href="#" class="text-primary fw-bold">{{ $conversation->contact?->whatsapp_profile_name ?? $contactName }}</a>
                     </div>
+                    @endif
                 </div>
                 <div class="row mb-3">
                     <div class="col-6">
                         <small class="text-muted d-block">Phone</small>
                         <strong>
-                            @if(str_starts_with($conversation->contact->phone_number ?? '', 'web:'))
+                            @if(str_starts_with($conversation->contact?->phone_number ?? '', 'web:'))
                                 -
                             @else
-                                {{ $conversation->contact->phone_number ?? '-' }}
+                                {{ $conversation->contact?->phone_number ?? '-' }}
                             @endif
                         </strong>
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block">Email</small>
-                        <strong>{{ $conversation->contact->email ?? '-' }}</strong>
+                        <strong>{{ $conversation->contact?->email ?? '-' }}</strong>
                     </div>
                 </div>
 
@@ -187,7 +189,7 @@
                     <div class="col-12">
                         <small class="text-muted d-block mb-1">Tags</small>
                         <div class="d-flex flex-wrap gap-1">
-                            @forelse($conversation->contact->tags as $tag)
+                            @forelse($conversation->contact?->tags ?? [] as $tag)
                                 <span class="badge border bg-light text-dark">{{ $tag->tag_name }}</span>
                             @empty
                                 <span class="text-muted">-</span>
@@ -198,14 +200,18 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <small class="text-muted d-block">Customer Since</small>
-                        <strong>{{ $conversation->contact->created_at }}</strong>
+                        <strong>{{ $conversation->contact?->created_at }}</strong>
                     </div>
                 </div>
                 
                 <div class="d-flex gap-2 border-top pt-3">
+                  @if($conversation->contact)
                     <button data-bs-toggle="modal" data-bs-target="#editContactModal" class="btn btn-sm btn-outline-secondary fw-bold"><i data-lucide="user" class="icon-sm me-1"></i> Edit Contact</button>
                     <button data-bs-toggle="modal" data-bs-target="#addTagModal" class="btn btn-sm btn-outline-secondary fw-bold"><i data-lucide="tag" class="icon-sm me-1"></i> Add Tag</button>
                     <a href="{{ route('contacts.show', $conversation->contact_id) }}" class="btn btn-sm btn-outline-secondary fw-bold"><i data-lucide="eye" class="icon-sm me-1"></i> View Contact</a>
+                  @else
+                    <button class="btn btn-sm btn-outline-secondary fw-bold" disabled>Contact Unavailable</button>
+                  @endif
                 </div>
             </div>
         </div>
@@ -217,21 +223,21 @@
                 <div class="row mb-3">
                     <div class="col-6">
                         <small class="text-muted d-block">Country</small>
-                        <strong>{{ $conversation->contact->country ?? '-' }}</strong>
+                        <strong>{{ $conversation->contact?->country ?? '-' }}</strong>
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block">State</small>
-                        <strong>{{ $conversation->contact->state ?? '-' }}</strong>
+                        <strong>{{ $conversation->contact?->state ?? '-' }}</strong>
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-6">
                         <small class="text-muted d-block">City</small>
-                        <strong>{{ $conversation->contact->city ?? '-' }}</strong>
+                        <strong>{{ $conversation->contact?->city ?? '-' }}</strong>
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block">Pincode</small>
-                        <strong>{{ $conversation->contact->pincode ?? '-' }}</strong>
+                        <strong>{{ $conversation->contact?->pincode ?? '-' }}</strong>
                     </div>
                 </div>
             </div>
@@ -240,7 +246,7 @@
 
     <!-- Right Column (Section 3) -->
     <div class="col-lg-7 col-md-12">
-        <div class="card h-100 d-flex flex-column shadow-sm border-0">
+        <div class="card d-flex flex-column shadow-sm border-0">
             <div class="card-body d-flex flex-column p-0">
                 <div class="p-4 border-bottom">
                     <div class="section-title mb-0">SECTION 3: CONVERSATION TIMELINE</div>
@@ -252,8 +258,60 @@
                     </div> -->
 
                     @php
-                        $messages = \App\Models\Message::where('conversation_id', $conversation->id)->orderBy('sent_at', 'asc')->orderBy('id', 'asc')->get();
+                        $msgQuery = \App\Models\Message::where('conversation_id', $conversation->id)->orderBy('sent_at', 'asc')->orderBy('id', 'asc');
+                        
+                        if (auth()->id() !== 1) {
+                            $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
+                            if ($employee && $employee->role !== 'ADMIN') {
+                                if ($conversation->assigned_tenant_user_id !== $employee->id) {
+                                    $history = is_array($conversation->assignment_history) ? $conversation->assignment_history : json_decode($conversation->assignment_history, true) ?? [];
+                                    $maxUnassignedAt = null;
+                                    foreach ($history as $record) {
+                                        if (isset($record['employee_id']) && $record['employee_id'] == $employee->id && !empty($record['unassigned_at'])) {
+                                            if ($maxUnassignedAt === null || $record['unassigned_at'] > $maxUnassignedAt) {
+                                                $maxUnassignedAt = $record['unassigned_at'];
+                                            }
+                                        }
+                                    }
+                                    if ($maxUnassignedAt) {
+                                        $msgQuery->where('sent_at', '<=', \Carbon\Carbon::parse($maxUnassignedAt));
+                                    }
+                                }
+                            }
+                        }
+                        
+                        $messages = $msgQuery->get();
                         $lastDate = null;
+
+                        // Renders a message's text as safe HTML, turning a
+                        // markdown-style FAQ link - [label](url), produced
+                        // by bot_engine.py's _format_link when a widget FAQ
+                        // has a custom link_text label - into a real
+                        // clickable <a>, and a bare http(s) url into one
+                        // too. Mirrors widget_routes.py's widget.js
+                        // client-side rendering, so a FAQ's hyperlink shows
+                        // the same way here as it does for the visitor.
+                        // Guarded with function_exists() since this partial
+                        // can be included more than once per request.
+                        if (!function_exists('trp_render_chat_text')) {
+                            function trp_render_chat_text(string $text): string
+                            {
+                                $escaped = e($text);
+                                $pattern = '/\[([^\[\]]+)\]\((https?:\/\/[^\s()]+)\)|(https?:\/\/[^\s]+)/';
+                                return preg_replace_callback($pattern, function ($m) {
+                                    // Trailing unmatched capture groups are omitted
+                                    // entirely from $m by PCRE (not just empty), so
+                                    // isset() - not just checking for '' - is what
+                                    // keeps this from an undefined-offset warning
+                                    // whichever branch of the pattern matched.
+                                    $mdUrl = isset($m[2]) && $m[2] !== '' ? $m[2] : null;
+                                    $bareUrl = isset($m[3]) && $m[3] !== '' ? $m[3] : null;
+                                    $href = $mdUrl ?? $bareUrl;
+                                    $label = $mdUrl !== null && isset($m[1]) && $m[1] !== '' ? $m[1] : $href;
+                                    return '<a href="' . $href . '" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">' . $label . '</a>';
+                                }, $escaped);
+                            }
+                        }
                     @endphp
                     
                     @forelse($messages as $msg)
@@ -281,27 +339,37 @@
                             </div>
                         @endif
 
-                        <div class="chat-bubble {{ $msg->direction === 'INBOUND' ? 'chat-inbound' : 'chat-outbound' }}">
-                            @if($msg->message_type === 'IMAGE' && $msg->media_url)
-                                <a href="{{ $msg->media_url }}" target="_blank">
-                                    <img src="{{ $msg->media_url }}" alt="Image" style="max-width: 200px; border-radius: 8px; margin-bottom: 5px; display: block;">
-                                </a>
-                            @elseif(in_array($msg->message_type, ['DOCUMENT', 'VIDEO', 'AUDIO']) && $msg->media_url)
-                                <a href="{{ $msg->media_url }}" target="_blank" class="d-flex align-items-center mb-2 {{ $msg->direction === 'INBOUND' ? 'text-dark' : 'text-white' }}" style="text-decoration: underline;">
-                                    <i data-lucide="paperclip" class="icon-sm me-1"></i> {{ $msg->file_name ?? 'Attachment' }}
-                                </a>
-                            @endif
-                            
-                            @if(!empty($msg->message_text))
-                                {{ $msg->message_text }}
-                            @endif
-                            <div class="chat-time">
-                                {{ \Carbon\Carbon::parse($msg->sent_at)->format('h:i A') }}
-                                @if($msg->direction === 'OUTBOUND' && $msg->status === 'FAILED')
-                                    <span class="text-danger ms-1" title="Failed to send to WhatsApp"><i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i></span>
-                                @endif
+                        @php
+                            $isEvent = \App\Models\Message::isConversationEvent($msg->sender_type, $msg->message_text);
+                        @endphp
+
+                        @if($isEvent)
+                            <div class="text-center my-3" style="clear:both;">
+                                <span class="badge bg-light text-muted border px-3 py-2 rounded-pill">{!! trp_render_chat_text($msg->message_text) !!}</span>
                             </div>
-                        </div>
+                        @else
+                            <div class="chat-bubble {{ $msg->direction === 'INBOUND' ? 'chat-inbound' : 'chat-outbound' }}">
+                                @if($msg->message_type === 'IMAGE' && $msg->media_url)
+                                    <a href="{{ $msg->media_url }}" target="_blank">
+                                        <img src="{{ $msg->media_url }}" alt="Image" style="max-width: 200px; border-radius: 8px; margin-bottom: 5px; display: block;">
+                                    </a>
+                                @elseif(in_array($msg->message_type, ['DOCUMENT', 'VIDEO', 'AUDIO']) && $msg->media_url)
+                                    <a href="{{ $msg->media_url }}" target="_blank" class="d-flex align-items-center mb-2 {{ $msg->direction === 'INBOUND' ? 'text-dark' : 'text-white' }}" style="text-decoration: underline;">
+                                        <i data-lucide="paperclip" class="icon-sm me-1"></i> {{ $msg->file_name ?? 'Attachment' }}
+                                    </a>
+                                @endif
+                                
+                                @if(!empty($msg->message_text))
+                                    {!! trp_render_chat_text($msg->message_text) !!}
+                                @endif
+                                <div class="chat-time">
+                                    {{ \Carbon\Carbon::parse($msg->sent_at)->format('h:i A') }}
+                                    @if($msg->direction === 'OUTBOUND' && $msg->status === 'FAILED')
+                                        <span class="text-danger ms-1" title="Failed to send to WhatsApp"><i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i></span>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
                     @empty
                         <div class="text-center text-muted mt-5">
                             <i data-lucide="message-square" class="icon-lg mb-2 text-light"></i>
@@ -353,7 +421,7 @@
 </div>
 
 <!-- Section 5: Stats -->
-<div class="card mt-4 mb-4 shadow-sm border-0">
+<!-- <div class="card mt-4 mb-4 shadow-sm border-0">
     <div class="card-body">
         <div class="section-title mb-1">SECTION 5: CONVERSATION STATISTICS</div>
         <p class="text-muted small mb-4">Breakdown of messages and media sharing statistics</p>
@@ -391,43 +459,13 @@
                     <div class="stat-value text-warning">{{ $chatbot }}</div>
                 </div>
             </div>
-            <div class="col">
-                <div class="stat-card bg-white">
-                    <div class="text-muted small fw-bold">ATTACHMENTS</div>
-                    <div class="stat-value text-dark">9</div>
-                </div>
-            </div>
-            <div class="col">
-                <div class="stat-card border-0" style="background: #f3e5f5;">
-                    <div class="text-muted small fw-bold">IMAGES</div>
-                    <div class="stat-value" style="color: #9c27b0;">2</div>
-                </div>
-            </div>
-            <div class="col">
-                <div class="stat-card border-0" style="background: #fff8e1;">
-                    <div class="text-muted small fw-bold">DOCUMENTS</div>
-                    <div class="stat-value" style="color: #ffb300;">3</div>
-                </div>
-            </div>
-            <div class="col">
-                <div class="stat-card border-0" style="background: #ffebee;">
-                    <div class="text-muted small fw-bold">VIDEOS</div>
-                    <div class="stat-value text-danger">2</div>
-                </div>
-            </div>
-            <div class="col">
-                <div class="stat-card border-0" style="background: #fce4ec;">
-                    <div class="text-muted small fw-bold">AUDIO</div>
-                    <div class="stat-value" style="color: #e91e63;">2</div>
-                </div>
-            </div>
         </div>
     </div>
-</div>
+</div> -->
 
 <div class="row">
     <!-- Section 4 -->
-    <div class="col-lg-8 col-md-12 mb-4">
+    <!-- <div class="col-lg-8 col-md-12 mb-4">
         <div class="card h-100 shadow-sm border-0">
             <div class="card-body">
                 <div class="section-title mb-1">SECTION 6: FILES SHARED</div>
@@ -458,7 +496,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
     
     <!-- Section 6 -->
     <div class="col-lg-4 col-md-12 mb-4">
@@ -585,7 +623,7 @@
 <div class="modal fade" id="editContactModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form action="{{ route('contacts.update', $conversation->contact->id) }}" method="POST">
+      <form action="{{ route('contacts.update', $conversation->contact?->id ?? 0) }}" method="POST">
         @csrf
         @method('PUT')
         <div class="modal-header">
@@ -597,47 +635,49 @@
             <label class="form-label text-muted small fw-bold">Customer Name</label>
             <input type="text" name="custom_name" class="form-control" value="{{ $contactName }}">
           </div>
+          @if(auth()->user()->company->bot_usage_type !== 'widget')
           <div class="mb-3">
             <label class="form-label text-muted small fw-bold">WhatsApp Profile Name</label>
-            <input type="text" name="whatsapp_profile_name" class="form-control" value="{{ $conversation->contact->whatsapp_profile_name }}">
+            <input type="text" name="whatsapp_profile_name" class="form-control" value="{{ $conversation->contact?->whatsapp_profile_name }}">
           </div>
+          @endif
           <div class="mb-3">
             <label class="form-label text-muted small fw-bold">Phone Number</label>
-            <input type="text" name="phone_number" class="form-control" value="{{ $conversation->contact->phone_number }}">
+            <input type="text" name="phone_number" class="form-control" value="{{ str_starts_with($conversation->contact?->phone_number ?? '', 'web:') ? '' : $conversation->contact?->phone_number }}">
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-bold">Email</label>
-            <input type="email" name="email" class="form-control" value="{{ $conversation->contact->email }}">
+            <input type="email" name="email" class="form-control" value="{{ $conversation->contact?->email }}">
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-bold">Country</label>
             <select name="country" id="countrySelect" class="form-select">
                 <option value="">Select Country</option>
                 @foreach($allCountries as $c)
-                    <option value="{{ $c->name }}" {{ $conversation->contact->country == $c->name ? 'selected' : '' }}>{{ $c->name }}</option>
+                    <option value="{{ $c->name }}" {{ $conversation->contact?->country == $c->name ? 'selected' : '' }}>{{ $c->name }}</option>
                 @endforeach
             </select>
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-bold">State</label>
-            <select name="state" id="stateSelect" class="form-select" data-selected="{{ $conversation->contact->state }}">
+            <select name="state" id="stateSelect" class="form-select" data-selected="{{ $conversation->contact?->state }}">
                 <option value="">Select State</option>
-                @if($conversation->contact->state)
-                    <option value="{{ $conversation->contact->state }}" selected>{{ $conversation->contact->state }}</option>
+                @if($conversation->contact?->state)
+                    <option value="{{ $conversation->contact?->state }}" selected>{{ $conversation->contact?->state }}</option>
                 @endif
             </select>
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-bold">City</label>
-            <input type="text" name="city" class="form-control" value="{{ $conversation->contact->city }}">
+            <input type="text" name="city" class="form-control" value="{{ $conversation->contact?->city }}">
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-bold">Pincode</label>
-            <input type="text" name="pincode" class="form-control" value="{{ $conversation->contact->pincode }}">
+            <input type="text" name="pincode" class="form-control" value="{{ $conversation->contact?->pincode }}">
           </div>
           <div class="mb-3">
             <label class="form-label text-muted small fw-bold">Customer Since</label>
-            <input type="text" class="form-control" value="{{ $conversation->contact->created_at }}" readonly>
+            <input type="text" class="form-control" value="{{ $conversation->contact?->created_at }}" readonly>
           </div>
         </div>
         <div class="modal-footer justify-content-center">
@@ -657,14 +697,14 @@
         <h5 class="modal-title fw-bold">Add / Remove Tags</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form action="{{ route('contacts.updateTags', $conversation->contact->id) }}" method="POST">
+      <form id="updateTagsForm" action="{{ route('contacts.updateTags', $conversation->contact?->id ?? 0) }}" method="POST">
         @csrf
         @method('PUT')
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label text-muted small fw-bold">Selected Tags</label>
             <div class="border rounded p-2 d-flex flex-wrap gap-1" id="selectedTagsContainer" style="min-height: 45px;">
-                @forelse($conversation->contact->tags ?? [] as $tag)
+                @forelse($conversation->contact?->tags ?? [] as $tag)
                     <span class="badge bg-primary-subtle text-primary border selected-tag-badge cursor-pointer" data-id="{{ $tag->id }}">{{ $tag->tag_name }} &times;</span>
                     <input type="hidden" name="tags[]" class="tag-input-{{ $tag->id }}" value="{{ $tag->id }}">
                 @empty
@@ -693,7 +733,6 @@
         <div class="modal-footer border-0 justify-content-center pt-0 pb-4">
           <button type="button" class="btn btn-outline-dark px-4" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary px-4">Save Tags</button>
-          <button type="button" class="btn btn-primary px-4">Remove Tags</button>
         </div>
       </form>
     </div>
@@ -727,7 +766,7 @@
                             <td class="py-3">{{ $c->tenant_id }}</td>
                             <td class="py-3">{{ $c->whatsapp_phone_number_id ?? '-' }}</td>
                             <td class="py-3">{{ $c->phone_number }}</td>
-                            <td class="py-3">{{ $c->custom_name ?? $c->whatsapp_profile_name ?? '-' }}</td>
+                            <td class="py-3">{{ $c->custom_name ?: $c->whatsapp_profile_name ?: $c->phone_number ?: '-' }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -1057,31 +1096,49 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const bubble = document.createElement('div');
-        bubble.className = `chat-bubble ${isOutbound ? 'chat-outbound' : 'chat-inbound'}`;
-        
-        let contentHTML = '';
-        
-        if (msg.message_type === 'IMAGE' && msg.media_url) {
-            contentHTML += `<a href="${msg.media_url}" target="_blank"><img src="${msg.media_url}" alt="Image" style="max-width: 200px; border-radius: 8px; margin-bottom: 5px; display: block;"></a>`;
-        } else if (['DOCUMENT', 'VIDEO', 'AUDIO'].includes(msg.message_type) && msg.media_url) {
-            contentHTML += `<a href="${msg.media_url}" target="_blank" class="d-flex align-items-center mb-2 ${isOutbound ? 'text-white' : 'text-dark'}" style="text-decoration: underline;">
-                <i data-lucide="paperclip" class="icon-sm me-1"></i> ${msg.file_name || 'Attachment'}
-            </a>`;
+        let isEvent = msg.is_conversation_event === true || msg.is_conversation_event === 1;
+        const txt = msg.message_text || '';
+        if (txt.endsWith('joined conversation') || txt.startsWith('ended conversation') || txt.startsWith('AI Support is now assisting')) {
+            isEvent = true;
         }
-        
-        if (msg.message_text) {
-            contentHTML += msg.message_text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+        if (isEvent) {
+            bubble.className = 'text-center my-3';
+            bubble.style.clear = 'both';
+            bubble.innerHTML = `<span class="badge bg-light text-muted border px-3 py-2 rounded-pill">${msg.message_text}</span>`;
+        } else {
+            bubble.className = `chat-bubble ${isOutbound ? 'chat-outbound' : 'chat-inbound'}`;
+            
+            let contentHTML = '';
+            
+            if (msg.message_type === 'IMAGE' && msg.media_url) {
+                contentHTML += `<a href="${msg.media_url}" target="_blank"><img src="${msg.media_url}" alt="Image" style="max-width: 200px; border-radius: 8px; margin-bottom: 5px; display: block;"></a>`;
+            } else if (['DOCUMENT', 'VIDEO', 'AUDIO'].includes(msg.message_type) && msg.media_url) {
+                contentHTML += `<a href="${msg.media_url}" target="_blank" class="d-flex align-items-center mb-2 ${isOutbound ? 'text-white' : 'text-dark'}" style="text-decoration: underline;">
+                    <i data-lucide="paperclip" class="icon-sm me-1"></i> ${msg.file_name || 'Attachment'}
+                </a>`;
+            }
+            
+            if (msg.message_text) {
+                var escaped = msg.message_text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                var linkRegex = /\\[([^\\[\\]]+)\\]\\((https?:\\/\\/[^\\s()]+)\\)|(https?:\\/\\/[^\\s]+)/g;
+                contentHTML += escaped.replace(linkRegex, function(match, mdLabel, mdUrl, bareUrl) {
+                    var href = mdUrl || bareUrl;
+                    var label = mdLabel || bareUrl;
+                    return '<a href="' + href + '" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: inherit;">' + label + '</a>';
+                });
+            }
+            
+            let errorHtml = '';
+            if (isOutbound && msg.status === 'FAILED') {
+                errorHtml = `<span class="text-danger ms-1" title="Failed to send to WhatsApp"><i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i></span>`;
+            }
+            
+            bubble.innerHTML = `
+                ${contentHTML}
+                <div class="chat-time">${timeFormatted}${errorHtml}</div>
+            `;
         }
-        
-        let errorHtml = '';
-        if (isOutbound && msg.status === 'FAILED') {
-            errorHtml = `<span class="text-danger ms-1" title="Failed to send to WhatsApp"><i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i></span>`;
-        }
-        
-        bubble.innerHTML = `
-            ${contentHTML}
-            <div class="chat-time">${timeFormatted}${errorHtml}</div>
-        `;
 
         clearDiv = document.getElementById('chat-end-anchor');
         if (clearDiv) {

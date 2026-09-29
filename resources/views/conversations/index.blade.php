@@ -97,7 +97,9 @@
                 </th>
                 <th class="pt-0">CONVERSATION NO.</th>
                 <th class="pt-0">CUSTOMER NAME</th>
+                @if(auth()->user()->company?->bot_usage_type !== 'widget')
                 <th class="pt-0">MOBILE</th>
+                @endif
                 <th class="pt-0">TAGS</th>
                 <th class="pt-0">ASSIGNED TO</th>
                 <th class="pt-0">STATUS</th>
@@ -115,31 +117,33 @@
                       <input type="checkbox" class="form-check-input row-checkbox" value="{{ $conversation->id }}">
                     </div>
                   </td>
-                  <td>#CONV-{{ $conversation->id }}</td>
+                  <td>{{ $conversation->formatted_id }}</td>
                   <td>
                     <div class="d-flex align-items-center">
                       <div class="me-2">
                         @php
-                            $contactName = $conversation->contact->custom_name ?? $conversation->contact->whatsapp_profile_name ?? 'Unknown';
+                            $contactName = $conversation->contact?->display_name ?? '-';
                         @endphp
-                        <img src="{{ url('https://ui-avatars.com/api/?name=' . urlencode($contactName) . '&background=random&rounded=true') }}" alt="avatar" class="wd-30 ht-30 rounded-circle">
+                        <!-- <img src="{{ url('https://ui-avatars.com/api/?name=' . urlencode($contactName) . '&background=random&rounded=true') }}" alt="avatar" class="wd-30 ht-30 rounded-circle"> -->
                       </div>
                       <span>{{ $contactName }}</span>
                     </div>
                   </td>
+                  @if(auth()->user()->company?->bot_usage_type !== 'widget')
                   <td>
-                    @if(str_starts_with($conversation->contact->phone_number ?? '', 'web:'))
+                    @if(str_starts_with($conversation->contact?->phone_number ?? '', 'web:'))
                       -
                     @else
-                      {{ $conversation->contact->phone_number ?? '-' }}
+                      {{ $conversation->contact?->phone_number ?? '-' }}
                     @endif
                   </td>
+                  @endif
                   <td>
-                    @if($conversation->contact && $conversation->contact->tags && $conversation->contact->tags->count() > 0)
-                      <span class="badge bg-secondary">{{ $conversation->contact->tags->first()->tag_name }}</span>
-                      @if($conversation->contact->tags->count() > 1)
-                        <span class="badge bg-light text-dark border" title="{{ $conversation->contact->tags->skip(1)->pluck('tag_name')->join(', ') }}">
-                          +{{ $conversation->contact->tags->count() - 1 }} more
+                    @if($conversation->contact && $conversation->contact?->tags && $conversation->contact?->tags->count() > 0)
+                      <span class="badge bg-secondary">{{ $conversation->contact?->tags->first()->tag_name }}</span>
+                      @if($conversation->contact?->tags->count() > 1)
+                        <span class="badge bg-light text-dark border" title="{{ $conversation->contact?->tags->skip(1)->pluck('tag_name')->join(', ') }}">
+                          +{{ $conversation->contact?->tags->count() - 1 }} more
                         </span>
                       @endif
                     @else
@@ -247,13 +251,13 @@
     // you're never more than ~20s stale without touching anything. Skips
     // the reload while you're actively typing/selecting something, so it
     // won't interrupt you mid-search or mid-filter.
-    setInterval(function () {
-      var active = document.activeElement;
-      var isTyping = active && ['INPUT', 'SELECT', 'TEXTAREA'].includes(active.tagName);
-      if (!isTyping) {
-        window.location.reload();
-      }
-    }, 20000);
+    // setInterval(function () {
+    //   var active = document.activeElement;
+    //   var isTyping = active && ['INPUT', 'SELECT', 'TEXTAREA'].includes(active.tagName);
+    //   if (!isTyping) {
+    //     window.location.reload();
+    //   }
+    // }, 20000);
   });
 </script>
 @endpush
