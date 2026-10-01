@@ -60,8 +60,8 @@ class EmployeeController extends Controller
             'password' => 'required|string|min:8',
         ]);
 
-        $lastEmployee = Employee::orderBy('id', 'desc')->first();
-        $nextId = $lastEmployee ? $lastEmployee->id + 1 : 1;
+        $tenantEmployeeCount = Employee::where('tenant_id', $companyId)->count();
+        $nextId = $tenantEmployeeCount + 1;
         $employeeCode = 'EMP-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
 
         // Create User for login

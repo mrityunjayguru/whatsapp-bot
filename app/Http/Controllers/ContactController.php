@@ -17,7 +17,7 @@ class ContactController extends Controller
         $query = Contact::where('tenant_id', $companyId)
             ->withCount(['conversations', 'messages'])
             ->with(['tags', 'conversations' => function($q) {
-                $q->latest()->limit(1);
+                $q->latest('last_message_at')->limit(1);
             }])
             ->latest();
 
@@ -25,12 +25,7 @@ class ContactController extends Controller
             $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
             if ($employee && $employee->role !== 'ADMIN') {
                 $query->whereHas('conversations', function($q) use ($employee) {
-                    $q->where('assigned_tenant_user_id', $employee->id)
-                      ->orWhereJsonContains('assignment_history', ['employee_id' => $employee->id]);
-                });
-            } elseif (!$employee) {
-                $query->whereHas('conversations', function($q) {
-                    $q->where('assigned_tenant_user_id', auth()->id());
+                    $q->where('assigned_tenant_user_id', $employee->id);
                 });
             }
         }
@@ -93,11 +88,10 @@ class ContactController extends Controller
             if ($employee && $employee->role !== 'ADMIN') {
                 $contactQuery->whereHas('conversations', function($q) use ($employee) {
                     $q->where('assigned_tenant_user_id', $employee->id)
-                      ->orWhereJsonContains('assignment_history', ['employee_id' => $employee->id]);
-                });
-            } elseif (!$employee) {
-                $contactQuery->whereHas('conversations', function($q) {
-                    $q->where('assigned_tenant_user_id', auth()->id());
+                      ->orWhere('assignment_history', 'like', '%"employee_id":' . $employee->id . '%')
+                      ->orWhere('assignment_history', 'like', '%"employee_id":"' . $employee->id . '"%')
+                      ->orWhere('assignment_history', 'like', '%"employee_id": ' . $employee->id . '%')
+                      ->orWhere('assignment_history', 'like', '%"employee_id": "' . $employee->id . '"%');
                 });
             }
         }

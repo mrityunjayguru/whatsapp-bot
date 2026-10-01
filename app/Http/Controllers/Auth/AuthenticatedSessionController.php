@@ -28,6 +28,22 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $user = Auth::user();
+
+        if (is_null($user->company_id)) {
+            return redirect()->intended(route('companies.index', absolute: false));
+        }
+
+        $employee = \App\Models\Employee::where('email', $user->email)->first();
+        if ($employee && $employee->role !== 'ADMIN') {
+            return redirect()->intended(route('conversations.index', absolute: false));
+        }
+
+        $widget = \App\Models\Widget::where('company_id', $user->company_id)->first();
+        if ($widget) {
+            return redirect()->intended(route('widgets.edit', ['token' => $widget->token]));
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

@@ -82,7 +82,7 @@
     '.ws-row.ws-bot .ws-bub{background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-bottom-left-radius:4px}',
     '.ws-row.ws-user .ws-bub{background:' + C + ';color:#fff;border-bottom-right-radius:4px}',
     '.ws-row.ws-event{justify-content:center;margin:8px 0}',
-    '.ws-event-bub{background:#e2e8f0;color:#475569;font-size:11px;font-weight:600;padding:4px 12px;border-radius:12px;text-align:center}',
+    '.ws-event-bub{background:#e2e8f0;color:#000;font-size:12px;font-weight:bold;padding:4px 12px;border-radius:12px;text-align:center}',
     '.ws-typing{display:flex;gap:4px;padding:10px 13px}',
     '.ws-typing span{width:6px;height:6px;border-radius:50%;background:#94a3b8;',
     'animation:ws-bounce 1.2s infinite}',
@@ -384,7 +384,7 @@
         
         var isEvent = msg.is_conversation_event === true || msg.is_conversation_event === 1;
         var txt = msg.message_text || "";
-        if (txt.endsWith('joined conversation') || txt.startsWith('ended conversation') || txt.startsWith('AI Support is now assisting')) {
+        if (txt.endsWith('joined conversation') || txt.toLowerCase().startsWith('ended conversation') || txt.startsWith('AI Support is now assisting')) {
             isEvent = true;
         }
 
@@ -424,17 +424,13 @@
     })
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        if (d.messages && d.messages.length) {
-          // Restore the prior conversation instead of showing the
-          // welcome message again - this is what was missing before:
-          // the conversation always persisted server-side, but the
-          // widget never showed it on reopen, so it looked like it had
-          // vanished.
-          d.messages.forEach(function (m) { addMessage(m.text, m.from, m.sender_name, { url: m.media_url, fileName: m.file_name }, m.is_conversation_event); });
-          if (d.conversation_id) subscribeToConversation(d.conversation_id);
-        } else if (CFG.welcomeMessage) {
-          addMessage(CFG.welcomeMessage, 'bot');
-        }
+        if (CFG.welcomeMessage) {
+            addMessage(CFG.welcomeMessage, 'bot');
+          }
+          if (d.messages && d.messages.length) {
+            d.messages.forEach(function (m) { addMessage(m.text, m.from, m.sender_name, { url: m.media_url, fileName: m.file_name }, m.is_conversation_event); });
+            if (d.conversation_id) subscribeToConversation(d.conversation_id);
+          }
       })
       .catch(function () {
         // History fetch failing shouldn't block opening the chat at all

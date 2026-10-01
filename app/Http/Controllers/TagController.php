@@ -12,7 +12,10 @@ class TagController extends Controller
     public function index(Request $request): View
     {
         $companyId = auth()->user()->company_id;
-        $query = Tag::where('tenant_id', $companyId)->with('creator')->withCount('contacts')->latest();
+        $query = Tag::with('creator')->withCount('contacts')->latest();
+        if ($companyId) {
+            $query->where('tenant_id', $companyId);
+        }
 
         // 1. Search filter
         if ($search = $request->input('search')) {
@@ -76,7 +79,7 @@ class TagController extends Controller
     public function show($id): View
     {
         $companyId = auth()->user()->company_id;
-        $tag = Tag::where('tenant_id', $companyId)->findOrFail($id);
+        $tag = $companyId ? Tag::where('tenant_id', $companyId)->findOrFail($id) : Tag::findOrFail($id);
         $tag->load('creator');
         
         $contactsQuery = $tag->contacts()
@@ -106,7 +109,7 @@ class TagController extends Controller
     public function update(Request $request, $id): RedirectResponse
     {
         $companyId = auth()->user()->company_id;
-        $tag = Tag::where('tenant_id', $companyId)->findOrFail($id);
+        $tag = $companyId ? Tag::where('tenant_id', $companyId)->findOrFail($id) : Tag::findOrFail($id);
 
         $request->validate([
             'tag_name' => 'required|string|max:255',
@@ -134,7 +137,7 @@ class TagController extends Controller
     public function destroy($id): RedirectResponse
     {
         $companyId = auth()->user()->company_id;
-        $tag = Tag::where('tenant_id', $companyId)->findOrFail($id);
+        $tag = $companyId ? Tag::where('tenant_id', $companyId)->findOrFail($id) : Tag::findOrFail($id);
         $tag->delete();
         return redirect()->route('tags.index')->with('success', 'Tag deleted successfully.');
     }

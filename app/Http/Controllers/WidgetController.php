@@ -43,7 +43,11 @@ class WidgetController extends Controller
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
             'site_name' => 'required|string|max:255',
-            'contact_email' => 'nullable|email|max:255',
+            'contact_email' => ['nullable', 'email', 'max:255', function ($attribute, $value, $fail) {
+                if (\App\Models\Company::where('contact_email', $value)->exists()) {
+                    $fail('The contact email must be unique and cannot match a company email.');
+                }
+            }],
             'valid_from' => 'nullable|date',
             'expiry_date' => 'nullable|date|after_or_equal:valid_from',
         ]);
@@ -135,7 +139,11 @@ class WidgetController extends Controller
     {
         $validated = $request->validate([
             'site_name' => 'required|string|max:255',
-            'contact_email' => 'nullable|email|max:255',
+            'contact_email' => ['nullable', 'email', 'max:255', function ($attribute, $value, $fail) {
+                if (\App\Models\Company::where('contact_email', $value)->exists()) {
+                    $fail('The contact email must be unique and cannot match a company email.');
+                }
+            }],
             'bot_name' => 'required|string|max:255',
             'welcome_message' => 'required|string|max:500',
             'primary_color' => 'required|string|max:20',
@@ -344,15 +352,11 @@ class WidgetController extends Controller
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
             $attachResult = $api->attachFile($token, $file->getPathname(), $file->getClientOriginalName());
-            // Stored separately from the Hyperlink URL field entirely -
-            // a FAQ can have BOTH an attached file AND its own typed
-            // hyperlink, and the bot includes both in its reply. This
-            // used to overwrite $sourceUrl, which is exactly why
-            // attaching a new file could silently replace a hyperlink
-            // you'd already set.
             if ($attachResult && isset($attachResult['url'])) {
                 $attachmentUrl = $attachResult['url'];
             }
+        } elseif ($request->input('remove_attachment') == '1') {
+            $attachmentUrl = ''; // Empty string signals the python api to clear the attachment
         }
 
         $keywordList = !empty($validated['keywords'])

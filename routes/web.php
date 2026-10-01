@@ -81,3 +81,5 @@ Route::post('widget/{token}/faqs', [App\Http\Controllers\WidgetController::class
 Route::get('widget/{token}/faqs/{sourceId}/edit', [App\Http\Controllers\WidgetController::class, 'editFaq'])->middleware(['auth', 'verified'])->name('widgets.faqs.edit');
 Route::put('widget/{token}/faqs/{sourceId}', [App\Http\Controllers\WidgetController::class, 'updateFaq'])->middleware(['auth', 'verified'])->name('widgets.faqs.update');
 Route::delete('widget/{token}/faqs/{sourceId}', [App\Http\Controllers\WidgetController::class, 'destroyFaq'])->middleware(['auth', 'verified'])->name('widgets.faqs.destroy');
+
+

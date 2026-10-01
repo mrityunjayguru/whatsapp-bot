@@ -59,24 +59,8 @@
               <input type="text" class="form-control" name="keywords" value="{{ old('keywords', isset($faq['keywords']) && is_array($faq['keywords']) ? implode(', ', $faq['keywords']) : '') }}">
             </div>
           </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label"><i data-lucide="link" class="icon-sm text-muted me-1"></i> Hyperlink URL</label>
-              <input type="url" class="form-control" name="url" value="{{ old('url', $faq['source_url'] ?? '') }}" placeholder="https://example.com/page">
-              <div class="form-text">Paste a link here to turn it into a clickable hyperlink in this FAQ's answer.</div>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Link Text <span class="text-muted small">(shown to visitors)</span></label>
-              <input type="text" class="form-control" name="link_text" value="{{ old('link_text', $faq['link_text'] ?? '') }}" placeholder="e.g. Click here, View pricing">
-              <div class="form-text">Leave blank to show the raw URL as the link.</div>
-            </div>
-          </div>
-          <div class="mb-3">
-            <div class="form-check form-switch">
-              <input type="checkbox" class="form-check-input" name="is_active" id="faqStatusEdit" value="1" @checked(!isset($faq['is_active']) || $faq['is_active'])>
-              <label class="form-check-label" for="faqStatusEdit">Active</label>
-            </div>
-          </div>
+          
+          
           <div class="d-flex justify-content-end border-top pt-3">
             <a href="{{ route('widgets.edit', $token) }}" class="btn btn-secondary me-2">Cancel</a>
             <button type="submit" class="btn btn-primary">Update FAQ</button>

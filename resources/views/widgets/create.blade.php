@@ -55,12 +55,12 @@
           <div class="row">
             <div class="col-md-6 mb-3">
               <label class="form-label">Valid From</label>
-              <input type="date" class="form-control @error('valid_from') is-invalid @enderror" name="valid_from" value="{{ old('valid_from') }}">
+              <input type="date" class="form-control @error('valid_from') is-invalid @enderror" name="valid_from" value="{{ old('valid_from', now()->format('Y-m-d')) }}">
               @error('valid_from') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Valid To (Expiry)</label>
-              <input type="date" class="form-control @error('expiry_date') is-invalid @enderror" name="expiry_date" value="{{ old('expiry_date') }}">
+              <input type="date" class="form-control @error('expiry_date') is-invalid @enderror" name="expiry_date" value="{{ old('expiry_date', now()->addMonths(2)->format('Y-m-d')) }}">
               @error('expiry_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
           </div>

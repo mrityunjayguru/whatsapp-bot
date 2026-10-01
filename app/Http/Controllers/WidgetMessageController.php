@@ -244,8 +244,6 @@ class WidgetMessageController extends Controller
                 'unread_count' => 0,
                 'first_message_at' => now(),
             ]);
-        } elseif ($conversation->status === 'RESOLVED') {
-            $conversation->update(['status' => 'OPEN']);
         }
 
         $mediaUrl = null;
@@ -278,7 +276,7 @@ class WidgetMessageController extends Controller
             'sent_at' => now(),
         ]);
 
-        $msgPreview = $fileName ? 'Attachment: ' . $fileName : Str::limit($validated['message'] ?? '', 50);
+        $msgPreview = $fileName ? 'Attachment: ' . $fileName : Str::limit(strip_tags(html_entity_decode($validated['message'] ?? '')), 50);
 
         $conversation->update([
             'unread_count' => $conversation->unread_count + 1,
@@ -295,13 +293,13 @@ class WidgetMessageController extends Controller
         // agent reply manually from the CRM. This is what was missing
         // before: previously the bot kept answering every message even
         // after a human had started handling the conversation.
-        if ($conversation->assigned_tenant_user_id) {
+        if ($conversation->assigned_tenant_user_id || $conversation->bot_stopped) {
             return response()->json([
                 'reply' => null,
                 'escalated' => false,
                 'options' => null,
                 'conversation_id' => $conversation->id,
-                'human_assigned' => true,
+                'human_assigned' => $conversation->assigned_tenant_user_id ? true : false,
             ]);
         }
 
@@ -331,13 +329,13 @@ class WidgetMessageController extends Controller
         $conversation->update([
             'last_message_at' => now(),
             'last_message_id' => $outbound->id,
-            'last_message_preview' => Str::limit($replyText, 50),
+            'last_message_preview' => Str::limit(strip_tags(html_entity_decode($replyText)), 50),
         ]);
 
         // Escalated (bot couldn't answer) - flag it for a human. A later
         // stage adds proper company-scoped agent assignment; for now
         // this just makes it findable/filterable in the existing Inbox.
-        if ($escalated) {
+        if ($escalated && $conversation->status !== 'RESOLVED') {
             $conversation->update(['status' => 'PENDING']);
         }
 
@@ -411,7 +409,7 @@ class WidgetMessageController extends Controller
                 'unread_count' => $conversation->unread_count + 1,
                 'last_message_at' => now(),
                 'last_message_id' => $inbound->id,
-                'last_message_preview' => Str::limit($validated['title'], 50),
+                'last_message_preview' => Str::limit(strip_tags(html_entity_decode($validated['title'])), 50),
             ]);
             return response()->json(['reply' => null, 'human_assigned' => true, 'conversation_id' => $conversation->id]);
         }
@@ -439,7 +437,7 @@ class WidgetMessageController extends Controller
             'unread_count' => $conversation->unread_count + 1,
             'last_message_at' => now(),
             'last_message_id' => $outbound->id,
-            'last_message_preview' => Str::limit($replyText, 50),
+            'last_message_preview' => Str::limit(strip_tags(html_entity_decode($replyText)), 50),
         ]);
 
         event(new NewMessage($outbound));

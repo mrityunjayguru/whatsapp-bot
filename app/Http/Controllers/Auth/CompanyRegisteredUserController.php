@@ -34,12 +34,12 @@ class CompanyRegisteredUserController extends Controller
     {
         $request->validate([
             'company_name' => ['required', 'string', 'max:255'],
-            'contact_number' => ['required', 'string', 'max:20'],
+            'contact_number' => ['nullable', 'string', 'max:20'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        $widget = $api->createWidget($request->company_name, $request->email);
+        $widget = $api->createWidget($request->company_name);
 
         if (!$widget) {
             return back()->withInput()->with('error', 'Could not create the widget - check the bot service is running.');
@@ -63,6 +63,8 @@ class CompanyRegisteredUserController extends Controller
             'company_id' => $company->id,
             'token' => $widget['token'],
             'is_active' => true,
+            'valid_from' => now()->format('Y-m-d'),
+            'expiry_date' => now()->addMonths(2)->format('Y-m-d'),
         ]);
 
         $user = User::create([
@@ -76,6 +78,6 @@ class CompanyRegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        return redirect(route('widgets.edit', ['token' => $widget['token']]));
     }
 }

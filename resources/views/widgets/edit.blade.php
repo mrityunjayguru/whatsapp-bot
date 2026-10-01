@@ -36,7 +36,7 @@
 <div class="card mb-3">
   <div class="card-body">
     <h6 class="card-title text-muted mb-3 border-bottom pb-2">EMBED ON YOUR SITE</h6>
-    <p class="text-muted small mb-2">Paste this before <code>&lt;/body&gt;</code> on any page:</p>
+    <p class="fw-bold small mb-2">Paste this before <code>&lt;/body&gt;</code> or inside <code>&lt;head&gt;</code> on any page:</p>
     <div class="d-flex gap-2 align-items-start">
       <textarea class="form-control font-monospace small" id="embedSnippet" rows="1" readonly style="resize:none;">{{ $embedSnippet }}</textarea>
       <button type="button" class="btn btn-outline-secondary flex-shrink-0" onclick="navigator.clipboard.writeText(document.getElementById('embedSnippet').value)">
@@ -56,7 +56,7 @@
       <div class="card-body">
         <h6 class="card-title text-muted mb-4 border-bottom pb-2">WIDGET SETTINGS</h6>
 
-        <form action="{{ route('widgets.config.update', $token) }}" method="POST">
+        <form action="{{ route('widgets.config.update', $token) }}" method="POST" id="configForm">
           @csrf
           @method('PUT')
 
@@ -79,7 +79,12 @@
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Client contact email</label>
+              <label class="form-label">Company email</label>
+              <input type="text" class="form-control bg-light text-muted" value="{{ $company ? $company->contact_email : '' }}" readonly>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Client contact email</label>
             <input type="email" class="form-control" name="contact_email" value="{{ old('contact_email', $widget['contact_email'] ?? '') }}" placeholder="client@example.com">
           </div>
 
@@ -90,7 +95,7 @@
 
           <div class="mb-3">
             <label class="form-label">Welcome message</label>
-            <textarea class="form-control" name="welcome_message" rows="2" required>{{ old('welcome_message', $widget['welcome_message']) }}</textarea>
+            <textarea class="form-control" name="welcome_message" id="welcome_message" rows="4">{{ old('welcome_message', $widget['welcome_message']) }}</textarea>
           </div>
 
           <div class="row">
@@ -109,7 +114,7 @@
 
           <div class="mb-3">
             <label class="form-label">Fallback message <span class="text-muted small">(shown when nothing matches)</span></label>
-            <textarea class="form-control" name="fallback_message" rows="2" required>{{ old('fallback_message', $widget['fallback_message']) }}</textarea>
+            <textarea class="form-control" name="fallback_message" id="fallback_message" rows="4">{{ old('fallback_message', $widget['fallback_message']) }}</textarea>
           </div>
 
           <div class="row mb-4">
@@ -181,38 +186,27 @@
           </div>
           <div class="mb-3">
             <label class="form-label">Answer <span class="text-danger">*</span></label>
-            <textarea class="form-control" name="answer" rows="4" placeholder="Write the complete answer here..." required></textarea>
+            <textarea class="form-control" name="answer" id="answer" rows="4" placeholder="Write the complete answer here..."></textarea>
           </div>
           <div class="row">
             <div class="col-md-6 mb-3">
               <label class="form-label"><i data-lucide="paperclip" class="icon-sm text-muted me-1"></i> Attachment</label>
-              <input type="file" class="form-control" name="attachment">
+              <div class="input-group">
+                <input type="file" class="form-control" name="attachment" id="faqAttachmentInputAdd">
+                <button class="btn btn-outline-secondary" type="button" id="btnClearAttachmentInputAdd" title="Clear selected file" style="display: none; padding: 0.375rem 0.75rem;">
+                  <i data-lucide="x" class="icon-sm"></i>
+                </button>
+              </div>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Keywords <span class="text-muted small">(comma separated)</span></label>
               <input type="text" class="form-control" name="keywords" placeholder="e.g. pricing, cost">
             </div>
           </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label"><i data-lucide="link" class="icon-sm text-muted me-1"></i> Hyperlink URL</label>
-              <input type="url" class="form-control" name="url" placeholder="https://example.com/page">
-              <div class="form-text">Paste a link here to turn it into a clickable hyperlink in this FAQ's answer.</div>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Link Text <span class="text-muted small">(shown to visitors)</span></label>
-              <input type="text" class="form-control" name="link_text" placeholder="e.g. Click here, View pricing">
-              <div class="form-text">Leave blank to show the raw URL as the link.</div>
-            </div>
-          </div>
-          <div class="mb-3">
-            <div class="form-check form-switch">
-              <input type="checkbox" class="form-check-input" name="is_active" id="faqStatusAdd" value="1" checked>
-              <label class="form-check-label" for="faqStatusAdd">Active</label>
-            </div>
-          </div>
+          
+          
           <div class="d-flex justify-content-end border-top pt-3">
-            <button type="submit" class="btn btn-primary">Add FAQ</button>
+            <button type="submit" class="btn btn-primary" id="addFaqBtn">Add FAQ</button>
           </div>
         </form>
       </div>
@@ -290,3 +284,72 @@
   </div>
 </div>
 @endsection
+
+@push('custom-scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        tinymce.init({
+            selector: '#answer, #welcome_message, #fallback_message',
+            menubar: false,
+            plugins: 'link lists',
+            toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link',
+            promotion: false,
+            branding: false,
+            setup: function(editor) {
+                editor.on('submit', function() {
+                    editor.save();
+                });
+            }
+        });
+
+        // Sync TinyMCE content to textarea before form submit and validate
+        var addBtn = document.getElementById('addFaqBtn');
+        if (addBtn) {
+            addBtn.closest('form').addEventListener('submit', function(e) {
+                tinymce.triggerSave();
+                var val = document.getElementById('answer').value.trim();
+                if (!val || val === '<p></p>' || val === '<p><br></p>') {
+                    e.preventDefault();
+                    alert('Please enter an answer.');
+                    tinymce.get('answer').focus();
+                }
+            });
+        }
+
+        var configForm = document.getElementById('configForm');
+        if (configForm) {
+            configForm.addEventListener('submit', function(e) {
+                tinymce.triggerSave();
+                var welcome = document.getElementById('welcome_message').value.trim();
+                if (!welcome || welcome === '<p></p>' || welcome === '<p><br></p>') {
+                    e.preventDefault();
+                    alert('Please enter a welcome message.');
+                    tinymce.get('welcome_message').focus();
+                    return;
+                }
+                var fallback = document.getElementById('fallback_message').value.trim();
+                if (!fallback || fallback === '<p></p>' || fallback === '<p><br></p>') {
+                    e.preventDefault();
+                    alert('Please enter a fallback message.');
+                    tinymce.get('fallback_message').focus();
+                    return;
+                }
+            });
+        }
+
+        // Clear attachment on add form
+        const attachInputAdd = document.getElementById('faqAttachmentInputAdd');
+        const btnClearAttachAdd = document.getElementById('btnClearAttachmentInputAdd');
+        if (attachInputAdd && btnClearAttachAdd) {
+            attachInputAdd.addEventListener('change', function() {
+                btnClearAttachAdd.style.display = this.value ? 'block' : 'none';
+            });
+            btnClearAttachAdd.addEventListener('click', function() {
+                attachInputAdd.value = '';
+                btnClearAttachAdd.style.display = 'none';
+            });
+        }
+    });
+</script>
+@endpush

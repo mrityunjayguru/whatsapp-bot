@@ -193,10 +193,6 @@ class MetaWebhookController extends Controller
                                         'unread_count' => 0,
                                         'first_message_at' => now(),
                                     ]);
-                                } elseif ($conversation->status === 'RESOLVED') {
-                                    // Auto-reopen if resolved
-                                    $conversation->status = 'OPEN';
-                                    $conversation->save();
                                 }
 
                                 if ($textMessage !== null || $isMedia) {
@@ -253,7 +249,7 @@ class MetaWebhookController extends Controller
                                         'unread_count' => $conversation->unread_count + 1,
                                         'last_message_at' => now(),
                                         'last_message_id' => $inboundMessage->id,
-                                        'last_message_preview' => mb_substr($msgPreview, 0, 50),
+                                        'last_message_preview' => mb_substr(strip_tags(html_entity_decode($msgPreview)), 0, 50),
                                     ]);
 
                                     event(new \App\Events\NewMessage($inboundMessage));
@@ -360,7 +356,7 @@ class MetaWebhookController extends Controller
                                         $conversation->update([
                                             'last_message_at' => now(),
                                             'last_message_id' => $outboundMessage->id,
-                                            'last_message_preview' => \Illuminate\Support\Str::limit($sentText, 50),
+                                            'last_message_preview' => \Illuminate\Support\Str::limit(strip_tags(html_entity_decode($sentText)), 50),
                                         ]);
 
                                         event(new \App\Events\NewMessage($outboundMessage));

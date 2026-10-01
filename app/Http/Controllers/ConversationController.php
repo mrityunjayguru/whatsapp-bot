@@ -15,8 +15,7 @@ class ConversationController extends Controller
             $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
             if ($employee && $employee->role !== 'ADMIN') {
                 $query->where(function($q) use ($employee) {
-                    $q->where('assigned_tenant_user_id', $employee->id)
-                      ->orWhereJsonContains('assignment_history', ['employee_id' => $employee->id]);
+                    $q->where('assigned_tenant_user_id', $employee->id);
                 });
             }
             // If they don't have an employee record, they are the primary company owner (Admin), so they see all.
@@ -68,10 +67,12 @@ class ConversationController extends Controller
         $companyId = auth()->user()->company_id;
         $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
 
+        $isEmployeeNotAssigned = false;
         if (auth()->id() !== 1) {
             $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
             if ($employee && $employee->role !== 'ADMIN') {
                 $isCurrentlyAssigned = ($conversation->assigned_tenant_user_id === $employee->id);
+                $isEmployeeNotAssigned = !$isCurrentlyAssigned;
                 $hasHistory = false;
                 $history = is_array($conversation->assignment_history) ? $conversation->assignment_history : json_decode($conversation->assignment_history, true) ?? [];
                 foreach ($history as $record) {
@@ -95,8 +96,14 @@ class ConversationController extends Controller
         $allTags = \App\Models\Tag::where('tenant_id', $companyId)->get();
         $allContacts = \App\Models\Contact::where('tenant_id', $companyId)->get();
         $allCountries = \App\Models\Country::orderBy('name')->get();
-        $activeEmployees = \App\Models\Employee::where('tenant_id', $companyId)->where('status', 'ACTIVE')->orderBy('display_name')->get();
-        return view('conversations.show', compact('conversation', 'allTags', 'allContacts', 'activeEmployees', 'allCountries'));
+        
+        $activeEmployeesQuery = \App\Models\Employee::where('tenant_id', $companyId)->where('status', 'ACTIVE');
+        if (isset($employee) && $employee && $employee->role !== 'ADMIN') {
+            $activeEmployeesQuery->where('id', $employee->id);
+        }
+        $activeEmployees = $activeEmployeesQuery->orderBy('display_name')->get();
+
+        return view('conversations.show', compact('conversation', 'allTags', 'allContacts', 'activeEmployees', 'allCountries', 'isEmployeeNotAssigned'));
     }
 
     public function sendMessage(Request $request, $id)
@@ -190,7 +197,7 @@ class ConversationController extends Controller
                 $conversation->update([
                     'last_message_at' => now(),
                     'last_message_id' => $lastMsg->id,
-                    'last_message_preview' => \Illuminate\Support\Str::limit($preview, 50),
+                    'last_message_preview' => \Illuminate\Support\Str::limit(strip_tags(html_entity_decode($preview)), 50),
                 ]);
             }
 
@@ -270,7 +277,7 @@ class ConversationController extends Controller
             $conversation->update([
                 'last_message_at' => now(),
                 'last_message_id' => $lastMsg->id,
-                'last_message_preview' => \Illuminate\Support\Str::limit($lastMsg->message_text, 50),
+                'last_message_preview' => \Illuminate\Support\Str::limit(strip_tags(html_entity_decode($lastMsg->message_text)), 50),
             ]);
         }
 
@@ -313,8 +320,8 @@ class ConversationController extends Controller
             'resolved_at' => in_array($request->status, ['RESOLVED', 'CLOSED']) ? now() : null,
         ]);
 
-        if (in_array($request->status, ['RESOLVED', 'CLOSED'])) {
-            $msgText = "ended conversation";
+        if ($request->status === 'CLOSED') {
+            $msgText = "Ended conversation";
             $contact = $conversation->contact;
             
             if ($conversation->channel === 'web_widget') {
@@ -429,7 +436,7 @@ class ConversationController extends Controller
             $msgText = $employee->display_name . " joined conversation";
         } elseif (!$newEmployeeId && $previousEmployeeId) {
             $employee = \App\Models\Employee::find($previousEmployeeId);
-            $msgText = "ended conversation with " . $employee->display_name;
+            $msgText = "Ended conversation with " . $employee->display_name;
             $handedBackToAI = true;
         }
 
@@ -524,7 +531,7 @@ class ConversationController extends Controller
         $conversation->update($updateData);
 
         if ($botWasActive && $conversation->bot_stopped) {
-            $handoffMessage = "A human agent will take over this conversation shortly.";
+            $handoffMessage = "Admin joined conversation";
             $contact = $conversation->contact;
 
             if ($conversation->channel === 'web_widget') {

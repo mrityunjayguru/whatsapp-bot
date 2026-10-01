@@ -55,7 +55,7 @@ class Message extends Model
             return false;
         }
         return str_ends_with($text, 'joined conversation')
-            || str_starts_with($text, 'ended conversation')
+            || stripos($text, 'ended conversation') !== false
             || str_starts_with($text, 'AI Support is now assisting');
     }
 }

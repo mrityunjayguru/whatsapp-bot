@@ -25,33 +25,43 @@
               @endif
 
               <div class="mb-3">
-                <label for="company_name" class="form-label">Company Name</label>
+                <label for="company_name" class="form-label">Company Name <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" name="company_name" id="company_name" autocomplete="organization" placeholder="Company Name" value="{{ old('company_name') }}" required autofocus>
                 <x-input-error :messages="$errors->get('company_name')" class="mt-2 text-danger" />
               </div>
 
               <div class="mb-3">
                 <label for="contact_number" class="form-label">Contact Number</label>
-                <input type="text" class="form-control" name="contact_number" id="contact_number" autocomplete="tel" placeholder="Contact Number" value="{{ old('contact_number') }}" required>
+                <input type="text" class="form-control" name="contact_number" id="contact_number" autocomplete="tel" placeholder="Contact Number" value="{{ old('contact_number') }}">
                 <x-input-error :messages="$errors->get('contact_number')" class="mt-2 text-danger" />
               </div>
 
 
               <div class="mb-3">
-                <label for="email" class="form-label">Email address</label>
+                <label for="email" class="form-label">Email address <span class="text-danger">*</span></label>
                 <input type="email" class="form-control" name="email" id="email" placeholder="Email" value="{{ old('email') }}" required autocomplete="username">
                 <x-input-error :messages="$errors->get('email')" class="mt-2 text-danger" />
               </div>
               
               <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" name="password" id="password" autocomplete="new-password" placeholder="Password" required>
+                <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <input type="password" class="form-control" name="password" id="password" autocomplete="new-password" placeholder="Password" required>
+                  <button class="btn btn-outline-secondary" type="button" id="togglePassword" tabindex="-1">
+                    <i data-lucide="eye" id="eyeIconPassword" style="width:16px;height:16px;"></i>
+                  </button>
+                </div>
                 <x-input-error :messages="$errors->get('password')" class="mt-2 text-danger" />
               </div>
               
               <div class="mb-3">
-                <label for="password_confirmation" class="form-label">Confirm Password</label>
-                <input type="password" class="form-control" name="password_confirmation" id="password_confirmation" autocomplete="new-password" placeholder="Confirm Password" required>
+                <label for="password_confirmation" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <input type="password" class="form-control" name="password_confirmation" id="password_confirmation" autocomplete="new-password" placeholder="Confirm Password" required>
+                  <button class="btn btn-outline-secondary" type="button" id="togglePasswordConfirm" tabindex="-1">
+                    <i data-lucide="eye" id="eyeIconConfirm" style="width:16px;height:16px;"></i>
+                  </button>
+                </div>
                 <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2 text-danger" />
               </div>
               
@@ -67,3 +77,24 @@
   </div>
 </div>
 @endsection
+
+@push('custom-scripts')
+<script>
+    function setupToggle(btnId, inputId, iconId) {
+        var btn = document.getElementById(btnId);
+        var input = document.getElementById(inputId);
+        var icon = document.getElementById(iconId);
+        if (!btn || !input || !icon) return;
+        btn.addEventListener('click', function() {
+            var isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            icon.setAttribute('data-lucide', isPassword ? 'eye-off' : 'eye');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        setupToggle('togglePassword', 'password', 'eyeIconPassword');
+        setupToggle('togglePasswordConfirm', 'password_confirmation', 'eyeIconConfirm');
+    });
+</script>
+@endpush

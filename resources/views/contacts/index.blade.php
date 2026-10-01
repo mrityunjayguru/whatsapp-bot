@@ -84,7 +84,7 @@
                     <input type="checkbox" class="form-check-input" id="checkAll">
                   </div>
                 </th>
-                <th class="pt-0">CONTACT ID</th>
+                <!-- <th class="pt-0">CONTACT ID</th> -->
                 <th class="pt-0">CUSTOM NAME</th>
                 @if(auth()->user()->company?->bot_usage_type !== 'widget')
                 <th class="pt-0">WHATSAPP NAME</th>
@@ -110,7 +110,7 @@
                       <input type="checkbox" class="form-check-input row-checkbox" value="{{ $contact->id }}">
                     </div>
                   </td>
-                  <td>#{{ $contact->id }}</td>
+                  <!-- <td>#{{ $contact->id }}</td> -->
                   <td>
                     <div class="d-flex align-items-center">
                       <div class="me-2">
@@ -155,7 +155,7 @@
                   @if(auth()->user()->company?->bot_usage_type !== 'widget')
                   <td>{{ $contact->whatsapp_phone_number_id ?? '-' }}</td>
                   @endif
-                  <td>{{ $contact->conversations->first() ? $contact->conversations->first()->created_at->format('d M Y, h:i A') : '-' }}</td>
+                  <td>{{ $contact->conversations->first() ? ($contact->conversations->first()->last_message_at ? \Carbon\Carbon::parse($contact->conversations->first()->last_message_at)->format('d M Y, h:i A') : $contact->conversations->first()->created_at->format('d M Y, h:i A')) : '-' }}</td>
                   <td>{{ $contact->created_at->format('d M Y, h:i A') }}</td>
                   <td class="text-center">
                     <a href="{{ route('contacts.show', $contact->id) }}" class="btn btn-sm btn-light btn-icon" title="View">

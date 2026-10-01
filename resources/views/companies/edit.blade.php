@@ -43,8 +43,10 @@
             <div class="mb-3">
                 <label class="form-label">Password <small class="text-muted">(Leave blank to keep current password)</small></label>
                 <div class="input-group">
-                  <input type="password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="Minimum 8 characters">
-                  <span class="input-group-text"><i data-lucide="eye" class="icon-sm"></i></span>
+                  <input type="password" class="form-control @error('password') is-invalid @enderror" name="password" id="password" placeholder="Minimum 8 characters">
+                  <button class="btn btn-outline-secondary" type="button" id="togglePassword" tabindex="-1">
+                    <i data-lucide="eye" id="eyeIconPassword" class="icon-sm"></i>
+                  </button>
                 </div>
                 @error('password') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
             </div>
@@ -52,8 +54,10 @@
             <div class="mb-3">
                 <label class="form-label">Confirm Password</label>
                 <div class="input-group">
-                  <input type="password" class="form-control @error('password_confirmation') is-invalid @enderror" name="password_confirmation" placeholder="Re-enter password">
-                  <span class="input-group-text"><i data-lucide="eye" class="icon-sm"></i></span>
+                  <input type="password" class="form-control @error('password_confirmation') is-invalid @enderror" name="password_confirmation" id="password_confirmation" placeholder="Re-enter password">
+                  <button class="btn btn-outline-secondary" type="button" id="togglePasswordConfirm" tabindex="-1">
+                    <i data-lucide="eye" id="eyeIconConfirm" class="icon-sm"></i>
+                  </button>
                 </div>
             </div>
 
@@ -91,3 +95,24 @@
 </div>
 
 @endsection
+
+@push('custom-scripts')
+<script>
+    function setupToggle(btnId, inputId, iconId) {
+        var btn = document.getElementById(btnId);
+        var input = document.getElementById(inputId);
+        var icon = document.getElementById(iconId);
+        if (!btn || !input || !icon) return;
+        btn.addEventListener('click', function() {
+            var isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            icon.setAttribute('data-lucide', isPassword ? 'eye-off' : 'eye');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        setupToggle('togglePassword', 'password', 'eyeIconPassword');
+        setupToggle('togglePasswordConfirm', 'password_confirmation', 'eyeIconConfirm');
+    });
+</script>
+@endpush

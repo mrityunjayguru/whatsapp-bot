@@ -101,7 +101,7 @@
                     <div class="row mb-3">
                         <div class="col-6">
                             <small class="text-muted d-block mb-1">Assigned</small>
-                            <select name="employee_id" class="form-select form-select-sm" style="max-width:200px;">
+                            <select name="employee_id" class="form-select form-select-sm" style="max-width:200px;" {{ $conversation->status === 'CLOSED' ? 'disabled' : '' }}>
                                 <option value="">Unassigned (bot answers)</option>
                                 @foreach($activeEmployees as $employee)
                                     <option value="{{ $employee->id }}" @selected($conversation->assigned_tenant_user_id == $employee->id)>
@@ -294,22 +294,38 @@
                         // Guarded with function_exists() since this partial
                         // can be included more than once per request.
                         if (!function_exists('trp_render_chat_text')) {
-                            function trp_render_chat_text(string $text): string
+                            function trp_render_chat_text($msg): string
                             {
-                                $escaped = e($text);
-                                $pattern = '/\[([^\[\]]+)\]\((https?:\/\/[^\s()]+)\)|(https?:\/\/[^\s]+)/';
-                                return preg_replace_callback($pattern, function ($m) {
-                                    // Trailing unmatched capture groups are omitted
-                                    // entirely from $m by PCRE (not just empty), so
-                                    // isset() - not just checking for '' - is what
-                                    // keeps this from an undefined-offset warning
-                                    // whichever branch of the pattern matched.
-                                    $mdUrl = isset($m[2]) && $m[2] !== '' ? $m[2] : null;
-                                    $bareUrl = isset($m[3]) && $m[3] !== '' ? $m[3] : null;
-                                    $href = $mdUrl ?? $bareUrl;
-                                    $label = $mdUrl !== null && isset($m[1]) && $m[1] !== '' ? $m[1] : $href;
-                                    return '<a href="' . $href . '" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">' . $label . '</a>';
-                                }, $escaped);
+                                $text = $msg->message_text ?? '';
+                                $isBotMessage = in_array($msg->sender_type, ['BOT', 'SYSTEM']);
+                                
+                                if ($isBotMessage) {
+                                    // Bot messages may contain HTML from the rich text editor.
+                                    if (strpos($text, '<a ') === false && strpos($text, '<A ') === false) {
+                                        $pattern = '/\[([^\[\]]+)\]\((https?:\/\/[^\s()]+)\)|(https?:\/\/[^\s]+)/';
+                                        $replaced = preg_replace_callback($pattern, function ($m) {
+                                            $mdUrl = isset($m[2]) && $m[2] !== '' ? $m[2] : null;
+                                            $bareUrl = isset($m[3]) && $m[3] !== '' ? $m[3] : null;
+                                            $href = $mdUrl ?? $bareUrl;
+                                            $label = $mdUrl !== null && isset($m[1]) && $m[1] !== '' ? $m[1] : $href;
+                                            return '<a href="' . $href . '" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">' . $label . '</a>';
+                                        }, $text);
+                                        return nl2br($replaced);
+                                    }
+                                    return $text;
+                                } else {
+                                    // User/Employee messages: escape HTML
+                                    $escaped = e($text);
+                                    $pattern = '/\[([^\[\]]+)\]\((https?:\/\/[^\s()]+)\)|(https?:\/\/[^\s]+)/';
+                                    $replaced = preg_replace_callback($pattern, function ($m) {
+                                        $mdUrl = isset($m[2]) && $m[2] !== '' ? $m[2] : null;
+                                        $bareUrl = isset($m[3]) && $m[3] !== '' ? $m[3] : null;
+                                        $href = $mdUrl ?? $bareUrl;
+                                        $label = $mdUrl !== null && isset($m[1]) && $m[1] !== '' ? $m[1] : $href;
+                                        return '<a href="' . $href . '" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">' . $label . '</a>';
+                                    }, $escaped);
+                                    return nl2br($replaced);
+                                }
                             }
                         }
                     @endphp
@@ -345,7 +361,7 @@
 
                         @if($isEvent)
                             <div class="text-center my-3" style="clear:both;">
-                                <span class="badge bg-light text-muted border px-3 py-2 rounded-pill">{!! trp_render_chat_text($msg->message_text) !!}</span>
+                                <span class="badge bg-light text-muted border px-3 py-2 rounded-pill">{!! ucfirst(trp_render_chat_text($msg)) !!}</span>
                             </div>
                         @else
                             <div class="chat-bubble {{ $msg->direction === 'INBOUND' ? 'chat-inbound' : 'chat-outbound' }}">
@@ -360,7 +376,7 @@
                                 @endif
                                 
                                 @if(!empty($msg->message_text))
-                                    {!! trp_render_chat_text($msg->message_text) !!}
+                                    {!! trp_render_chat_text($msg) !!}
                                 @endif
                                 <div class="chat-time">
                                     {{ \Carbon\Carbon::parse($msg->sent_at)->format('h:i A') }}
@@ -385,16 +401,20 @@
                     <div id="filePreviewContainer" class="d-flex flex-wrap gap-2 mb-2 d-none p-2 rounded" style="background: #f8f9fa; border: 1px dashed #ced4da;"></div>
 
                     <div class="chat-input-area bg-light position-relative">
+                        @php
+                            $isDisabled = (!$conversation->bot_stopped && is_null($conversation->assigned_tenant_user_id)) || (isset($isEmployeeNotAssigned) && $isEmployeeNotAssigned);
+                        @endphp
+
                         <!-- Emoji Picker Container -->
                         <div id="emojiPickerContainer" class="d-none position-absolute shadow rounded" style="bottom: 110%; left: 0; z-index: 1000;">
                             <emoji-picker></emoji-picker>
                         </div>
                         
-                        <i data-lucide="smile" class="text-muted mx-2 cursor-pointer icon-sm" id="btnEmoji"></i>
+                        <i data-lucide="smile" class="text-muted mx-2 icon-sm {{ $isDisabled ? '' : 'cursor-pointer' }}" id="btnEmoji" style="{{ $isDisabled ? 'pointer-events: none; opacity: 0.5;' : '' }}"></i>
                         
                         <!-- Attachment Dropdown -->
-                        <div class="dropdown dropup">
-                            <div class="cursor-pointer dropdown-toggle d-flex align-items-center justify-content-center" data-bs-toggle="dropdown" aria-expanded="false" style="background: #e3f2fd; width: 28px; height: 28px; border-radius: 50%; margin: 0 5px;">
+                        <div class="dropdown dropup" style="{{ $isDisabled ? 'pointer-events: none; opacity: 0.5;' : '' }}">
+                            <div class="{{ $isDisabled ? '' : 'cursor-pointer' }} dropdown-toggle d-flex align-items-center justify-content-center" data-bs-toggle="dropdown" aria-expanded="false" style="background: #e3f2fd; width: 28px; height: 28px; border-radius: 50%; margin: 0 5px;">
                                 <i data-lucide="paperclip" class="text-primary" style="width: 14px; height: 14px;"></i>
                             </div>
                             <ul class="dropdown-menu mb-2 shadow border-0 rounded-3 p-2" style="min-width: 200px;">
@@ -402,10 +422,6 @@
                                 <li><a class="dropdown-item py-2 rounded d-flex align-items-center" href="#" id="btnAttachDocument"><i data-lucide="file-text" class="icon-sm text-primary me-3"></i> Document</a></li>
                             </ul>
                         </div>
-
-                        @php
-                            $isDisabled = (!$conversation->bot_stopped && is_null($conversation->assigned_tenant_user_id));
-                        @endphp
 
                         <input type="file" id="chatAttachmentInput" class="d-none" multiple {{ $isDisabled ? 'disabled' : '' }}>
 
@@ -1098,14 +1114,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const bubble = document.createElement('div');
         let isEvent = msg.is_conversation_event === true || msg.is_conversation_event === 1;
         const txt = msg.message_text || '';
-        if (txt.endsWith('joined conversation') || txt.startsWith('ended conversation') || txt.startsWith('AI Support is now assisting')) {
+        if (txt.endsWith('joined conversation') || txt.toLowerCase().startsWith('ended conversation') || txt.startsWith('AI Support is now assisting')) {
             isEvent = true;
         }
 
         if (isEvent) {
             bubble.className = 'text-center my-3';
             bubble.style.clear = 'both';
-            bubble.innerHTML = `<span class="badge bg-light text-muted border px-3 py-2 rounded-pill">${msg.message_text}</span>`;
+            let displayText = msg.message_text || '';
+            if (displayText.toLowerCase().startsWith('ended conversation')) {
+                displayText = displayText.charAt(0).toUpperCase() + displayText.slice(1);
+            }
+            bubble.innerHTML = `<span class="badge bg-light text-muted border px-3 py-2 rounded-pill">${displayText}</span>`;
         } else {
             bubble.className = `chat-bubble ${isOutbound ? 'chat-outbound' : 'chat-inbound'}`;
             
@@ -1120,13 +1140,43 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             if (msg.message_text) {
-                var escaped = msg.message_text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                var linkRegex = /\\[([^\\[\\]]+)\\]\\((https?:\\/\\/[^\\s()]+)\\)|(https?:\\/\\/[^\\s]+)/g;
-                contentHTML += escaped.replace(linkRegex, function(match, mdLabel, mdUrl, bareUrl) {
-                    var href = mdUrl || bareUrl;
-                    var label = mdLabel || bareUrl;
-                    return '<a href="' + href + '" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: inherit;">' + label + '</a>';
-                });
+                const isBotMessage = msg.sender_type === 'BOT' || msg.sender_type === 'SYSTEM';
+                var messageText = msg.message_text;
+                if (isBotMessage) {
+                    // Bot messages may contain HTML from the rich text editor.
+                    // ALWAYS run mdRegex to parse explicit [Label](url) syntax (e.g. Attachments from bot_engine.py).
+                    var mdRegex = /\[([^\[\]]+)\]\((https?:\/\/[^\s()]+)\)/g;
+                    messageText = messageText.replace(mdRegex, function(match, mdLabel, mdUrl) {
+                        return '<a href="' + mdUrl + '" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: inherit;">' + mdLabel + '</a>';
+                    });
+                    
+                    // Only run bare URL linkify if no <a> tags already exist (e.g. plain-text FAQ answers).
+                    if (messageText.indexOf('<a ') === -1 && messageText.indexOf('<A ') === -1) {
+                        var bareRegex = /(https?:\/\/[^\s<]+)/g;
+                        contentHTML += messageText.replace(bareRegex, function(match, bareUrl) {
+                            return '<a href="' + bareUrl + '" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: inherit;">' + bareUrl + '</a>';
+                        });
+                    } else {
+                        // Already has HTML links — render as-is
+                        contentHTML += messageText;
+                    }
+                } else {
+                    // User messages: escape HTML to prevent XSS
+                    var escaped = messageText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    
+                    var mdRegex = /\[([^\[\]]+)\]\((https?:\/\/[^\s()]+)\)/g;
+                    var bareRegex = /(https?:\/\/[^\s<]+)/g;
+                    
+                    escaped = escaped.replace(mdRegex, function(match, mdLabel, mdUrl) {
+                        return '<a href="' + mdUrl + '" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: inherit;">' + mdLabel + '</a>';
+                    });
+                    
+                    escaped = escaped.replace(bareRegex, function(match, bareUrl) {
+                        return '<a href="' + bareUrl + '" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: inherit;">' + bareUrl + '</a>';
+                    });
+
+                    contentHTML += escaped.replace(/\n/g, "<br>");
+                }
             }
             
             let errorHtml = '';
@@ -1152,6 +1202,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof lucide !== 'undefined') lucide.createIcons({ root: bubble });
     }
 
+    @if(!isset($isEmployeeNotAssigned) || !$isEmployeeNotAssigned)
     // WebSocket Integration
     if (typeof window.Echo !== 'undefined') {
         console.log('Echo is defined, subscribing to conversation.{{ $conversation->id }}');
@@ -1177,6 +1228,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         console.error('Echo is not defined. WebSockets will not work.');
     }
+    @endif
 });
 </script>
 @endpush

@@ -247,7 +247,7 @@
               </div>
           </div>
           <ul class="list-unstyled p-1">
-            <li>
+            {{-- <li>
               <a href="{{ url('/general/profile') }}" class="dropdown-item py-2 text-body ms-0">
                 <i class="me-2 icon-md" data-lucide="user"></i>
                 <span>Profile</span>
@@ -264,7 +264,7 @@
                 <i class="me-2 icon-md" data-lucide="repeat"></i>
                 <span>Switch User</span>
               </a>
-            </li>
+            </li> --}}
             <li>
               <form method="POST" action="{{ route('logout') }}" class="m-0">
                 @csrf

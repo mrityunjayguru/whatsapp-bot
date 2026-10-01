@@ -22,6 +22,11 @@ class Conversation extends Model
         'first_message_at',
         'resolved_at',
         'bot_stopped',
+        'assignment_history',
+    ];
+
+    protected $casts = [
+        'assignment_history' => 'array',
     ];
 
     public function contact()
@@ -50,6 +55,13 @@ class Conversation extends Model
 
     public function getFormattedIdAttribute()
     {
-        return 'CONV-' . str_pad($this->id, 4, '0', STR_PAD_LEFT);
+        if (!isset($this->attributes['tenant_rank'])) {
+            // Calculate sequence number for this specific company (tenant)
+            $this->attributes['tenant_rank'] = static::where('tenant_id', $this->tenant_id)
+                ->where('id', '<=', $this->id)
+                ->count();
+        }
+        
+        return 'CONV-' . str_pad($this->attributes['tenant_rank'], 4, '0', STR_PAD_LEFT);
     }
 }

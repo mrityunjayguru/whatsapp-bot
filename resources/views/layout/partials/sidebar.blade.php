@@ -12,12 +12,12 @@
   <div class="sidebar-body">
     <ul class="nav" id="sidebarNav">
 
-      <li class="nav-item {{ active_class(['/']) }}">
+      <!-- <li class="nav-item {{ active_class(['/']) }}">
         <a href="{{ url('/') }}" class="nav-link">
           <i class="link-icon" data-lucide="home"></i>
           <span class="link-title">Dashboard</span>
         </a>
-      </li>
+      </li> -->
 
       @auth
         @if(is_null(auth()->user()->company_id))

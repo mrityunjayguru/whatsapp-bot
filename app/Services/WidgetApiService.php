@@ -270,7 +270,7 @@ class WidgetApiService
         // See WidgetController::updateFaq() for why: this field, unlike
         // those two, is never pre-filled in the edit form, so there's no
         // way to tell "left untouched" from "deliberately cleared" here.
-        if ($attachmentUrl) {
+        if ($attachmentUrl !== null) {
             $payload['attachment_url'] = $attachmentUrl;
         }
 

@@ -166,7 +166,16 @@
                   <td>
                     <span class="badge border border-secondary text-secondary rounded-pill">{{ ucfirst(strtolower($conversation->status)) }}</span>
                   </td>
-                  <td>{{ $conversation->last_message_preview ?: '-' }}</td>
+                  <td>
+                      @php
+                          $rawPreview = $conversation->last_message_preview;
+                          $strippedPreview = $rawPreview ? Str::limit(strip_tags(html_entity_decode($rawPreview)), 50) : '';
+                          if (empty(trim($strippedPreview)) && !empty(trim($rawPreview))) {
+                              $strippedPreview = '(Attachment)';
+                          }
+                      @endphp
+                      {{ $strippedPreview ?: '-' }}
+                  </td>
                   <td>{{ $conversation->last_message_at ? \Carbon\Carbon::parse($conversation->last_message_at)->format('d M Y, h:i A') : '-' }}</td>
                   <td>{{ $conversation->unread_count > 0 ? $conversation->unread_count : '--' }}</td>
                   <td class="text-center">

@@ -81,7 +81,7 @@
     </div>
 
     <!-- SECTION 2: TAGGED CONTACTS -->
-    <div class="card">
+    <!-- <div class="card">
       <div class="card-body">
         <h6 class="card-title text-uppercase mb-1 text-muted">SECTION 2: TAGGED CONTACTS</h6>
         <p class="text-muted mb-4 small">Show all contacts to whom this tag has been assigned.</p>
@@ -90,7 +90,6 @@
           <table class="table table-hover mb-0">
             <thead>
               <tr>
-                <th class="pt-0">CONTACT ID</th>
                 <th class="pt-0">CUSTOMER NAME</th>
                 @if(auth()->user()->company?->bot_usage_type !== 'widget')
                 <th class="pt-0">WHATSAPP PROFILE NAME</th>
@@ -106,7 +105,6 @@
             <tbody>
               @forelse($contacts as $contact)
                 <tr>
-                  <td>#CUS-{{ $contact->id }}</td>
                   <td>
                     <div class="d-flex align-items-center">
                       <img src="{{ url('https://ui-avatars.com/api/?name=' . urlencode($contact->custom_name ?: $contact->whatsapp_profile_name ?: 'User') . '&background=random&rounded=true') }}" alt="avatar" class="wd-30 ht-30 rounded-circle me-2">
@@ -170,7 +168,7 @@
         </div>
         
       </div>
-    </div>
+    </div> -->
   </div>
 </div>
 

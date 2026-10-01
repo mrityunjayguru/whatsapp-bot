@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('widgets:check-expiry')->daily();
+Schedule::command('conversations:close-idle')->everyMinute();
