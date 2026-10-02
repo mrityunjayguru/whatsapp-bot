@@ -69,13 +69,31 @@ class WidgetMessageController extends Controller
         return $widget->company;
     }
 
-    private function findConversation(string $token, string $sessionId): ?Conversation
+    private function findConversation(string $token, string $sessionId, ?string $ip = null): ?Conversation
     {
+        $company = $this->checkCompany($token);
+        if (!$company) return null;
+
         $syntheticId = 'web:' . $token . ':' . $sessionId;
-        $contact = Contact::where(function($q) use ($syntheticId) {
-            $q->where('phone_number', $syntheticId)
-              ->orWhere('whatsapp_profile_name', $syntheticId);
-        })->first();
+        
+        $contact = Contact::where('tenant_id', $company->id)
+            ->where(function($q) use ($syntheticId, $ip) {
+                if ($ip) {
+                    $q->where('ip_address', $ip);
+                } else {
+                    $q->where('phone_number', $syntheticId)
+                      ->orWhere('whatsapp_profile_name', $syntheticId);
+                }
+            })->first();
+            
+        if (!$contact && $ip) {
+            $contact = Contact::where('tenant_id', $company->id)
+                ->where(function($q) use ($syntheticId) {
+                    $q->where('phone_number', $syntheticId)
+                      ->orWhere('whatsapp_profile_name', $syntheticId);
+                })->first();
+        }
+
         if (!$contact) {
             return null;
         }
@@ -103,7 +121,7 @@ class WidgetMessageController extends Controller
             return response()->json(['error' => 'Unknown or inactive widget.'], 404);
         }
 
-        $conversation = $this->findConversation($validated['token'], $validated['session_id']);
+        $conversation = $this->findConversation($validated['token'], $validated['session_id'], $request->ip());
 
         if (!$conversation || $conversation->status === 'CLOSED') {
             // Nothing to restore, or the last conversation was formally
@@ -175,7 +193,7 @@ class WidgetMessageController extends Controller
             return response()->json(['error' => 'Unknown or inactive widget.'], 404);
         }
 
-        $conversation = $this->findConversation($validated['token'], $validated['session_id']);
+        $conversation = $this->findConversation($validated['token'], $validated['session_id'], $request->ip());
 
         if ($conversation) {
             $conversation->update(['status' => 'CLOSED', 'resolved_at' => now()]);
@@ -208,12 +226,25 @@ class WidgetMessageController extends Controller
         // id from the token + their client-generated session_id, the
         // same way MetaWebhookController looks contacts up by phone_number.
         $syntheticId = 'web:' . $validated['token'] . ':' . $validated['session_id'];
+        $ip = $request->ip();
         
         $contact = Contact::where('tenant_id', $company->id)
-            ->where(function ($query) use ($syntheticId) {
-                $query->where('phone_number', $syntheticId)
-                      ->orWhere('whatsapp_profile_name', $syntheticId);
+            ->where(function ($query) use ($syntheticId, $ip) {
+                if ($ip) {
+                    $query->where('ip_address', $ip);
+                } else {
+                    $query->where('phone_number', $syntheticId)
+                          ->orWhere('whatsapp_profile_name', $syntheticId);
+                }
             })->first();
+            
+        if (!$contact && $ip) {
+            $contact = Contact::where('tenant_id', $company->id)
+                ->where(function ($query) use ($syntheticId) {
+                    $query->where('phone_number', $syntheticId)
+                          ->orWhere('whatsapp_profile_name', $syntheticId);
+                })->first();
+        }
 
         if (!$contact) {
             $contact = Contact::create([
@@ -221,7 +252,10 @@ class WidgetMessageController extends Controller
                 'whatsapp_profile_name' => $syntheticId,
                 'tenant_id' => $company->id,
                 'custom_name' => 'Website visitor',
+                'ip_address' => $ip,
             ]);
+        } elseif (!$contact->ip_address && $ip) {
+            $contact->update(['ip_address' => $ip]);
         }
 
         // One Conversation per (widget, visitor) - reopens if it was
@@ -230,7 +264,7 @@ class WidgetMessageController extends Controller
             return response()->json(['error' => 'Unknown or inactive widget.'], 404);
         }
 
-        $conversation = $this->findConversation($validated['token'], $validated['session_id']);
+        $conversation = $this->findConversation($validated['token'], $validated['session_id'], $request->ip());
 
         if (!$conversation || $conversation->status === 'CLOSED') {
             $conversation = Conversation::create([
@@ -376,7 +410,7 @@ class WidgetMessageController extends Controller
             return response()->json(['error' => 'Unknown or inactive widget.'], 404);
         }
 
-        $conversation = $this->findConversation($validated['token'], $validated['session_id']);
+        $conversation = $this->findConversation($validated['token'], $validated['session_id'], $request->ip());
 
         if (!$conversation) {
             return response()->json(['error' => 'No conversation found for this session.'], 404);
