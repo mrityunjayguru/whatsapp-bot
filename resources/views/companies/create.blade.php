@@ -34,7 +34,7 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Contact Number <span class="text-danger">*</span></label>
+                <label class="form-label">Contact Number</label>
                 <input type="text" class="form-control @error('contact_number') is-invalid @enderror" name="contact_number" value="{{ old('contact_number') }}" placeholder="Enter contact number">
                 @error('contact_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>

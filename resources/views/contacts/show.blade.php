@@ -146,7 +146,16 @@
               </tr>
             </thead>
             <tbody>
-              @forelse($contact->conversations as $conv)
+              @php
+                  $currentEmployeeId = null;
+                  if (!$isCompanyAdmin && auth()->id() !== 1) {
+                      $emp = \App\Models\Employee::where('email', auth()->user()->email)->first();
+                      if ($emp) {
+                          $currentEmployeeId = $emp->id;
+                      }
+                  }
+                @endphp
+                @forelse($contact->conversations as $conv)
                 <tr>
                   <td class="fw-bold text-dark">#{{ $conv->formatted_id }}</td>
                   <td>
@@ -272,7 +281,16 @@
               </tr>
             </thead>
             <tbody>
-              @forelse($contact->conversations as $conv)
+              @php
+                  $currentEmployeeId = null;
+                  if (!$isCompanyAdmin && auth()->id() !== 1) {
+                      $emp = \App\Models\Employee::where('email', auth()->user()->email)->first();
+                      if ($emp) {
+                          $currentEmployeeId = $emp->id;
+                      }
+                  }
+                @endphp
+                @forelse($contact->conversations as $conv)
                 <tr>
                   <td class="fw-bold text-dark">#{{ $conv->formatted_id }}</td>
                   <td>{{ $conv->title ?? 'No Title' }}</td>

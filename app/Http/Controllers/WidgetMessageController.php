@@ -438,14 +438,14 @@ class WidgetMessageController extends Controller
         // 2. Same bot-pause rule as send() - a human already handling
         // this conversation shouldn't have the bot jump in just because
         // an old option list is still on screen and got tapped.
-        if ($conversation->assigned_tenant_user_id) {
+        if ($conversation->assigned_tenant_user_id || $conversation->bot_stopped) {
             $conversation->update([
                 'unread_count' => $conversation->unread_count + 1,
                 'last_message_at' => now(),
                 'last_message_id' => $inbound->id,
                 'last_message_preview' => Str::limit(strip_tags(html_entity_decode($validated['title'])), 50),
             ]);
-            return response()->json(['reply' => null, 'human_assigned' => true, 'conversation_id' => $conversation->id]);
+            return response()->json(['reply' => null, 'human_assigned' => $conversation->assigned_tenant_user_id ? true : false, 'conversation_id' => $conversation->id]);
         }
 
         // 3. Get that exact FAQ's answer and save + broadcast it too.

@@ -15,7 +15,9 @@ class ConversationController extends Controller
             $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
             if ($employee && $employee->role !== 'ADMIN') {
                 $query->where(function($q) use ($employee) {
-                    $q->where('assigned_tenant_user_id', $employee->id);
+                    $q->where('assigned_tenant_user_id', $employee->id)
+                      ->orWhereJsonContains('assignment_history', ['employee_id' => $employee->id])
+                      ->orWhereJsonContains('assignment_history', ['employee_id' => (string)$employee->id]);
                 });
             }
             // If they don't have an employee record, they are the primary company owner (Admin), so they see all.
