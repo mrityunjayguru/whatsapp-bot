@@ -34,6 +34,12 @@
               <span class="link-title">Widgets</span>
             </a>
           </li>
+          <li class="nav-item {{ active_class(['whatsapp-numbers', 'whatsapp-numbers/*']) }}">
+            <a href="{{ route('whatsapp-numbers.index') }}" class="nav-link">
+              <i class="link-icon" data-lucide="phone"></i>
+              <span class="link-title">WhatsApp Numbers</span>
+            </a>
+          </li>
         @else
           {{-- Company Menu --}}
           @php
@@ -91,6 +97,14 @@
             <a href="{{ route('widgets.index') }}" class="nav-link">
               <i class="link-icon" data-lucide="users"></i>
               <span class="link-title">Widget</span>
+            </a>
+          </li>
+          @endif
+          @if(auth()->user()->company?->bot_usage_type === 'whatsapp' || empty(auth()->user()->company?->bot_usage_type))
+          <li class="nav-item {{ active_class(['whatsapp-numbers', 'whatsapp-numbers/*']) }}">
+            <a href="{{ route('whatsapp-numbers.index') }}" class="nav-link">
+              <i class="link-icon" data-lucide="phone"></i>
+              <span class="link-title">WhatsApp Numbers</span>
             </a>
           </li>
           @endif

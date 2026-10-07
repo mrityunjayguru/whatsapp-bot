@@ -152,19 +152,52 @@ class MetaWebhookController extends Controller
                                 continue;
                             }
 
-                            // Existing Tenant Resolution Logic
-                            // Identifies which company (tenant) owns this contact. 
-                            // Resolved automatically from the connected WhatsApp Business number.
-                            $tenantId = 1001;
-                            
-                            $company = null;
-                            if ($connectedNumber) {
-                                // Try to find by contact_number matching display_phone_number
-                                $company = \App\Models\Company::where('contact_number', $connectedNumber)->first();
+                            // Tenant Resolution - resolved by Meta's own
+                            // phone_number_id (connectedNumberId, already
+                            // present in every webhook's metadata) against
+                            // the whatsapp_numbers table (see
+                            // 2026_10_01_000001_create_whatsapp_numbers_table.php),
+                            // NOT the old fuzzy Company::contact_number
+                            // match + "fall back to whichever company was
+                            // created last" guess - that could silently
+                            // attribute one client's messages to a totally
+                            // different client. A number registered there
+                            // is this install's real multi-tenant path:
+                            // its own company, its own Meta credentials
+                            // (WhatsAppService::forNumber() below), and its
+                            // own FAQ store/bot persona on the Python side
+                            // (whatsapp_routes.py) - completely isolated
+                            // from every other registered number.
+                            $tenantId = 0;
+                            $whatsappNumber = null;
+
+                            if ($connectedNumberId) {
+                                $whatsappNumber = \App\Models\WhatsappNumber::where('phone_number_id', $connectedNumberId)->first();
                             }
-                            if (!$company) {
-                                // Fallback to the latest company
-                                $company = \App\Models\Company::latest('id')->first();
+
+                            if ($whatsappNumber) {
+                                // Registered multi-tenant number - always
+                                // trust its own company, even if currently
+                                // inactive (handled below: the message is
+                                // still saved/shown in the CRM, just never
+                                // auto-replied to - same contract as
+                                // WidgetMessageController::checkCompany()).
+                                $company = $whatsappNumber->company;
+                            } else {
+                                // No multi-tenant registration for this
+                                // number - legacy behaviour, completely
+                                // unchanged: this is Track Route Pro's own
+                                // single global number (config/services.php's
+                                // 'whatsapp' block), so keep the old
+                                // best-effort company lookup exactly as it
+                                // always was.
+                                $company = null;
+                                if ($connectedNumber) {
+                                    $company = \App\Models\Company::where('contact_number', $connectedNumber)->first();
+                                }
+                                if (!$company) {
+                                    $company = \App\Models\Company::latest('id')->first();
+                                }
                             }
                             if ($company) {
                                 $tenantId = $company->id;
@@ -208,8 +241,20 @@ class MetaWebhookController extends Controller
                                     $mediaUrl = null;
                                     $fileName = null;
 
+                                    // Scoped to the registered number's own
+                                    // Meta credentials when there is one,
+                                    // otherwise the legacy global .env
+                                    // credentials - same fallback as the
+                                    // tenant resolution above. Computed
+                                    // once here and reused below for every
+                                    // outbound send too, so a client's
+                                    // media download and reply always use
+                                    // the SAME access token.
+                                    $whatsappService = $whatsappNumber
+                                        ? \App\Services\WhatsAppService::forNumber($whatsappNumber)
+                                        : app(\App\Services\WhatsAppService::class);
+
                                     if ($isMedia && $mediaId) {
-                                        $whatsappService = app(\App\Services\WhatsAppService::class);
                                         $mediaData = $whatsappService->downloadMedia($mediaId);
                                         if ($mediaData && $mediaData['binary']) {
                                             if ($msgType === 'document') {
@@ -261,15 +306,43 @@ class MetaWebhookController extends Controller
                                     // (see WidgetMessageController::send()).
                                     // Previously the bot replied to EVERY
                                     // message regardless of assignment.
-                                    if (!$conversation->assigned_tenant_user_id && !$conversation->bot_stopped) {
+                                    //
+                                    // A registered-but-inactive number
+                                    // (switched off, or outside its
+                                    // valid_from/expiry_date window - see
+                                    // WhatsappNumber::isCurrentlyActive())
+                                    // ALSO stays silent here, same contract
+                                    // as WidgetMessageController::checkCompany():
+                                    // the inbound message is still saved and
+                                    // shown in the CRM above, it just never
+                                    // gets an automatic reply.
+                                    $numberIsActive = !$whatsappNumber || $whatsappNumber->isCurrentlyActive();
+                                    if ($numberIsActive && !$conversation->assigned_tenant_user_id && !$conversation->bot_stopped) {
                                     // 1. Fetch the bot's response - either the
                                     // exact answer for a tapped option, or a
                                     // normal text-matched reply (which may
                                     // itself come back with `options` when
-                                    // several FAQs match closely).
+                                    // several FAQs match closely). A
+                                    // registered multi-tenant number gets
+                                    // its OWN FAQ knowledge base/bot persona
+                                    // (whatsapp_routes.py, scoped by
+                                    // phone_number_id) instead of the one
+                                    // global bot shared by every unregistered
+                                    // number.
                                     $chatbotService = app(\App\Services\ChatbotService::class);
 
-                                    if ($tappedOptionId !== null) {
+                                    $botResponse = null;
+
+                                    if ($whatsappNumber) {
+                                        if ($tappedOptionId !== null) {
+                                            $replyText = $chatbotService->selectFaqOptionForNumber($whatsappNumber->phone_number_id, $tappedOptionId);
+                                            $replyOptions = null;
+                                        } else {
+                                            $botResponse = $chatbotService->getFullReplyForNumber($whatsappNumber->phone_number_id, $textMessage, $fromPhone);
+                                            $replyText = $botResponse['reply'] ?? null;
+                                            $replyOptions = $botResponse['options'] ?? null;
+                                        }
+                                    } elseif ($tappedOptionId !== null) {
                                         $replyText = $chatbotService->selectFaqOption($tappedOptionId);
                                         $replyOptions = null;
                                     } else {
@@ -279,23 +352,27 @@ class MetaWebhookController extends Controller
                                         );
                                         $replyText = $botResponse['reply'] ?? null;
                                         $replyOptions = $botResponse['options'] ?? null;
+                                    }
 
-                                        // The visitor explicitly asked for a
-                                        // human (bot_engine.py's human_handoff
-                                        // intent, keyword-matched on "agent",
-                                        // "human", etc. - not just "bot
-                                        // couldn't answer") - fire the same
-                                        // instant, app-wide alert the widget
-                                        // side already uses, so an agent sees
-                                        // this immediately wherever they are
-                                        // in the CRM.
-                                        if (($botResponse['intent'] ?? null) === 'human_handoff') {
-                                            event(new \App\Events\HumanSupportRequested(
-                                                $conversation->id,
-                                                $conversation->company->name ?? 'WhatsApp',
-                                                $textMessage,
-                                            ));
-                                        }
+                                    // The visitor explicitly asked for a
+                                    // human (bot_engine.py's human_handoff
+                                    // intent, keyword-matched on "agent",
+                                    // "human", etc. - not just "bot couldn't
+                                    // answer") - fire the same instant,
+                                    // app-wide alert the widget side already
+                                    // uses, so an agent sees this
+                                    // immediately wherever they are in the
+                                    // CRM. Checked once here for BOTH the
+                                    // per-number and legacy global bot paths
+                                    // (a tapped-option reply never sets
+                                    // $botResponse at all, so this is a
+                                    // no-op for that case, same as before).
+                                    if (($botResponse['intent'] ?? null) === 'human_handoff') {
+                                        event(new \App\Events\HumanSupportRequested(
+                                            $conversation->id,
+                                            $conversation->company->name ?? 'WhatsApp',
+                                            $textMessage,
+                                        ));
                                     }
 
                                     // 2. Send the reply - as a tappable List
@@ -318,12 +395,20 @@ class MetaWebhookController extends Controller
                                             ],
                                             $replyOptions
                                         );
-                                        $whatsappResponse = app(\App\Services\WhatsAppService::class)
-                                            ->sendInteractiveList($fromPhone, $sentText, $rows);
+                                        // Same $whatsappService resolved
+                                        // above for media download - this
+                                        // client's own number's credentials
+                                        // when registered, otherwise the
+                                        // legacy global one. Never
+                                        // app(WhatsAppService::class)
+                                        // directly here any more - that
+                                        // would always send as TRP's own
+                                        // number regardless of which
+                                        // client's conversation this is.
+                                        $whatsappResponse = $whatsappService->sendInteractiveList($fromPhone, $sentText, $rows);
                                     } elseif (!empty($replyText)) {
                                         $sentText = $replyText;
-                                        $whatsappResponse = app(\App\Services\WhatsAppService::class)
-                                            ->sendMessage($fromPhone, $replyText);
+                                        $whatsappResponse = $whatsappService->sendMessage($fromPhone, $replyText);
                                     }
 
                                     if ($whatsappResponse !== null) {

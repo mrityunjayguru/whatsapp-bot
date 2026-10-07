@@ -10,12 +10,36 @@ class WhatsAppService
     protected string $phoneNumberId;
     protected string $baseUrl;
 
-    public function __construct()
+    /**
+     * Defaults to the single global number in config/services.php's
+     * 'whatsapp' block (Track Route Pro's own number, from .env) when no
+     * arguments are given, so every existing `app(WhatsAppService::class)`
+     * call and dependency-injected usage keeps working completely
+     * unchanged. Pass explicit credentials (or use forNumber() below) to
+     * send as a DIFFERENT client's WhatsApp number instead - this is
+     * what makes the bot sellable to more than one client: previously
+     * this service could only ever send as the one number baked into
+     * .env, no matter which company a conversation belonged to.
+     */
+    public function __construct(?string $accessToken = null, ?string $phoneNumberId = null, ?string $graphVersion = null)
     {
-        $this->accessToken = config('services.whatsapp.access_token');
-        $this->phoneNumberId = config('services.whatsapp.phone_number_id');
-        $version = config('services.whatsapp.graph_version', 'v23.0');
+        $this->accessToken = $accessToken ?? (string) config('services.whatsapp.access_token');
+        $this->phoneNumberId = $phoneNumberId ?? (string) config('services.whatsapp.phone_number_id');
+        $version = $graphVersion ?: config('services.whatsapp.graph_version', 'v23.0');
         $this->baseUrl = "https://graph.facebook.com/{$version}/{$this->phoneNumberId}";
+    }
+
+    /**
+     * Build a WhatsAppService that sends as ONE SPECIFIC client's
+     * WhatsApp number, using the credentials stored on its
+     * App\Models\WhatsappNumber row - this is what
+     * MetaWebhookController::handle() uses instead of the plain
+     * `app(WhatsAppService::class)` default, now that more than one
+     * number can be registered.
+     */
+    public static function forNumber(\App\Models\WhatsappNumber $number): self
+    {
+        return new self($number->access_token, $number->phone_number_id, $number->graph_version);
     }
 
     public function sendMessage(string $to, string $message)

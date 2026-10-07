@@ -158,4 +158,103 @@ class ChatbotService
         }
     }
 
+    // -------------------------------------------------------------------
+    // Per-WhatsApp-number variants - call Python's /whatsapp/numbers/{id}/
+    // bot/* endpoints (whatsapp_routes.py) instead of the global
+    // /bot/reply, so each registered number gets replies from its OWN
+    // FAQ knowledge base and bot persona (company name/links/products/
+    // templates), never Track Route Pro's shared one. MetaWebhookController
+    // uses these once it has resolved which WhatsappNumber an inbound
+    // webhook belongs to; getReply()/getFullReply()/selectFaqOption()
+    // above are left completely untouched for any caller that still
+    // wants the old single shared bot.
+    // -------------------------------------------------------------------
+
+    public function getFullReplyForNumber(string $phoneNumberId, string $message, ?string $phone = null, ?string $conversationId = null): ?array
+    {
+        $baseUrl = rtrim((string) config('services.chatbot.url', env('CHATBOAT_URL')), '/');
+        $url = "{$baseUrl}/whatsapp/numbers/" . urlencode($phoneNumberId) . "/bot/reply";
+
+        $payload = [
+            'phone_number' => $phone ?? '',
+            'message' => $message,
+            'conversation_id' => $conversationId,
+        ];
+
+        try {
+            $response = Http::withHeaders([
+                'ngrok-skip-browser-warning' => 'true',
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ])
+            ->timeout((int) config('services.chatboat.timeout', 15))
+            ->post($url, $payload);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            // 403 means the Python side's own is_active/valid_from/
+            // expiry_date check refused (see whatsapp_routes.py's
+            // _require_active) - not an error worth logging loudly,
+            // MetaWebhookController should already have checked the same
+            // thing on the Laravel side before ever calling this.
+            if ($response->status() !== 403) {
+                Log::error('Chatbot API (per-number full reply) returned error', [
+                    'phone_number_id' => $phoneNumberId,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            Log::error('Chatbot service (per-number full reply) connection failure', [
+                'phone_number_id' => $phoneNumberId,
+                'url' => $url,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    public function selectFaqOptionForNumber(string $phoneNumberId, string $sourceId): ?string
+    {
+        $baseUrl = rtrim((string) config('services.chatbot.url', env('CHATBOAT_URL')), '/');
+        $url = "{$baseUrl}/whatsapp/numbers/" . urlencode($phoneNumberId) . "/bot/faq/select";
+
+        try {
+            $response = Http::withHeaders([
+                'ngrok-skip-browser-warning' => 'true',
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ])
+            ->timeout((int) config('services.chatboat.timeout', 15))
+            ->post($url, ['source_id' => $sourceId]);
+
+            if ($response->successful()) {
+                return $response->json('reply');
+            }
+
+            if ($response->status() !== 403) {
+                Log::error('Chatbot API (per-number select option) returned error', [
+                    'phone_number_id' => $phoneNumberId,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            Log::error('Chatbot service (per-number select option) connection failure', [
+                'phone_number_id' => $phoneNumberId,
+                'url' => $url,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
 }

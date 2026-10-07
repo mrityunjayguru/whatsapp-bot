@@ -82,4 +82,28 @@ Route::get('widget/{token}/faqs/{sourceId}/edit', [App\Http\Controllers\WidgetCo
 Route::put('widget/{token}/faqs/{sourceId}', [App\Http\Controllers\WidgetController::class, 'updateFaq'])->middleware(['auth', 'verified'])->name('widgets.faqs.update');
 Route::delete('widget/{token}/faqs/{sourceId}', [App\Http\Controllers\WidgetController::class, 'destroyFaq'])->middleware(['auth', 'verified'])->name('widgets.faqs.destroy');
 
+// WhatsApp numbers - CRM management for client WhatsApp Business numbers,
+// mirroring the widget routes above (see WhatsappNumberController).
+Route::get('whatsapp-numbers', [App\Http\Controllers\WhatsappNumberController::class, 'index'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.index');
+Route::get('whatsapp-numbers/create', [App\Http\Controllers\WhatsappNumberController::class, 'create'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.create');
+Route::post('whatsapp-numbers', [App\Http\Controllers\WhatsappNumberController::class, 'store'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.store');
+Route::get('whatsapp-numbers/{phoneNumberId}/edit', [App\Http\Controllers\WhatsappNumberController::class, 'edit'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.edit');
+Route::put('whatsapp-numbers/{phoneNumberId}/config', [App\Http\Controllers\WhatsappNumberController::class, 'updateConfig'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.config.update');
+Route::delete('whatsapp-numbers/{phoneNumberId}', [App\Http\Controllers\WhatsappNumberController::class, 'destroy'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.destroy');
+Route::get('whatsapp-numbers/{phoneNumberId}/bot-config', [App\Http\Controllers\WhatsappNumberController::class, 'editBotConfig'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.bot-config.edit');
+Route::put('whatsapp-numbers/{phoneNumberId}/bot-config', [App\Http\Controllers\WhatsappNumberController::class, 'updateBotConfig'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.bot-config.update');
+Route::post('whatsapp-numbers/{phoneNumberId}/faqs', [App\Http\Controllers\WhatsappNumberController::class, 'storeFaq'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.faqs.store');
+Route::get('whatsapp-numbers/{phoneNumberId}/faqs/{sourceId}/edit', [App\Http\Controllers\WhatsappNumberController::class, 'editFaq'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.faqs.edit');
+Route::put('whatsapp-numbers/{phoneNumberId}/faqs/{sourceId}', [App\Http\Controllers\WhatsappNumberController::class, 'updateFaq'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.faqs.update');
+Route::delete('whatsapp-numbers/{phoneNumberId}/faqs/{sourceId}', [App\Http\Controllers\WhatsappNumberController::class, 'destroyFaq'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.faqs.destroy');
 
+Route::get('/debug-tags', function() { return response()->json(['user' => auth()->user(), 'company_id' => auth()->user() ? auth()->user()->company_id : 'guest', 'tags' => \App\Models\Tag::all()]); });
+
+Route::get('/fix-tags', function() {
+    $companyId = auth()->user()->company_id;
+    if ($companyId) {
+        \Illuminate\Support\Facades\DB::statement("UPDATE tags SET tenant_id = $companyId WHERE tenant_id = 1001 OR tenant_id IS NULL");
+        return 'Tags fixed for your company!';
+    }
+    return 'Not logged in!';
+});

@@ -26,6 +26,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('widgets', 'company_id')) {
+            // Already migrated in a previous run or by another migration
+            return;
+        }
+
         Schema::table('widgets', function (Blueprint $table) {
             $table->foreignId('company_id')->nullable()->after('id')->constrained()->nullOnDelete();
             $table->string('token')->nullable()->unique()->after('company_id');

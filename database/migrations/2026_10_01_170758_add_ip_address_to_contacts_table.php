@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('contacts', 'ip_address')) {
+            return;
+        }
+
         Schema::table('contacts', function (Blueprint $table) {
             $table->string('ip_address')->nullable()->after('pincode');
         });
