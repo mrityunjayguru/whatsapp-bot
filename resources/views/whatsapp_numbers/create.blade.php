@@ -48,8 +48,8 @@
 
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label class="form-label">Phone Number ID <span class="text-danger">*</span></label>
-              <input type="text" class="form-control @error('phone_number_id') is-invalid @enderror" name="phone_number_id" placeholder="e.g. 111222333444555" required value="{{ old('phone_number_id') }}">
+              <label class="form-label">Phone Number ID <span class="text-muted small">(optional)</span></label>
+              <input type="text" class="form-control @error('phone_number_id') is-invalid @enderror" name="phone_number_id" placeholder="e.g. 111222333444555" value="{{ old('phone_number_id') }}">
               <small class="text-muted">Meta's own id for this number - from WhatsApp Business Platform &gt; API Setup, and present in every inbound webhook's metadata.</small>
               @error('phone_number_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
@@ -65,8 +65,8 @@
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Access Token <span class="text-danger">*</span></label>
-            <textarea class="form-control font-monospace small" name="access_token" rows="3" required placeholder="Permanent or system-user access token from Meta">{{ old('access_token') }}</textarea>
+            <label class="form-label">Access Token <span class="text-muted small">(optional)</span></label>
+            <textarea class="form-control font-monospace small" name="access_token" rows="3" placeholder="Permanent or system-user access token from Meta">{{ old('access_token') }}</textarea>
             <small class="text-muted">Stored encrypted. Used only to send WhatsApp messages as THIS number - never shared with the Python bot service.</small>
             @error('access_token') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
           </div>

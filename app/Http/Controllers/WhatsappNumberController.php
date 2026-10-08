@@ -43,31 +43,33 @@ class WhatsappNumberController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
-            'phone_number_id' => 'required|string|max:64|unique:whatsapp_numbers,phone_number_id',
+            'phone_number_id' => 'nullable|string|max:64|unique:whatsapp_numbers,phone_number_id',
             'display_number' => 'nullable|string|max:40',
             'waba_id' => 'nullable|string|max:64',
-            'access_token' => 'required|string',
+            'access_token' => 'nullable|string',
             'graph_version' => 'nullable|string|max:20',
             'label' => 'nullable|string|max:255',
             'valid_from' => 'nullable|date',
             'expiry_date' => 'nullable|date|after_or_equal:valid_from',
         ]);
 
+        $phoneNumberId = !empty($validated['phone_number_id']) ? $validated['phone_number_id'] : (string) (time() . rand(100, 999));
+
         // Register this number's own FAQ store + bot persona on the
         // Python side FIRST - if the bot service is down, nothing gets
         // created on either side (same ordering as WidgetController::store()).
-        $registered = $api->createNumber($validated['phone_number_id'], $validated['display_number'] ?? null, $validated['label'] ?? null);
+        $registered = $api->createNumber($phoneNumberId, $validated['display_number'] ?? null, $validated['label'] ?? null);
         if (!$registered) {
             return back()->withInput()->with('error', 'Could not register this number with the bot service - check it is running.');
         }
 
         $number = WhatsappNumber::create([
             'company_id' => $validated['company_id'],
-            'phone_number_id' => $validated['phone_number_id'],
+            'phone_number_id' => $phoneNumberId,
             'waba_id' => $validated['waba_id'] ?? null,
             'display_number' => $validated['display_number'] ?? null,
             'label' => $validated['label'] ?? null,
-            'access_token' => $validated['access_token'],
+            'access_token' => $validated['access_token'] ?? null,
             'graph_version' => $validated['graph_version'] ?: 'v23.0',
             'is_active' => true,
             'valid_from' => $validated['valid_from'] ?? null,
@@ -92,8 +94,9 @@ class WhatsappNumberController extends Controller
         $faqs = $api->listFaqSources($phoneNumberId);
         $isCompanyUser = !is_null(auth()->user()->company_id);
         $companies = $isCompanyUser ? collect() : Company::all();
+        $botConfig = $api->getBotConfig($phoneNumberId);
 
-        return view('whatsapp_numbers.edit', compact('number', 'faqs', 'companies', 'isCompanyUser'));
+        return view('whatsapp_numbers.edit', compact('number', 'faqs', 'companies', 'isCompanyUser', 'botConfig'));
     }
 
     public function updateConfig(Request $request, string $phoneNumberId, WhatsappNumberApiService $api)
@@ -162,6 +165,29 @@ class WhatsappNumberController extends Controller
     }
 
     // -- bot persona (company name/links/products/canned replies) --------
+
+    public function updateMessages(Request $request, string $phoneNumberId, WhatsappNumberApiService $api)
+    {
+        $validated = $request->validate([
+            'greeting' => 'required|string',
+            'fallback' => 'required|string',
+        ]);
+
+        $config = $api->getBotConfig($phoneNumberId);
+        if (!$config) {
+            return back()->with('error', 'Could not load bot config.');
+        }
+
+        $config['templates']['greeting'] = $validated['greeting'];
+        $config['templates']['fallback'] = $validated['fallback'];
+
+        $result = $api->updateBotConfig($phoneNumberId, $config);
+        if (!$result) {
+            return back()->withInput()->with('error', 'Could not save messages - check the bot service is running.');
+        }
+
+        return back()->with('success', 'Greeting and Fallback messages updated successfully.');
+    }
 
     public function editBotConfig(string $phoneNumberId, WhatsappNumberApiService $api)
     {

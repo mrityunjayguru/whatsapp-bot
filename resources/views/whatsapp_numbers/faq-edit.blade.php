@@ -41,7 +41,7 @@
           </div>
           <div class="mb-3">
             <label class="form-label">Answer <span class="text-danger">*</span></label>
-            <textarea class="form-control" name="answer" rows="6" required>{{ old('answer', $faq['text'] ?? '') }}</textarea>
+            <textarea class="form-control" name="answer" id="answer" rows="6" required>{{ old('answer', $faq['text'] ?? '') }}</textarea>
             @if(empty($faq['text']))
               <div class="form-text text-danger">Could not load the existing answer - check the bot service is running before saving, or you'll overwrite it with an empty one.</div>
             @endif
@@ -62,18 +62,7 @@
               <input type="text" class="form-control" name="keywords" value="{{ old('keywords', isset($faq['keywords']) && is_array($faq['keywords']) ? implode(', ', $faq['keywords']) : '') }}">
             </div>
           </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label"><i data-lucide="link" class="icon-sm text-muted me-1"></i> Hyperlink URL</label>
-              <input type="url" class="form-control" name="url" value="{{ old('url', $faq['source_url'] ?? '') }}" placeholder="https://example.com/page">
-              <div class="form-text">Paste a link here to turn it into a clickable hyperlink in this FAQ's answer.</div>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Link Text <span class="text-muted small">(shown to visitors)</span></label>
-              <input type="text" class="form-control" name="link_text" value="{{ old('link_text', $faq['link_text'] ?? '') }}" placeholder="e.g. Click here, View pricing">
-              <div class="form-text">Leave blank to show the raw URL as the link.</div>
-            </div>
-          </div>
+
           <div class="mb-3">
             <div class="form-check form-switch">
               <input type="checkbox" class="form-check-input" name="is_active" id="faqStatusEdit" value="1" @checked(!isset($faq['is_active']) || $faq['is_active'])>
@@ -90,3 +79,38 @@
   </div>
 </div>
 @endsection
+
+@push('custom-scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        tinymce.init({
+            selector: '#answer',
+            menubar: false,
+            plugins: 'link lists',
+            toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link',
+            promotion: false,
+            branding: false,
+            setup: function(editor) {
+                editor.on('submit', function() {
+                    editor.save();
+                });
+            }
+        });
+
+        // Sync TinyMCE content to textarea before form submit and validate
+        var faqForm = document.querySelector('form');
+        if (faqForm) {
+            faqForm.addEventListener('submit', function(e) {
+                tinymce.triggerSave();
+                var val = document.getElementById('answer').value.trim();
+                if (!val || val === '<p></p>' || val === '<p><br></p>') {
+                    e.preventDefault();
+                    alert('Please enter an answer.');
+                    tinymce.get('answer').focus();
+                }
+            });
+        }
+    });
+</script>
+@endpush

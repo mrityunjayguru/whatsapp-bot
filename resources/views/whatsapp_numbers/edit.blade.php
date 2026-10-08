@@ -124,6 +124,29 @@
       </div>
     </div>
 
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="card-title text-muted mb-4 border-bottom pb-2">BOT MESSAGES</h6>
+        <!-- <p class="text-muted small mb-3">Placeholders available: <code>{company_name}</code>, <code>{support_link}</code>, <code>{demo_link}</code>, <code>{products_link}</code>. Greeting also supports <code>{name}</code> and <code>{greeting_prefix}</code>.</p> -->
+        
+        <form action="{{ route('whatsapp-numbers.messages.update', $phoneNumberId) }}" method="POST" id="messagesForm">
+          @csrf
+          @method('PUT')
+          <div class="mb-3">
+            <label class="form-label">Greeting Message <span class="text-muted small">(when someone says hi)</span></label>
+            <textarea class="form-control" name="greeting" id="greeting_message" rows="4">{{ old('greeting', $botConfig['templates']['greeting'] ?? '') }}</textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Fallback Message <span class="text-muted small">(when nothing else matched)</span></label>
+            <textarea class="form-control" name="fallback" id="fallback_message" rows="4">{{ old('fallback', $botConfig['templates']['fallback'] ?? '') }}</textarea>
+          </div>
+          <div class="d-flex justify-content-end border-top pt-3">
+            <button type="submit" class="btn btn-primary" id="saveMessagesBtn">Save Messages</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     @if(!$isCompanyUser)
     <div class="card mt-3 border-danger">
       <div class="card-body">
@@ -154,18 +177,9 @@
           </div>
           <div class="mb-3">
             <label class="form-label">Answer <span class="text-danger">*</span></label>
-            <textarea class="form-control" name="answer" rows="4" placeholder="Write the complete answer here..." required></textarea>
+            <textarea class="form-control" name="answer" id="answer" rows="4" placeholder="Write the complete answer here..." required></textarea>
           </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label"><i data-lucide="link" class="icon-sm text-muted me-1"></i> Hyperlink URL</label>
-              <input type="url" class="form-control" name="url" placeholder="https://example.com/page">
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Link Text</label>
-              <input type="text" class="form-control" name="link_text" placeholder="e.g. Click here">
-            </div>
-          </div>
+
           <div class="row">
             <div class="col-md-6 mb-3">
               <label class="form-label"><i data-lucide="paperclip" class="icon-sm text-muted me-1"></i> Attachment</label>
@@ -178,7 +192,7 @@
           </div>
 
           <div class="d-flex justify-content-end border-top pt-3">
-            <button type="submit" class="btn btn-primary">Add FAQ</button>
+            <button type="submit" class="btn btn-primary" id="addFaqBtn">Add FAQ</button>
           </div>
         </form>
       </div>
@@ -252,3 +266,60 @@
   </div>
 </div>
 @endsection
+
+@push('custom-scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        tinymce.init({
+            selector: '#answer, #greeting_message, #fallback_message',
+            menubar: false,
+            plugins: 'link lists',
+            toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link',
+            promotion: false,
+            branding: false,
+            setup: function(editor) {
+                editor.on('submit', function() {
+                    editor.save();
+                });
+            }
+        });
+
+        // Sync TinyMCE content to textarea before form submit and validate for FAQ
+        var addBtn = document.getElementById('addFaqBtn');
+        if (addBtn) {
+            addBtn.closest('form').addEventListener('submit', function(e) {
+                tinymce.triggerSave();
+                var val = document.getElementById('answer').value.trim();
+                if (!val || val === '<p></p>' || val === '<p><br></p>') {
+                    e.preventDefault();
+                    alert('Please enter an answer.');
+                    tinymce.get('answer').focus();
+                }
+            });
+        }
+
+        // Sync TinyMCE content to textarea before form submit and validate for Messages
+        var msgForm = document.getElementById('messagesForm');
+        if (msgForm) {
+            msgForm.addEventListener('submit', function(e) {
+                tinymce.triggerSave();
+                var greeting = document.getElementById('greeting_message').value.trim();
+                if (!greeting || greeting === '<p></p>' || greeting === '<p><br></p>') {
+                    e.preventDefault();
+                    alert('Please enter a greeting message.');
+                    tinymce.get('greeting_message').focus();
+                    return;
+                }
+                var fallback = document.getElementById('fallback_message').value.trim();
+                if (!fallback || fallback === '<p></p>' || fallback === '<p><br></p>') {
+                    e.preventDefault();
+                    alert('Please enter a fallback message.');
+                    tinymce.get('fallback_message').focus();
+                    return;
+                }
+            });
+        }
+    });
+</script>
+@endpush

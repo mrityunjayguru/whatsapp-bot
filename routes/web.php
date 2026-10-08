@@ -92,6 +92,7 @@ Route::put('whatsapp-numbers/{phoneNumberId}/config', [App\Http\Controllers\What
 Route::delete('whatsapp-numbers/{phoneNumberId}', [App\Http\Controllers\WhatsappNumberController::class, 'destroy'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.destroy');
 Route::get('whatsapp-numbers/{phoneNumberId}/bot-config', [App\Http\Controllers\WhatsappNumberController::class, 'editBotConfig'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.bot-config.edit');
 Route::put('whatsapp-numbers/{phoneNumberId}/bot-config', [App\Http\Controllers\WhatsappNumberController::class, 'updateBotConfig'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.bot-config.update');
+Route::put('whatsapp-numbers/{phoneNumberId}/messages', [App\Http\Controllers\WhatsappNumberController::class, 'updateMessages'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.messages.update');
 Route::post('whatsapp-numbers/{phoneNumberId}/faqs', [App\Http\Controllers\WhatsappNumberController::class, 'storeFaq'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.faqs.store');
 Route::get('whatsapp-numbers/{phoneNumberId}/faqs/{sourceId}/edit', [App\Http\Controllers\WhatsappNumberController::class, 'editFaq'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.faqs.edit');
 Route::put('whatsapp-numbers/{phoneNumberId}/faqs/{sourceId}', [App\Http\Controllers\WhatsappNumberController::class, 'updateFaq'])->middleware(['auth', 'verified'])->name('whatsapp-numbers.faqs.update');
