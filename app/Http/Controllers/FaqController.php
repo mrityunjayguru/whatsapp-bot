@@ -10,7 +10,7 @@ class FaqController extends Controller
 {
     public function index()
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = auth()->user()->company_id ?? auth()->user()->tenant_id;
         $faqs = Faq::where('tenant_id', $companyId)->orderBy('id', 'desc')->get();
         return view('pages.general.faq', compact('faqs'));
     }
@@ -22,7 +22,7 @@ class FaqController extends Controller
 
     public function store(Request $request, \App\Services\FaqApiService $apiService)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = auth()->user()->company_id ?? auth()->user()->tenant_id;
         $validated = $request->validate([
             'question' => 'required|string|max:255',
             'category' => 'nullable|string|max:255',
@@ -68,14 +68,14 @@ class FaqController extends Controller
 
     public function edit($id)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = auth()->user()->company_id ?? auth()->user()->tenant_id;
         $faq = Faq::where('tenant_id', $companyId)->findOrFail($id);
         return view('pages.faqs.edit', compact('faq'));
     }
 
     public function update(Request $request, $id, \App\Services\FaqApiService $apiService)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = auth()->user()->company_id ?? auth()->user()->tenant_id;
         $faq = Faq::where('tenant_id', $companyId)->findOrFail($id);
 
         $validated = $request->validate([
@@ -127,7 +127,7 @@ class FaqController extends Controller
 
     public function destroy($id, \App\Services\FaqApiService $apiService)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = auth()->user()->company_id ?? auth()->user()->tenant_id;
         $faq = Faq::where('tenant_id', $companyId)->findOrFail($id);
 
         // Delete python sources
@@ -145,7 +145,7 @@ class FaqController extends Controller
 
     public function toggleStatus($id)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = auth()->user()->company_id ?? auth()->user()->tenant_id;
         $faq = Faq::where('tenant_id', $companyId)->findOrFail($id);
         
         $faq->update(['is_active' => !$faq->is_active]);

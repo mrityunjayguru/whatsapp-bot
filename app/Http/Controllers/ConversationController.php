@@ -6,9 +6,39 @@ use Illuminate\Http\Request;
 
 class ConversationController extends Controller
 {
+    /**
+     * Resolve the WhatsAppService that can actually send as THIS
+     * conversation's own registered number, instead of always falling
+     * back to Track Route Pro's single default number from .env. Every
+     * outbound send below (plain replies, attachments, status/assign/
+     * handoff notices) previously called `app(WhatsAppService::class)`
+     * directly, which only ever uses that one default number's
+     * credentials - fine for TRP's own number, but wrong (and silently
+     * so, since Meta still returns a response - typically a permission
+     * error, "Recipient phone number not in allowed list" in sandbox
+     * mode, or the message is simply sent from the wrong business
+     * identity) for every OTHER company's registered WhatsApp number.
+     * Mirrors MetaWebhookController::handle()'s own
+     * WhatsAppService::forNumber() lookup for inbound messages, so both
+     * directions agree on which number a conversation belongs to.
+     */
+    private function whatsAppServiceFor(\App\Models\Conversation $conversation): \App\Services\WhatsAppService
+    {
+        if ($conversation->whatsapp_phone_number_id) {
+            $number = \App\Models\WhatsappNumber::where('phone_number_id', $conversation->whatsapp_phone_number_id)->first();
+            if ($number) {
+                return \App\Services\WhatsAppService::forNumber($number);
+            }
+        }
+        // No registered number on this conversation (e.g. it predates
+        // multi-tenancy) - fall back to the single default number,
+        // exactly as every call site did before this fix.
+        return app(\App\Services\WhatsAppService::class);
+    }
+
     public function index(Request $request)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $query = \App\Models\Conversation::where('tenant_id', $companyId)->with(['contact', 'assignedUser']);
 
         if (auth()->id() !== 1) {
@@ -66,7 +96,7 @@ class ConversationController extends Controller
 
     public function show($id)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
 
         $isEmployeeNotAssigned = false;
@@ -110,7 +140,7 @@ class ConversationController extends Controller
 
     public function sendMessage(Request $request, $id)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
 
         $request->validate([
@@ -222,7 +252,7 @@ class ConversationController extends Controller
         }
 
         try {
-            $sentMessageIds = app(\App\Services\WhatsAppService::class)->sendMultipartMessage($contact->phone_number, $text, $files);
+            $sentMessageIds = $this->whatsAppServiceFor($conversation)->sendMultipartMessage($contact->phone_number, $text, $files);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to send message: ' . $e->getMessage()], 500);
         }
@@ -291,7 +321,7 @@ class ConversationController extends Controller
 
     public function updateDetails(Request $request, $id)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
 
         $oldStatus = $conversation->status;
@@ -310,7 +340,7 @@ class ConversationController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
 
         $request->validate([
@@ -344,7 +374,7 @@ class ConversationController extends Controller
                 event(new \App\Events\NewMessage($message));
             } else {
                 try {
-                    $whatsappService = app(\App\Services\WhatsAppService::class);
+                    $whatsappService = $this->whatsAppServiceFor($conversation);
                     $whatsappResponse = $whatsappService->sendMessage($contact->phone_number, $msgText);
                     if (!empty($whatsappResponse) && isset($whatsappResponse['messages'][0]['id'])) {
                         $message = \App\Models\Message::create([
@@ -373,7 +403,7 @@ class ConversationController extends Controller
 
     public function assign(Request $request, $id)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
 
         $request->validate([
@@ -486,7 +516,7 @@ class ConversationController extends Controller
                 }
             } else {
                 try {
-                    $whatsappService = app(\App\Services\WhatsAppService::class);
+                    $whatsappService = $this->whatsAppServiceFor($conversation);
                     $whatsappResponse = $whatsappService->sendMessage($contact->phone_number, $msgText);
                     if (!empty($whatsappResponse) && isset($whatsappResponse['messages'][0]['id'])) {
                         $message = \App\Models\Message::create([
@@ -517,7 +547,7 @@ class ConversationController extends Controller
 
     public function toggleBot(Request $request, $id)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
 
         $botWasActive = !$conversation->bot_stopped;
@@ -554,7 +584,7 @@ class ConversationController extends Controller
                 event(new \App\Events\NewMessage($message));
             } else {
                 try {
-                    $whatsappService = app(\App\Services\WhatsAppService::class);
+                    $whatsappService = $this->whatsAppServiceFor($conversation);
                     $whatsappResponse = $whatsappService->sendMessage($contact->phone_number, $handoffMessage);
                     
                     if (!empty($whatsappResponse) && isset($whatsappResponse['messages'][0]['id'])) {

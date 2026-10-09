@@ -12,7 +12,7 @@ class ContactController extends Controller
 {
     public function index(Request $request): View
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
 
         $query = Contact::where('tenant_id', $companyId)
             ->withCount(['conversations', 'messages'])
@@ -77,7 +77,7 @@ class ContactController extends Controller
 
     public function show(Request $request, $id): View
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $contactQuery = Contact::where('tenant_id', $companyId)
             ->with(['tags', 'conversations' => function($q) {
             $q->with('assignedUser')->latest();
@@ -105,7 +105,7 @@ class ContactController extends Controller
 
     public function update(Request $request, $id): RedirectResponse
     {
-        $contact = Contact::where('tenant_id', auth()->user()->company_id)->findOrFail($id);
+        $contact = Contact::where('tenant_id', (auth()->user()->company_id ?? auth()->user()->tenant_id))->findOrFail($id);
 
         $request->validate([
             'custom_name' => 'nullable|string|max:255',
@@ -156,7 +156,7 @@ class ContactController extends Controller
 
     public function updateTags(Request $request, $id): RedirectResponse
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $contact = Contact::where('tenant_id', $companyId)->findOrFail($id);
         $tagIdsToSync = [];
 

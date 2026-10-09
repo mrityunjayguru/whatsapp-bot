@@ -102,7 +102,7 @@
                     
                     <div class="mb-3 flex-grow-1 d-flex flex-column">
                         <label class="form-label">Answer <span class="text-danger">*</span></label>
-                        <textarea class="form-control flex-grow-1" name="answer" placeholder="Write the complete answer response here..." rows="12" required></textarea>
+                        <textarea class="form-control flex-grow-1" id="answer" name="answer" placeholder="Write the complete answer response here..." rows="12"></textarea>
                     </div>
 
                     <div class="row align-items-end mb-3">
@@ -125,3 +125,33 @@
     </div>
 </form>
 @endsection
+
+@push('custom-scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        tinymce.init({
+            selector: '#answer',
+            menubar: false,
+            plugins: 'link lists',
+            toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link',
+            promotion: false,
+            branding: false,
+            setup: function(editor) {
+                editor.on('submit', function() {
+                    editor.save();
+                });
+            }
+        });
+        document.querySelector('form').addEventListener('submit', function(e) {
+            tinymce.triggerSave();
+            var val = document.getElementById('answer').value.trim();
+            if (!val || val === '<p></p>' || val === '<p><br></p>') {
+                e.preventDefault();
+                alert('Please enter an answer.');
+                tinymce.get('answer').focus();
+            }
+        });
+    });
+</script>
+@endpush

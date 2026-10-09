@@ -24,8 +24,8 @@ class WidgetController extends Controller
             $widget['company_name'] = $companyNames[$widget['token']] ?? '--';
         }
 
-        if (!is_null(auth()->user()->company_id)) {
-            $tokens = \App\Models\Widget::where('company_id', auth()->user()->company_id)->pluck('token')->all();
+        if (!is_null((auth()->user()->company_id ?? auth()->user()->tenant_id))) {
+            $tokens = \App\Models\Widget::where('company_id', (auth()->user()->company_id ?? auth()->user()->tenant_id))->pluck('token')->all();
             $widgets = collect($widgets)->filter(fn($w) => in_array($w['token'], $tokens, true))->values()->all();
         }
 
@@ -89,6 +89,7 @@ class WidgetController extends Controller
         // date window. Push the dates there now rather than waiting for
         // the first settings edit.
         $api->updateWidgetConfig($widget['token'], [
+            'company_id' => $validated['company_id'],
             'valid_from' => $validated['valid_from'] ?? null,
             'expiry_date' => $validated['expiry_date'] ?? null,
         ]);
@@ -127,7 +128,7 @@ class WidgetController extends Controller
         $widget['expiry_date'] = $widgetRow && $widgetRow->expiry_date ? $widgetRow->expiry_date->format('Y-m-d') : null;
 
         $companies = collect();
-        $isCompanyUser = !is_null(auth()->user()->company_id);
+        $isCompanyUser = !is_null((auth()->user()->company_id ?? auth()->user()->tenant_id));
         if (!$isCompanyUser) {
             $companies = \App\Models\Company::where('bot_usage_type', 'widget')->get();
         }
@@ -156,7 +157,7 @@ class WidgetController extends Controller
         ]);
         
         $validated['is_active'] = $request->has('is_active');
-        $isCompanyUser = !is_null(auth()->user()->company_id);
+        $isCompanyUser = !is_null((auth()->user()->company_id ?? auth()->user()->tenant_id));
 
         if (!$isCompanyUser) {
             $request->validate(['company_id' => 'nullable|exists:companies,id']);
@@ -208,6 +209,8 @@ class WidgetController extends Controller
         $validFrom = $validated['valid_from'];
         $expiryDate = $validated['expiry_date'];
 
+        $widgetModel = \App\Models\Widget::where('token', $token)->first();
+        $validated['company_id'] = $widgetModel ? $widgetModel->company_id : null;
         $updated = $api->updateWidgetConfig($token, $validated);
 
         if (!$updated) {
@@ -255,22 +258,26 @@ class WidgetController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
-        // Normalize a left-blank field to null (a submitted-but-empty
-        // input comes through as '', which ?? does NOT treat the same
-        // as an absent/null value).
         $sourceUrl = !empty($validated['url']) ? $validated['url'] : null;
         $attachmentUrl = null;
 
+        // Was calling FaqApiService (the WhatsApp bot's COMPANY-scoped
+        // FAQ service, which posts to Python's /company/{id}/faq/*)
+        // instead of WidgetApiService (this widget's own TOKEN-scoped
+        // service, /widgets/{token}/faq/*) - updateFaq()/editFaq()/
+        // destroyFaq() below already used the right one, only this
+        // create path didn't. Two compounding problems from that: (1)
+        // main.py's /company/{id}/faq/files/attach hands back a URL
+        // under /company/{id}/faq/files/... that nothing ever serves
+        // (no matching GET route exists for it, unlike the widget's own
+        // /widget/{token}/faq/files/... route), so the uploaded file was
+        // never actually reachable; and (2) FaqApiService::uploadText()
+        // has no attachment_url/link_text parameters at all, so even a
+        // working URL would have been silently dropped instead of saved
+        // on the FAQ.
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
             $attachResult = $api->attachFile($token, $file->getPathname(), $file->getClientOriginalName());
-            // The attached file's own link is stored separately as
-            // attachment_url now, independent of the Hyperlink URL field
-            // - a FAQ can have BOTH a typed hyperlink AND an attached
-            // file at once, and the bot includes both in its reply (see
-            // bot_engine.py's _format_attachment_link). This used to
-            // fall back into $sourceUrl, which is exactly why attaching
-            // a document could silently replace a hyperlink you'd set.
             if ($attachResult && isset($attachResult['url'])) {
                 $attachmentUrl = $attachResult['url'];
             }

@@ -12,7 +12,7 @@
 @section('content')
 <div class="container py-4" style="max-width: 900px;">
 
-    <h1 class="h4 mb-1">WhatsApp Bot - Config</h1>
+    <h1 class="h4 mb-1">Bot Config</h1>
     <p class="text-muted small">Changes here are live on the bot's very next customer message - no deploy or restart needed.</p>
 
     @if (session('success'))

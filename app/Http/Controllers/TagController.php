@@ -11,7 +11,7 @@ class TagController extends Controller
 {
     public function index(Request $request): View
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $query = Tag::with('creator')->withCount('contacts')->latest();
         if ($companyId) {
             $query->where('tenant_id', $companyId);
@@ -47,7 +47,7 @@ class TagController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $request->validate([
             'tag_name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -78,7 +78,7 @@ class TagController extends Controller
 
     public function show($id): View
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $tag = $companyId ? Tag::where('tenant_id', $companyId)->findOrFail($id) : Tag::findOrFail($id);
         $tag->load('creator');
         
@@ -108,7 +108,7 @@ class TagController extends Controller
 
     public function update(Request $request, $id): RedirectResponse
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $tag = $companyId ? Tag::where('tenant_id', $companyId)->findOrFail($id) : Tag::findOrFail($id);
 
         $request->validate([
@@ -136,7 +136,7 @@ class TagController extends Controller
 
     public function destroy($id): RedirectResponse
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $tag = $companyId ? Tag::where('tenant_id', $companyId)->findOrFail($id) : Tag::findOrFail($id);
         $tag->delete();
         return redirect()->route('tags.index')->with('success', 'Tag deleted successfully.');

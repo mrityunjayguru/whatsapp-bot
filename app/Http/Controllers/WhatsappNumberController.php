@@ -26,8 +26,8 @@ class WhatsappNumberController extends Controller
     {
         $numbers = WhatsappNumber::with('company')->orderByDesc('id')->get();
 
-        if (!is_null(auth()->user()->company_id)) {
-            $numbers = $numbers->where('company_id', auth()->user()->company_id)->values();
+        if (!is_null((auth()->user()->company_id ?? auth()->user()->tenant_id))) {
+            $numbers = $numbers->where('company_id', (auth()->user()->company_id ?? auth()->user()->tenant_id))->values();
         }
 
         return view('whatsapp_numbers.index', compact('numbers'));
@@ -80,6 +80,7 @@ class WhatsappNumberController extends Controller
         // reasoning as WidgetController::store()'s call to
         // updateWidgetConfig() right after creating a widget.
         $api->updateNumberConfig($number->phone_number_id, [
+            'company_id' => $number->company_id,
             'valid_from' => $validated['valid_from'] ?? null,
             'expiry_date' => $validated['expiry_date'] ?? null,
         ]);
@@ -92,7 +93,7 @@ class WhatsappNumberController extends Controller
     {
         $number = WhatsappNumber::where('phone_number_id', $phoneNumberId)->firstOrFail();
         $faqs = $api->listFaqSources($phoneNumberId);
-        $isCompanyUser = !is_null(auth()->user()->company_id);
+        $isCompanyUser = !is_null((auth()->user()->company_id ?? auth()->user()->tenant_id));
         $companies = $isCompanyUser ? collect() : Company::all();
         $botConfig = $api->getBotConfig($phoneNumberId);
 
@@ -102,9 +103,10 @@ class WhatsappNumberController extends Controller
     public function updateConfig(Request $request, string $phoneNumberId, WhatsappNumberApiService $api)
     {
         $number = WhatsappNumber::where('phone_number_id', $phoneNumberId)->firstOrFail();
-        $isCompanyUser = !is_null(auth()->user()->company_id);
+        $isCompanyUser = !is_null((auth()->user()->company_id ?? auth()->user()->tenant_id));
 
         $rules = [
+            'phone_number_id' => 'required|string|max:64|unique:whatsapp_numbers,phone_number_id,' . $number->id,
             'display_number' => 'nullable|string|max:40',
             'waba_id' => 'nullable|string|max:64',
             'label' => 'nullable|string|max:255',
@@ -120,6 +122,11 @@ class WhatsappNumberController extends Controller
         $validated = $request->validate($rules);
 
         if (!$isCompanyUser && $request->has('company_id')) {
+            $number->company_id = $request->input('company_id') ?: null;
+        } elseif ($isCompanyUser && is_null($number->company_id)) {
+            $number->company_id = auth()->user()->company_id ?? auth()->user()->tenant_id;
+        }
+        if (false) {
             $number->company_id = $request->input('company_id') ?: null;
         }
 
@@ -141,15 +148,33 @@ class WhatsappNumberController extends Controller
         // is a deliberate clear, never "left untouched".
         $number->valid_from = $validated['valid_from'] ?? null;
         $number->expiry_date = $validated['expiry_date'] ?? null;
+        $newPhoneNumberId = $validated['phone_number_id'];
+        $phoneNumberIdChanged = ($phoneNumberId !== $newPhoneNumberId);
+
+        if ($phoneNumberIdChanged) {
+            $number->phone_number_id = $newPhoneNumberId;
+        }
+
         $number->save();
 
-        $api->updateNumberConfig($phoneNumberId, [
+        if ($phoneNumberIdChanged) {
+            // Tell Python to create the new one and delete the old one
+            $api->createNumber($newPhoneNumberId, $number->display_number ?? null, $number->label ?? null);
+            $api->deleteNumber($phoneNumberId);
+        }
+
+        $api->updateNumberConfig($newPhoneNumberId, [
+            'company_id' => $number->company_id,
             'display_number' => $number->display_number ?? '',
             'label' => $number->label ?? '',
             'is_active' => $number->is_active,
             'valid_from' => $validated['valid_from'] ?? null,
             'expiry_date' => $validated['expiry_date'] ?? null,
         ]);
+
+        if ($phoneNumberIdChanged) {
+            return redirect()->route('whatsapp-numbers.edit', $newPhoneNumberId)->with('success', 'WhatsApp number settings saved and Phone Number ID updated.');
+        }
 
         return back()->with('success', 'WhatsApp number settings saved.');
     }

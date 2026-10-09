@@ -8,10 +8,33 @@ use Illuminate\Support\Facades\Log;
 class FaqApiService
 {
     protected string $baseUrl;
+    protected string $apiKey;
+    protected ?int $companyId = null;
 
     public function __construct()
     {
-        $this->baseUrl = env('PUBLIC_BASE_URL', 'http://127.0.0.1:5000') . '/faq';
+        $this->baseUrl = rtrim((string) config('services.bot_api.url', env('CHATBOAT_URL', 'http://127.0.0.1:5000')), '/');
+        $this->apiKey = (string) config('services.bot_api.key');
+    }
+
+    private function headers(): array
+    {
+        return [
+            'X-Api-Key' => $this->apiKey,
+            'Accept' => 'application/json',
+        ];
+    }
+
+    public function setCompanyId(int $companyId): self
+    {
+        $this->companyId = $companyId;
+        return $this;
+    }
+
+    private function getBaseUrl(): string
+    {
+        $cid = $this->companyId ?? (auth()->check() ? (auth()->user()->company_id ?? auth()->user()->tenant_id) : 'default');
+        return "{$this->baseUrl}/company/{$cid}/faq";
     }
 
     public function uploadText(string $name, string $text, ?string $sourceUrl = null, bool $sendAsLink = false, ?array $keywords = null): ?string
@@ -31,7 +54,7 @@ class FaqApiService
         }
 
         try {
-            $response = Http::post("{$this->baseUrl}/upload/text", $payload);
+            $response = Http::withHeaders($this->headers())->post("{$this->getBaseUrl()}/upload/text", $payload);
             
             if ($response->successful()) {
                 return $response->json('id');
@@ -48,16 +71,16 @@ class FaqApiService
     public function uploadDocument(string $filePath, string $filename, bool $sendAsLink = true): ?array
     {
         try {
-            $response = Http::attach(
+            $response = Http::withHeaders($this->headers())->attach(
                 'file', file_get_contents($filePath), $filename
-            )->post("{$this->baseUrl}/upload/document", [
+            )->post("{$this->getBaseUrl()}/upload/document", [
                 'send_as_link' => $sendAsLink ? 'true' : 'false'
             ]);
             
             if ($response->successful()) {
                 $data = $response->json();
                 // Fix proxy URL if python returned without /pybot
-                if (isset($data['source_url']) && str_contains($this->baseUrl, '/pybot')) {
+                if (isset($data['source_url']) && str_contains($this->getBaseUrl(), '/pybot')) {
                     $data['source_url'] = str_replace('.com/faq/files/', '.com/pybot/faq/files/', $data['source_url']);
                 }
                 return $data;
@@ -82,7 +105,7 @@ class FaqApiService
             : 'upload/url';
 
         try {
-            $response = Http::post("{$this->baseUrl}/{$endpoint}", $payload);
+            $response = Http::withHeaders($this->headers())->post("{$this->getBaseUrl()}/{$endpoint}", $payload);
             
             if ($response->successful()) {
                 return $response->json('id');
@@ -107,9 +130,9 @@ class FaqApiService
     public function attachFile(string $filePath, string $filename): ?array
     {
         try {
-            $response = Http::attach(
+            $response = Http::withHeaders($this->headers())->attach(
                 'file', file_get_contents($filePath), $filename
-            )->post("{$this->baseUrl}/files/attach");
+            )->post("{$this->getBaseUrl()}/files/attach");
 
             if ($response->successful()) {
                 return $response->json();
@@ -126,7 +149,7 @@ class FaqApiService
     public function deleteSource(string $sourceId): bool
     {
         try {
-            $response = Http::delete("{$this->baseUrl}/sources/{$sourceId}");
+            $response = Http::withHeaders($this->headers())->delete("{$this->getBaseUrl()}/sources/{$sourceId}");
             
             if ($response->successful() || $response->status() == 404) {
                 return true;

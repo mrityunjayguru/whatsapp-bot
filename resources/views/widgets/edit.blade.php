@@ -51,7 +51,7 @@
 
 <div class="row">
   <!-- Left: appearance/behavior config -->
-  <div class="col-md-5">
+  <div class="col-md-12">
     <div class="card">
       <div class="card-body">
         <h6 class="card-title text-muted mb-4 border-bottom pb-2">WIDGET SETTINGS</h6>
@@ -93,10 +93,10 @@
             <input type="text" class="form-control" name="bot_name" value="{{ old('bot_name', $widget['bot_name']) }}" required>
           </div>
 
-          <div class="mb-3">
+          <!-- <div class="mb-3">
             <label class="form-label">Welcome message</label>
             <textarea class="form-control" name="welcome_message" id="welcome_message" rows="4">{{ old('welcome_message', $widget['welcome_message']) }}</textarea>
-          </div>
+          </div> -->
 
           <div class="row">
             <div class="col-md-6 mb-3">
@@ -112,10 +112,10 @@
             </div>
           </div>
 
-          <div class="mb-3">
+          <!-- <div class="mb-3">
             <label class="form-label">Fallback message <span class="text-muted small">(shown when nothing matches)</span></label>
             <textarea class="form-control" name="fallback_message" id="fallback_message" rows="4">{{ old('fallback_message', $widget['fallback_message']) }}</textarea>
-          </div>
+          </div> -->
 
           <div class="row mb-4">
             <div class="col-md-6 mb-3 mb-md-0">
@@ -172,116 +172,7 @@
     @endif
   </div>
 
-  <!-- Right: FAQ knowledge base -->
-  <div class="col-md-7">
-    <div class="card mb-3">
-      <div class="card-body">
-        <h6 class="card-title text-muted mb-4 border-bottom pb-2">ADD A FAQ</h6>
 
-        <form action="{{ route('widgets.faqs.store', $token) }}" method="POST" enctype="multipart/form-data">
-          @csrf
-          <div class="mb-3">
-            <label class="form-label">Question <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" name="question" placeholder="Enter question..." required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Answer <span class="text-danger">*</span></label>
-            <textarea class="form-control" name="answer" id="answer" rows="4" placeholder="Write the complete answer here..."></textarea>
-          </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label"><i data-lucide="paperclip" class="icon-sm text-muted me-1"></i> Attachment</label>
-              <div class="input-group">
-                <input type="file" class="form-control" name="attachment" id="faqAttachmentInputAdd">
-                <button class="btn btn-outline-secondary" type="button" id="btnClearAttachmentInputAdd" title="Clear selected file" style="display: none; padding: 0.375rem 0.75rem;">
-                  <i data-lucide="x" class="icon-sm"></i>
-                </button>
-              </div>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Keywords <span class="text-muted small">(comma separated)</span></label>
-              <input type="text" class="form-control" name="keywords" placeholder="e.g. pricing, cost">
-            </div>
-          </div>
-          
-          
-          <div class="d-flex justify-content-end border-top pt-3">
-            <button type="submit" class="btn btn-primary" id="addFaqBtn">Add FAQ</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-body">
-        <h6 class="card-title text-muted mb-4 border-bottom pb-2">KNOWLEDGE BASE ({{ count($faqs) }})</h6>
-
-        @if (empty($faqs))
-          <p class="text-muted mb-0">No FAQs yet - add one above.</p>
-        @else
-          <div class="table-responsive">
-            <table class="table align-middle">
-              <thead>
-                <tr>
-                  <th>Question</th>
-                  <th>Keywords</th>
-                  <th>Attachment</th>
-                  <th>Status</th>
-                  <th class="text-end">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                @foreach ($faqs as $faq)
-                  <tr>
-                    <td>{{ $faq['name'] }}</td>
-                    <td>
-                      @if (!empty($faq['keywords']))
-                        <span class="text-muted small">{{ is_array($faq['keywords']) ? implode(', ', $faq['keywords']) : $faq['keywords'] }}</span>
-                      @else
-                        --
-                      @endif
-                    </td>
-                    @php
-                      // Prefer the separately-attached file's own link;
-                      // fall back to source_url for a FAQ predating the
-                      // attachment_url/link_text split (where the only
-                      // URL a FAQ could ever have doubled as both).
-                      $attachmentLink = $faq['attachment_url'] ?? $faq['source_url'] ?? null;
-                    @endphp
-                    <td>
-                      @if (!empty($attachmentLink))
-                        <a href="{{ $attachmentLink }}" target="_blank" class="small">
-                          <i data-lucide="paperclip" class="icon-sm"></i> Link
-                        </a>
-                      @else
-                        --
-                      @endif
-                    </td>
-                    <td>
-                      @if(isset($faq['is_active']) && !$faq['is_active'])
-                        <span class="badge bg-danger">Inactive</span>
-                      @else
-                        <span class="badge bg-success">Active</span>
-                      @endif
-                    </td>
-                    <td class="text-end">
-                      <a href="{{ route('widgets.faqs.edit', [$token, $faq['id']]) }}" class="btn btn-sm btn-outline-primary me-1">Edit</a>
-                      <form action="{{ route('widgets.faqs.destroy', [$token, $faq['id']]) }}" method="POST" class="d-inline"
-                            onsubmit="return confirm('Remove this FAQ?');">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                      </form>
-                    </td>
-                  </tr>
-                @endforeach
-              </tbody>
-            </table>
-          </div>
-        @endif
-      </div>
-    </div>
-  </div>
 </div>
 @endsection
 

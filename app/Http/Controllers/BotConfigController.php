@@ -37,7 +37,7 @@ class BotConfigController extends Controller
 
     public function edit()
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $botConfig = \App\Models\BotConfig::where('tenant_id', $companyId)->first();
         $config = $botConfig ? $botConfig->payload : $this->getDefaultConfig();
 
@@ -48,13 +48,13 @@ class BotConfigController extends Controller
 
     public function update(Request $request)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $validated = $request->validate([
             'company_name' => 'required|string|max:255',
             'support_link' => 'required|string|max:500',
             'demo_link' => 'required|string|max:500',
-            'products_link' => 'required|string|max:500',
-            'products' => 'required|array',
+            'products_link' => 'nullable|string|max:500',
+            'products' => 'nullable|array',
             'products.*.key' => 'required|string|max:100',
             'products.*.name' => 'required|string|max:255',
             'products.*.type' => 'required|string|max:255',
@@ -76,12 +76,15 @@ class BotConfigController extends Controller
 
         // Include tenant_id in validated data before sending to Python
         $validated['tenant_id'] = $companyId;
+        
+        // Ensure products is an array
+        $validated['products'] = $validated['products'] ?? [];
 
         // Attempt to sync to Python
         try {
             $response = Http::withHeaders($this->authHeaders())
                 ->timeout(10)
-                ->put($this->apiUrl('/bot/config'), $validated);
+                ->put($this->apiUrl("/company/{$companyId}/bot/config"), $validated);
 
             if ($response->failed()) {
                 Log::error('BotConfig: failed to save config to Python API', [

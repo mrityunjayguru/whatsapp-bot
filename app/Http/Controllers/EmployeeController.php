@@ -13,7 +13,7 @@ class EmployeeController extends Controller
      */
     public function index(Request $request)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $query = Employee::where('tenant_id', $companyId)->with('creator')->latest();
 
         if ($search = $request->input('search')) {
@@ -47,7 +47,7 @@ class EmployeeController extends Controller
      */
     public function store(Request $request)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'nullable|string|max:255',
@@ -96,7 +96,7 @@ class EmployeeController extends Controller
      */
     public function edit($id)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $employee = Employee::where('tenant_id', $companyId)->findOrFail($id);
         return view('employees.edit', compact('employee'));
     }
@@ -106,7 +106,7 @@ class EmployeeController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $employee = Employee::where('tenant_id', $companyId)->findOrFail($id);
 
         $request->validate([
@@ -166,7 +166,7 @@ class EmployeeController extends Controller
      */
     public function destroy($id)
     {
-        $companyId = auth()->user()->company_id;
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $employee = Employee::where('tenant_id', $companyId)->findOrFail($id);
         
         // Delete corresponding User record

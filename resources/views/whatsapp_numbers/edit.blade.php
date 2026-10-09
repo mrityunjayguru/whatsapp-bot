@@ -43,7 +43,7 @@
 
 <div class="row">
   <!-- Left: number config -->
-  <div class="col-md-5">
+  <div class="col-md-12">
     <div class="card">
       <div class="card-body">
         <h6 class="card-title text-muted mb-4 border-bottom pb-2">NUMBER SETTINGS</h6>
@@ -66,9 +66,9 @@
           @endif
 
           <div class="mb-3">
-            <label class="form-label">Phone Number ID</label>
-            <input type="text" class="form-control" value="{{ $phoneNumberId }}" readonly disabled>
-            <small class="text-muted">Set at registration - cannot be changed here. Delete and re-register to use a different number.</small>
+            <label class="form-label">Phone Number ID <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="phone_number_id" value="{{ old('phone_number_id', $phoneNumberId) }}" required>
+            <small class="text-muted">Meta's phone number ID. Changing this will update the webhook routing.</small>
           </div>
 
           <div class="mb-3">
@@ -124,10 +124,9 @@
       </div>
     </div>
 
-    <div class="card mt-3">
+    <!-- <div class="card mt-3">
       <div class="card-body">
         <h6 class="card-title text-muted mb-4 border-bottom pb-2">BOT MESSAGES</h6>
-        <!-- <p class="text-muted small mb-3">Placeholders available: <code>{company_name}</code>, <code>{support_link}</code>, <code>{demo_link}</code>, <code>{products_link}</code>. Greeting also supports <code>{name}</code> and <code>{greeting_prefix}</code>.</p> -->
         
         <form action="{{ route('whatsapp-numbers.messages.update', $phoneNumberId) }}" method="POST" id="messagesForm">
           @csrf
@@ -145,7 +144,7 @@
           </div>
         </form>
       </div>
-    </div>
+    </div> -->
 
     @if(!$isCompanyUser)
     <div class="card mt-3 border-danger">
@@ -163,107 +162,7 @@
     @endif
   </div>
 
-  <!-- Right: FAQ knowledge base -->
-  <div class="col-md-7">
-    <div class="card mb-3">
-      <div class="card-body">
-        <h6 class="card-title text-muted mb-4 border-bottom pb-2">ADD A FAQ</h6>
 
-        <form action="{{ route('whatsapp-numbers.faqs.store', $phoneNumberId) }}" method="POST" enctype="multipart/form-data">
-          @csrf
-          <div class="mb-3">
-            <label class="form-label">Question <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" name="question" placeholder="Enter question..." required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Answer <span class="text-danger">*</span></label>
-            <textarea class="form-control" name="answer" id="answer" rows="4" placeholder="Write the complete answer here..." required></textarea>
-          </div>
-
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label"><i data-lucide="paperclip" class="icon-sm text-muted me-1"></i> Attachment</label>
-              <input type="file" class="form-control" name="attachment">
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Keywords <span class="text-muted small">(comma separated)</span></label>
-              <input type="text" class="form-control" name="keywords" placeholder="e.g. pricing, cost">
-            </div>
-          </div>
-
-          <div class="d-flex justify-content-end border-top pt-3">
-            <button type="submit" class="btn btn-primary" id="addFaqBtn">Add FAQ</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-body">
-        <h6 class="card-title text-muted mb-4 border-bottom pb-2">KNOWLEDGE BASE ({{ count($faqs) }})</h6>
-
-        @if (empty($faqs))
-          <p class="text-muted mb-0">No FAQs yet - add one above.</p>
-        @else
-          <div class="table-responsive">
-            <table class="table align-middle">
-              <thead>
-                <tr>
-                  <th>Question</th>
-                  <th>Keywords</th>
-                  <th>Attachment</th>
-                  <th>Status</th>
-                  <th class="text-end">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                @foreach ($faqs as $faq)
-                  <tr>
-                    <td>{{ $faq['name'] }}</td>
-                    <td>
-                      @if (!empty($faq['keywords']))
-                        <span class="text-muted small">{{ is_array($faq['keywords']) ? implode(', ', $faq['keywords']) : $faq['keywords'] }}</span>
-                      @else
-                        --
-                      @endif
-                    </td>
-                    @php
-                      $attachmentLink = $faq['attachment_url'] ?? $faq['source_url'] ?? null;
-                    @endphp
-                    <td>
-                      @if (!empty($attachmentLink))
-                        <a href="{{ $attachmentLink }}" target="_blank" class="small">
-                          <i data-lucide="paperclip" class="icon-sm"></i> Link
-                        </a>
-                      @else
-                        --
-                      @endif
-                    </td>
-                    <td>
-                      @if(isset($faq['is_active']) && !$faq['is_active'])
-                        <span class="badge bg-danger">Inactive</span>
-                      @else
-                        <span class="badge bg-success">Active</span>
-                      @endif
-                    </td>
-                    <td class="text-end">
-                      <a href="{{ route('whatsapp-numbers.faqs.edit', [$phoneNumberId, $faq['id']]) }}" class="btn btn-sm btn-outline-primary me-1">Edit</a>
-                      <form action="{{ route('whatsapp-numbers.faqs.destroy', [$phoneNumberId, $faq['id']]) }}" method="POST" class="d-inline"
-                            onsubmit="return confirm('Remove this FAQ?');">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                      </form>
-                    </td>
-                  </tr>
-                @endforeach
-              </tbody>
-            </table>
-          </div>
-        @endif
-      </div>
-    </div>
-  </div>
 </div>
 @endsection
 
