@@ -10,6 +10,7 @@ use App\Models\Employee;
 use App\Models\Message;
 use App\Services\WidgetApiService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 /**
@@ -341,6 +342,7 @@ class WidgetMessageController extends Controller
         $messageForBot = $validated['message'] ?? '[Attachment]';
         $botResponse = $api->sendMessage($validated['token'], $validated['session_id'], $messageForBot);
         $replyText = $botResponse['reply'] ?? "Sorry, I'm having trouble right now - please try again in a moment.";
+        $replyText = $this->linkifyAttachments($replyText);
         $escalated = $botResponse['escalated'] ?? false;
         $options = $botResponse['options'] ?? null;
 
@@ -451,6 +453,7 @@ class WidgetMessageController extends Controller
         // 3. Get that exact FAQ's answer and save + broadcast it too.
         $botResponse = $api->selectOption($validated['token'], $validated['source_id']);
         $replyText = $botResponse['reply'] ?? "Sorry, I'm having trouble right now - please try again in a moment.";
+        $replyText = $this->linkifyAttachments($replyText);
 
         $outbound = Message::create([
             'tenant_id' => $conversation->tenant_id,
@@ -480,6 +483,103 @@ class WidgetMessageController extends Controller
             'reply' => $replyText,
             'conversation_id' => $conversation->id,
             'message_id' => $outbound->id,
+        ]);
+    }
+
+    /**
+     * Turns plain-text URLs in a bot reply into clickable links. URLs that
+     * point to a file (pdf/doc/xls/images/zip...) become a "📎 filename"
+     * link routed through download() below so a click actually downloads
+     * the file - the HTML `download` attribute is ignored by browsers for
+     * cross-origin links, and the widget is embedded on client websites.
+     * URLs already inside an <a href="..."> (e.g. from the TinyMCE answer)
+     * are left untouched.
+     */
+    private function linkifyAttachments(?string $text): string
+    {
+        $text = (string) $text;
+        if ($text === '' || stripos($text, 'http') === false) {
+            return $text;
+        }
+
+        $fileExt = 'pdf|docx?|xlsx?|csv|pptx?|txt|zip|rar|png|jpe?g|gif|webp|mp3|mp4';
+
+        // Split so we never touch text that's already inside an <a>...</a>
+        $parts = preg_split('~(<a\b[^>]*>.*?</a>)~is', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+        foreach ($parts as $i => $part) {
+            if (preg_match('~^<a\b~i', $part)) {
+                continue;
+            }
+            $parts[$i] = preg_replace_callback(
+                '~(?<!["\'=])\bhttps?://[^\s<>"\']+~i',
+                function ($m) use ($fileExt) {
+                    $url = rtrim($m[0], '.,;:!?)');
+                    $trail = substr($m[0], strlen($url));
+                    $path = (string) parse_url($url, PHP_URL_PATH);
+                    $safeUrl = e($url);
+
+                    if (preg_match('~\.(' . $fileExt . ')$~i', $path)) {
+                        $name = e(urldecode(basename($path)));
+                        $href = e(route('widget.download', ['url' => $url]));
+                        return '<a href="' . $href . '" target="_blank" rel="noopener noreferrer" download>📎 ' . $name . '</a>' . $trail;
+                    }
+
+                    return '<a href="' . $safeUrl . '" target="_blank" rel="noopener noreferrer">' . $safeUrl . '</a>' . $trail;
+                },
+                $part
+            );
+        }
+
+        return implode('', $parts);
+    }
+
+    /**
+     * Public download proxy for FAQ attachments. Only files hosted on this
+     * app's own domain are allowed (prevents using this as an open proxy).
+     * Streams the file back with Content-Disposition: attachment so the
+     * browser downloads it instead of opening it.
+     */
+    public function download(Request $request)
+    {
+        $url = (string) $request->query('url', '');
+        $host = parse_url($url, PHP_URL_HOST);
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+
+        $allowedHosts = array_filter([
+            $request->getHost(),
+            parse_url((string) config('app.url'), PHP_URL_HOST),
+            parse_url((string) config('services.bot_api.url'), PHP_URL_HOST),
+        ]);
+
+        if (!$host || !in_array($scheme, ['http', 'https'], true) || !in_array($host, $allowedHosts, true)) {
+            abort(403, 'File not allowed.');
+        }
+
+        $fileName = urldecode(basename((string) parse_url($url, PHP_URL_PATH))) ?: 'attachment';
+
+        // File in our own public storage - serve it directly from disk.
+        $path = (string) parse_url($url, PHP_URL_PATH);
+        if (str_starts_with($path, '/storage/')) {
+            $local = public_path(ltrim(urldecode($path), '/'));
+            $real = realpath($local);
+            if ($real && str_starts_with($real, realpath(public_path('storage'))) && is_file($real)) {
+                return response()->download($real, $fileName);
+            }
+        }
+
+        try {
+            $response = Http::timeout(30)->withOptions(['verify' => false])->get($url);
+        } catch (\Throwable $e) {
+            abort(404, 'File not found.');
+        }
+
+        if (!$response->successful()) {
+            abort(404, 'File not found.');
+        }
+
+        return response($response->body(), 200, [
+            'Content-Type' => $response->header('Content-Type') ?: 'application/octet-stream',
+            'Content-Disposition' => 'attachment; filename="' . addslashes($fileName) . '"',
         ]);
     }
 }

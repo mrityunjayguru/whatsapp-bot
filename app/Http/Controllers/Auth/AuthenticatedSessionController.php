@@ -4,6 +4,10 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\Company;
+use App\Models\Employee;
+use App\Models\Widget;
+use App\Models\WhatsappNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -34,12 +38,23 @@ class AuthenticatedSessionController extends Controller
             return redirect()->intended(route('companies.index', absolute: false));
         }
 
-        $employee = \App\Models\Employee::where('email', $user->email)->first();
+        $employee = Employee::where('email', $user->email)->first();
         if ($employee && $employee->role !== 'ADMIN') {
             return redirect()->intended(route('conversations.index', absolute: false));
         }
 
-        $widget = \App\Models\Widget::where('company_id', $user->company_id)->first();
+        $company = Company::find($user->company_id);
+        $botUsageType = $company?->bot_usage_type ?? 'widget';
+
+        if ($botUsageType === 'whatsapp') {
+            $whatsappNumber = WhatsappNumber::where('company_id', $user->company_id)->first();
+            if ($whatsappNumber) {
+                return redirect()->intended(route('whatsapp-numbers.edit', ['phoneNumberId' => $whatsappNumber->phone_number_id]));
+            }
+            return redirect()->intended(route('whatsapp-numbers.index', absolute: false));
+        }
+
+        $widget = Widget::where('company_id', $user->company_id)->first();
         if ($widget) {
             return redirect()->intended(route('widgets.edit', ['token' => $widget->token]));
         }

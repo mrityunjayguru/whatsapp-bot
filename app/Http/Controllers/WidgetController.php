@@ -146,11 +146,16 @@ class WidgetController extends Controller
                 }
             }],
             'bot_name' => 'required|string|max:255',
-            'welcome_message' => 'required|string|max:500',
             'primary_color' => 'required|string|max:20',
             'button_position' => 'required|in:bottom-left,bottom-right',
-            'fallback_message' => 'required|string|max:500',
-            'human_handoff_message' => 'nullable|string|max:500',
+            // welcome_message / fallback_message / human_handoff_message
+            // are intentionally no longer accepted here - the greeting,
+            // fallback and human-handoff text are now the SAME shared,
+            // company-level Bot Settings ("/admin/bot-config") that
+            // already drives WhatsApp replies, so the widget just reads
+            // those live from Python (see widget_engine.py's
+            // _company_template()) instead of keeping its own separate
+            // copies that could drift out of sync.
             'is_active' => 'nullable|boolean',
             'valid_from' => 'nullable|date',
             'expiry_date' => 'nullable|date|after_or_equal:valid_from',

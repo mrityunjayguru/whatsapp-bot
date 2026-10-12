@@ -24,7 +24,13 @@ class WebhookController extends Controller
 {
     public function verifyWebhook(Request $request)
     {
-        $verifyToken = env('META_WEBHOOK_VERIFY_TOKEN');
+        $globalToken = env('META_WEBHOOK_VERIFY_TOKEN');
+        $numberTokens = \App\Models\WhatsappNumber::whereNotNull('webhook_verify_token')
+            ->pluck('webhook_verify_token')
+            ->filter()
+            ->all();
+        $allAllowedTokens = array_merge([$globalToken], $numberTokens);
+        $allAllowedTokens = array_values(array_unique(array_filter($allAllowedTokens)));
 
         $mode = $request->query('hub.mode');
         $token = $request->query('hub.verify_token');
@@ -33,13 +39,14 @@ class WebhookController extends Controller
         Log::info('========== WEBHOOK VERIFICATION ==========');
         Log::info('Mode: ' . $mode);
         Log::info('Token received: ' . $token);
-        Log::info('Token expected: ' . $verifyToken);
+        Log::info('Global token known: ' . (filled($globalToken) ? 'YES' : 'NO'));
+        Log::info('Per-number tokens count: ' . count($numberTokens));
         Log::info('Challenge: ' . $challenge);
         Log::info('==========================================');
 
         if (
             $mode === 'subscribe' &&
-            $token === $verifyToken
+            in_array($token, $allAllowedTokens, true)
         ) {
             return response($challenge, 200)
                 ->header('Content-Type', 'text/plain');
@@ -188,6 +195,8 @@ class WebhookController extends Controller
                 if (empty($chatbotReplyText)) {
                     $chatbotReplyText = 'Sorry, I am unable to process your request at the moment.';
                 }
+
+                $chatbotReplyText = trim(strip_tags(html_entity_decode($chatbotReplyText)));
 
                 // 3. Send reply back to WhatsApp
                 $this->whatsappService->sendMessage($phoneNumber, $chatbotReplyText);

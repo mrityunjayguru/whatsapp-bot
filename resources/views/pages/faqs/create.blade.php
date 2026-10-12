@@ -108,11 +108,16 @@
                     <div class="row align-items-end mb-3">
                         <div class="col-md-8">
                             <label class="form-label"><i data-lucide="paperclip" class="icon-sm text-muted me-1"></i> Attachment</label>
-                            <input type="file" class="form-control" name="attachment">
+                            <input type="file" class="form-control" name="attachment" id="attachment">
                         </div>
                         <div class="col-md-4">
-                            <!-- Optional preview text or button -->
+                            <button type="button" class="btn btn-outline-danger w-100" id="removeAttachmentBtn" style="display: none;">
+                                <i data-lucide="x" class="icon-sm me-1"></i> Remove
+                            </button>
                         </div>
+                    </div>
+                    <div id="selectedFileInfo" class="mb-3" style="display: none;">
+                        <small class="text-muted">Selected: <span id="selectedFileName"></span></small>
                     </div>
 
                     <!-- <div class="mb-3">
@@ -151,6 +156,29 @@
                 alert('Please enter an answer.');
                 tinymce.get('answer').focus();
             }
+        });
+
+        var attachmentInput = document.getElementById('attachment');
+        var removeBtn = document.getElementById('removeAttachmentBtn');
+        var selectedFileInfo = document.getElementById('selectedFileInfo');
+        var selectedFileName = document.getElementById('selectedFileName');
+
+        attachmentInput.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) {
+                selectedFileName.textContent = this.files[0].name;
+                selectedFileInfo.style.display = 'block';
+                removeBtn.style.display = 'inline-flex';
+                removeBtn.classList.add('align-items-center', 'justify-content-center');
+            } else {
+                selectedFileInfo.style.display = 'none';
+                removeBtn.style.display = 'none';
+            }
+        });
+
+        removeBtn.addEventListener('click', function() {
+            attachmentInput.value = '';
+            selectedFileInfo.style.display = 'none';
+            removeBtn.style.display = 'none';
         });
     });
 </script>

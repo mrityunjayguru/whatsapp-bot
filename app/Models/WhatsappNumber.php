@@ -14,6 +14,7 @@ class WhatsappNumber extends Model
         'label',
         'access_token',
         'graph_version',
+        'webhook_verify_token',
         'is_active',
         'valid_from',
         'expiry_date',

@@ -106,14 +106,31 @@
                         <textarea class="form-control flex-grow-1" id="answer" name="answer" rows="12">{{ old('answer', $faq->answer) }}</textarea>
                     </div>
 
+                    <input type="hidden" name="remove_attachment" id="removeAttachment" value="0">
+
                     <div class="row align-items-end mb-3">
                         <div class="col-md-8">
                             <label class="form-label"><i data-lucide="paperclip" class="icon-sm text-muted me-1"></i> Attachment</label>
-                            <input type="file" class="form-control" name="attachment">
-                            @if($faq->attachment)
-                                <small class="text-muted d-block mt-1">Current: <a href="{{ $faq->attachment }}" target="_blank">View File</a></small>
-                            @endif
+                            <input type="file" class="form-control" name="attachment" id="attachment">
                         </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-danger w-100" id="removeAttachmentBtn" style="display: none;">
+                                <i data-lucide="x" class="icon-sm me-1"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="currentAttachmentInfo" class="mb-3" @if(!$faq->attachment) style="display: none;" @endif>
+                        @if($faq->attachment)
+                            <small class="text-muted d-block">Current: <a href="{{ $faq->attachment }}" target="_blank">View File</a></small>
+                            <button type="button" class="btn btn-sm btn-outline-danger mt-1" id="removeCurrentAttachmentBtn">
+                                <i data-lucide="trash-2" class="icon-sm me-1"></i> Remove Current Attachment
+                            </button>
+                        @endif
+                    </div>
+
+                    <div id="selectedFileInfo" class="mb-3" style="display: none;">
+                        <small class="text-muted">Selected: <span id="selectedFileName"></span></small>
                     </div>
 
                     <!-- <div class="mb-3">
@@ -153,6 +170,44 @@
                 tinymce.get('answer').focus();
             }
         });
+
+        var attachmentInput = document.getElementById('attachment');
+        var removeBtn = document.getElementById('removeAttachmentBtn');
+        var selectedFileInfo = document.getElementById('selectedFileInfo');
+        var selectedFileName = document.getElementById('selectedFileName');
+        var currentAttachmentInfo = document.getElementById('currentAttachmentInfo');
+        var removeCurrentBtn = document.getElementById('removeCurrentAttachmentBtn');
+        var removeAttachmentHidden = document.getElementById('removeAttachment');
+
+        function updateRemoveBtnVisibility() {
+            if (attachmentInput.files && attachmentInput.files.length > 0) {
+                selectedFileName.textContent = attachmentInput.files[0].name;
+                selectedFileInfo.style.display = 'block';
+                removeBtn.style.display = 'inline-flex';
+                removeBtn.classList.add('align-items-center', 'justify-content-center');
+            } else {
+                selectedFileInfo.style.display = 'none';
+                removeBtn.style.display = 'none';
+            }
+        }
+
+        attachmentInput.addEventListener('change', function() {
+            updateRemoveBtnVisibility();
+        });
+
+        removeBtn.addEventListener('click', function() {
+            attachmentInput.value = '';
+            updateRemoveBtnVisibility();
+        });
+
+        if (removeCurrentBtn) {
+            removeCurrentBtn.addEventListener('click', function() {
+                removeAttachmentHidden.value = '1';
+                currentAttachmentInfo.style.display = 'none';
+                attachmentInput.value = '';
+                updateRemoveBtnVisibility();
+            });
+        }
     });
 </script>
 @endpush

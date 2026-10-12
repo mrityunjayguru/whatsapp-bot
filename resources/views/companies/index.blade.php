@@ -59,6 +59,7 @@
                 <th class="pt-0">NAME</th>
                 <th class="pt-0">EMAIL</th>
                 <th class="pt-0">CONTACT NUMBER</th>
+                <th class="pt-0">BOT TYPE</th>
                 <th class="pt-0">STATUS</th>
                 <th class="pt-0 text-center">ACTION</th>
               </tr>
@@ -69,6 +70,13 @@
                   <td>{{ $company->name }}</td>
                   <td>{{ $company->contact_email }}</td>
                   <td>{{ $company->contact_number ?? '-' }}</td>
+                  <td>
+                    @if($company->bot_usage_type === 'widget')
+                      <span class="badge bg-info-subtle text-info border border-info-subtle"><i data-lucide="layout-grid" class="icon-xs me-1"></i> Widget Bot</span>
+                    @else
+                      <span class="badge bg-success-subtle text-success border border-success-subtle"><i data-lucide="message-circle" class="icon-xs me-1"></i> WhatsApp Bot</span>
+                    @endif
+                  </td>
                   <td>
                     @if($company->is_active)
                       <span class="badge bg-success-subtle text-success border border-success-subtle"><span class="bg-success rounded-circle d-inline-block me-1" style="width:6px;height:6px;"></span> Active</span>
@@ -98,7 +106,7 @@
                 </tr>
               @empty
                 <tr>
-                  <td colspan="5" class="text-center text-muted py-4">No companies found.</td>
+                  <td colspan="6" class="text-center text-muted py-4">No companies found.</td>
                 </tr>
               @endforelse
             </tbody>

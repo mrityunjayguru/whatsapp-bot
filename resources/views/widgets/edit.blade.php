@@ -93,9 +93,14 @@
             <input type="text" class="form-control" name="bot_name" value="{{ old('bot_name', $widget['bot_name']) }}" required>
           </div>
 
-          <!-- <div class="mb-3">
-            <label class="form-label">Welcome message</label>
-            <textarea class="form-control" name="welcome_message" id="welcome_message" rows="4">{{ old('welcome_message', $widget['welcome_message']) }}</textarea>
+          <!-- <div class="alert alert-info d-flex align-items-start gap-2 mb-3">
+            <i data-lucide="info" class="icon-sm mt-1 flex-shrink-0"></i>
+            <div>
+              This widget's greeting, fallback, and human-handoff replies now come from your
+              <a href="{{ route('bot-config.edit') }}">Bot Settings</a> page - the same place that
+              already controls your WhatsApp bot's replies, so editing it once keeps both channels
+              in sync. There's no separate welcome/fallback text to set here anymore.
+            </div>
           </div> -->
 
           <div class="row">
@@ -111,11 +116,6 @@
               </select>
             </div>
           </div>
-
-          <!-- <div class="mb-3">
-            <label class="form-label">Fallback message <span class="text-muted small">(shown when nothing matches)</span></label>
-            <textarea class="form-control" name="fallback_message" id="fallback_message" rows="4">{{ old('fallback_message', $widget['fallback_message']) }}</textarea>
-          </div> -->
 
           <div class="row mb-4">
             <div class="col-md-6 mb-3 mb-md-0">
@@ -181,7 +181,7 @@
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         tinymce.init({
-            selector: '#answer, #welcome_message, #fallback_message',
+            selector: '#answer',
             menubar: false,
             plugins: 'link lists',
             toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link',
@@ -208,26 +208,9 @@
             });
         }
 
-        var configForm = document.getElementById('configForm');
-        if (configForm) {
-            configForm.addEventListener('submit', function(e) {
-                tinymce.triggerSave();
-                var welcome = document.getElementById('welcome_message').value.trim();
-                if (!welcome || welcome === '<p></p>' || welcome === '<p><br></p>') {
-                    e.preventDefault();
-                    alert('Please enter a welcome message.');
-                    tinymce.get('welcome_message').focus();
-                    return;
-                }
-                var fallback = document.getElementById('fallback_message').value.trim();
-                if (!fallback || fallback === '<p></p>' || fallback === '<p><br></p>') {
-                    e.preventDefault();
-                    alert('Please enter a fallback message.');
-                    tinymce.get('fallback_message').focus();
-                    return;
-                }
-            });
-        }
+        // welcome_message / fallback_message fields no longer exist on
+        // this form (see the Bot Settings callout above), so there's
+        // nothing left for #configForm's submit handler to validate here.
 
         // Clear attachment on add form
         const attachInputAdd = document.getElementById('faqAttachmentInputAdd');

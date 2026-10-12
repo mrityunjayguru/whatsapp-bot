@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Faq;
+use App\Models\WhatsappNumber;
+use App\Services\WhatsappNumberApiService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class FaqController extends Controller
@@ -45,21 +48,23 @@ class FaqController extends Controller
             } else {
                 // Fallback to local storage if the API call itself failed
                 $path = $file->store('faqs', 'public');
-                $validated['attachment'] = Storage::url($path);
+                $validated['attachment'] = asset(Storage::url($path));
             }
         }
 
         $keywordList = !empty($validated['keywords'])
             ? array_filter(array_map('trim', explode(',', $validated['keywords'])))
             : [];
-        // Note: You might want to update the API to pass tenant_id so vector DB is scoped too, 
-        // but for now we just scope the DB.
+
         $textId = $apiService->uploadText($validated['question'], $validated['answer'], $sourceUrl, false, $keywordList);
         $validated['faq_hash_id'] = $textId;
         $validated['python_source_ids'] = $textId ? [$textId] : [];
         $validated['is_active'] = $request->has('is_active') ? true : false;
         $validated['tenant_id'] = $companyId;
         $validated['created_by'] = auth()->id();
+
+        // Also sync to each WhatsApp number's own FAQ store
+        $this->syncFaqToWhatsappNumbers($companyId, $validated['question'], $validated['answer'], $sourceUrl, $keywordList, null);
 
         Faq::create($validated);
 
@@ -108,8 +113,15 @@ class FaqController extends Controller
                 $validated['attachment'] = $attachResult['url'];
             } else {
                 $path = $file->store('faqs', 'public');
-                $validated['attachment'] = Storage::url($path);
+                $validated['attachment'] = asset(Storage::url($path));
             }
+        } elseif ($request->input('remove_attachment') == '1') {
+            $validated['attachment'] = null;
+            $sourceUrl = $validated['url'] ?? null;
+        } else {
+            // Preserve existing attachment
+            $validated['attachment'] = $faq->attachment;
+            $sourceUrl = $faq->attachment ? $faq->attachment : ($validated['url'] ?? null);
         }
 
         $keywordList = !empty($validated['keywords'])
@@ -119,6 +131,10 @@ class FaqController extends Controller
         $validated['faq_hash_id'] = $textId;
         $validated['python_source_ids'] = $textId ? [$textId] : [];
         $validated['is_active'] = $request->has('is_active') ? true : false;
+
+        // Sync to each WhatsApp number's own FAQ store (old source IDs for deletion)
+        $oldSourceIds = is_array($faq->python_source_ids) ? $faq->python_source_ids : ($faq->faq_hash_id ? [$faq->faq_hash_id] : []);
+        $this->syncFaqToWhatsappNumbers($companyId, $validated['question'], $validated['answer'], $sourceUrl, $keywordList, $oldSourceIds);
 
         $faq->update($validated);
 
@@ -150,5 +166,60 @@ class FaqController extends Controller
         
         $faq->update(['is_active' => !$faq->is_active]);
         return redirect()->route('faqs.index')->with('success', 'FAQ status updated successfully.');
+    }
+
+    /**
+     * Sync a FAQ to each WhatsApp number's own per-number FAQ store on the Python side.
+     * This is required because WhatsApp bot reply uses /whatsapp/numbers/{id}/bot/reply
+     * which reads from the number's own store, NOT the shared company store.
+     * Deduplicates by question name before uploading to prevent multiple copies.
+     */
+    private function syncFaqToWhatsappNumbers(int $companyId, string $question, string $answer, ?string $sourceUrl, array $keywords, ?array $oldSourceIds): void
+    {
+        $numbers = WhatsappNumber::where('company_id', $companyId)->get();
+        if ($numbers->isEmpty()) {
+            return;
+        }
+
+        $numApi = app(WhatsappNumberApiService::class);
+        $plainAnswer = strip_tags(html_entity_decode($answer));
+
+        foreach ($numbers as $number) {
+            try {
+                // Delete old sources (from previous save) from this number's store
+                if (!empty($oldSourceIds)) {
+                    foreach ($oldSourceIds as $oldId) {
+                        $numApi->deleteFaqSource($number->phone_number_id, $oldId);
+                    }
+                }
+
+                // DEDUPLICATION: list all existing sources and delete any with same question name
+                $existingSources = $numApi->listFaqSources($number->phone_number_id);
+                foreach ($existingSources as $source) {
+                    $sourceName = $source['name'] ?? $source['title'] ?? '';
+                    if (trim(strtolower($sourceName)) === trim(strtolower($question))) {
+                        $sourceId = $source['id'] ?? $source['source_id'] ?? null;
+                        if ($sourceId) {
+                            $numApi->deleteFaqSource($number->phone_number_id, $sourceId);
+                        }
+                    }
+                }
+
+                // Upload the new/updated FAQ to this number's store
+                $numApi->uploadFaqText(
+                    $number->phone_number_id,
+                    $question,
+                    $plainAnswer,
+                    $sourceUrl,
+                    false,
+                    $keywords
+                );
+            } catch (\Throwable $e) {
+                Log::error('FaqController: failed to sync FAQ to WhatsApp number store', [
+                    'phone_number_id' => $number->phone_number_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 }

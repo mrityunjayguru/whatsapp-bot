@@ -46,7 +46,7 @@ class BotConfigController extends Controller
         ]);
     }
 
-    public function update(Request $request)
+    public function update(Request $request, \App\Services\WhatsappNumberApiService $api)
     {
         $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $validated = $request->validate([
@@ -80,7 +80,9 @@ class BotConfigController extends Controller
         // Ensure products is an array
         $validated['products'] = $validated['products'] ?? [];
 
-        // Attempt to sync to Python
+        $errors = [];
+
+        // Attempt to sync to Python (widget / company-level bot)
         try {
             $response = Http::withHeaders($this->authHeaders())
                 ->timeout(10)
@@ -91,11 +93,43 @@ class BotConfigController extends Controller
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
-                return back()->with('error', 'Saved locally, but failed to sync to Bot API (API returned ' . $response->status() . '). Please ensure the bot service is running.');
+                $errors[] = 'Widget/company bot sync failed (API returned ' . $response->status() . ').';
             }
         } catch (\Exception $e) {
             Log::error('BotConfig: Exception saving config to Python API', ['error' => $e->getMessage()]);
-            return back()->with('error', 'Saved locally, but could not connect to Python Bot. Please check if the bot is online.');
+            $errors[] = 'Widget/company bot sync: could not connect to Python Bot.';
+        }
+
+        // Also sync the updated BotConfig out to EVERY WhatsApp number
+        // registered under this company.  Without this, the Admin Bot
+        // Settings page (greeting, fallback, company_name, links etc.)
+        // would only take effect on the widget side, and WhatsApp users
+        // would keep seeing the old Track Route Pro / hardcoded defaults
+        // forever - exactly the bug reported by the user.
+        $companyNumbers = \App\Models\WhatsappNumber::where('company_id', $companyId)->get();
+        foreach ($companyNumbers as $number) {
+            try {
+                // Ensure the number has the company_id synced
+                $api->updateNumberConfig($number->phone_number_id, [
+                    'company_id' => $number->company_id,
+                    'display_number' => $number->display_number ?? '',
+                    'label' => $number->label ?? '',
+                    'is_active' => $number->is_active,
+                    'valid_from' => $number->valid_from ? $number->valid_from->format('Y-m-d') : null,
+                    'expiry_date' => $number->expiry_date ? $number->expiry_date->format('Y-m-d') : null,
+                ]);
+                WhatsappNumberController::syncBotConfigForNumber($number, $api);
+            } catch (\Throwable $e) {
+                Log::error('BotConfig: failed to sync bot config to WhatsApp number', [
+                    'phone_number_id' => $number->phone_number_id,
+                    'error' => $e->getMessage(),
+                ]);
+                $errors[] = "WhatsApp number {$number->display_number} bot sync failed.";
+            }
+        }
+
+        if (!empty($errors)) {
+            return back()->with('error', 'Saved locally. Issues: ' . implode(' ', $errors));
         }
 
         return back()->with('success', 'Bot config saved. Live on the next customer message.');

@@ -64,7 +64,7 @@ class CompanyController extends Controller
 
         // Create Admin User for the company
         User::create([
-            'name' => $request->name . ' Admin',
+            'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'company_id' => $company->id,
@@ -120,7 +120,7 @@ class CompanyController extends Controller
         } else {
             // Create user if missing, for example when editing a seeded company
             User::create([
-                'name' => $request->name . ' Admin',
+                'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password ?? 'password'),
                 'company_id' => $company->id,

@@ -24,15 +24,15 @@ return new class extends Migration
         // so all your existing WhatsApp conversations keep working
         // exactly as before with zero data changes - this row just
         // becomes their real "company" going forward.
-        DB::table('companies')->insert([
-            'id' => 1001,
-            'name' => 'Track Route Pro (Internal)',
-            'contact_email' => null,
-            'widget_token' => null,
-            'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // DB::table('companies')->insert([
+        //     'id' => 1001,
+        //     'name' => 'Track Route Pro (Internal)',
+        //     'contact_email' => null,
+        //     'widget_token' => null,
+        //     'is_active' => true,
+        //     'created_at' => now(),
+        //     'updated_at' => now(),
+        // ]);
     }
 
     public function down(): void

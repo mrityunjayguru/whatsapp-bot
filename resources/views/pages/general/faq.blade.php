@@ -52,8 +52,25 @@
                 <td>{{ $faq->faq_hash_id }}</td>
                 <td class="fw-bold">{{ $faq->question }}</td>
                 <td><span class="badge bg-light text-dark border">{{ $faq->category ?? 'General' }}</span></td>
-                <td>{{ $faq->keywords ?? '--' }}</td>
-                <td>{{ \Illuminate\Support\Str::limit($faq->answer, 30) }}</td>
+                <td>
+                    @php
+                        $kwRaw = $faq->keywords ?? '';
+                        $kwList = array_filter(array_map('trim', explode(',', $kwRaw)));
+                        $kwCount = count($kwList);
+                    @endphp
+                    @if($kwCount > 0)
+                        @if($kwCount <= 3)
+                            <span>{{ implode(', ', $kwList) }}</span>
+                        @else
+                            <span data-bs-toggle="tooltip" data-bs-html="true" title="{{ implode('<br>', array_map('e', $kwList)) }}" style="cursor: help;">
+                                {{ implode(', ', array_slice($kwList, 0, 3)) }}...
+                            </span>
+                        @endif
+                    @else
+                        --
+                    @endif
+                </td>
+                <td>{{ \Illuminate\Support\Str::limit(strip_tags($faq->answer), 30) }}</td>
                 <td>
                     @if($faq->attachment)
                         <a href="{{ $faq->attachment }}" target="_blank" class="text-primary text-decoration-underline"><i data-lucide="paperclip" class="icon-sm"></i> {{ basename($faq->attachment) }}</a>

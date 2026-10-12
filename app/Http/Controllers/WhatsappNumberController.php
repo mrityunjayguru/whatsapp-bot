@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BotConfig;
 use App\Models\Company;
 use App\Models\WhatsappNumber;
 use App\Services\WhatsappNumberApiService;
@@ -22,6 +23,44 @@ use Illuminate\Http\Request;
  */
 class WhatsappNumberController extends Controller
 {
+    public static function syncBotConfigForNumber(WhatsappNumber $number, WhatsappNumberApiService $api): void
+    {
+        $botConfigRow = BotConfig::where('tenant_id', $number->company_id)->first();
+        $company = $number->company;
+
+        $templates = [
+            'greeting' => $botConfigRow?->payload['templates']['greeting']
+                ?? 'Hi {greeting_prefix} {name}! 👋 Welcome to {company_name}!',
+            'fallback' => $botConfigRow?->payload['templates']['fallback']
+                ?? "I'm sorry, I couldn't find a direct answer for that. Can you rephrase?",
+            'demo_booking' => $botConfigRow?->payload['templates']['demo_booking']
+                ?? 'Sure! Click here to book a demo at your convenience: {demo_link}',
+            'human_handoff' => $botConfigRow?->payload['templates']['human_handoff']
+                ?? "Sure! I'll notify a human agent right away. They'll be with you shortly.",
+            'invalid_booking_date' => $botConfigRow?->payload['templates']['invalid_booking_date']
+                ?? 'Please pick a date within the next 30 days.',
+            'booking_confirmed' => $botConfigRow?->payload['templates']['booking_confirmed']
+                ?? "✅ Demo booked for {date} at {time}!\nYou'll get a confirmation email at {email} shortly. 📧",
+        ];
+
+        $companyName = $botConfigRow?->payload['company_name'] ?? ($company?->name ?? 'My Company');
+        $supportLink = $botConfigRow?->payload['support_link'] ?? '';
+        $demoLink = $botConfigRow?->payload['demo_link'] ?? '';
+        $productsLink = $botConfigRow?->payload['products_link'] ?? '';
+        $products = $botConfigRow?->payload['products'] ?? [];
+        if (!is_array($products)) {
+            $products = [];
+        }
+
+        $api->updateBotConfig($number->phone_number_id, [
+            'company_name' => $companyName,
+            'support_link' => $supportLink,
+            'demo_link' => $demoLink,
+            'products_link' => $productsLink,
+            'products' => $products,
+            'templates' => $templates,
+        ]);
+    }
     public function index()
     {
         $numbers = WhatsappNumber::with('company')->orderByDesc('id')->get();
@@ -35,7 +74,7 @@ class WhatsappNumberController extends Controller
 
     public function create()
     {
-        $companies = Company::all();
+        $companies = Company::where('bot_usage_type', 'whatsapp')->get();
         return view('whatsapp_numbers.create', compact('companies'));
     }
 
@@ -48,6 +87,7 @@ class WhatsappNumberController extends Controller
             'waba_id' => 'nullable|string|max:64',
             'access_token' => 'nullable|string',
             'graph_version' => 'nullable|string|max:20',
+            'webhook_verify_token' => 'nullable|string|max:255',
             'label' => 'nullable|string|max:255',
             'valid_from' => 'nullable|date',
             'expiry_date' => 'nullable|date|after_or_equal:valid_from',
@@ -55,12 +95,9 @@ class WhatsappNumberController extends Controller
 
         $phoneNumberId = !empty($validated['phone_number_id']) ? $validated['phone_number_id'] : (string) (time() . rand(100, 999));
 
-        // Register this number's own FAQ store + bot persona on the
-        // Python side FIRST - if the bot service is down, nothing gets
-        // created on either side (same ordering as WidgetController::store()).
-        $registered = $api->createNumber($phoneNumberId, $validated['display_number'] ?? null, $validated['label'] ?? null);
-        if (!$registered) {
-            return back()->withInput()->with('error', 'Could not register this number with the bot service - check it is running.');
+        $verifyToken = $validated['webhook_verify_token'] ?? null;
+        if (empty($verifyToken)) {
+            $verifyToken = \Illuminate\Support\Str::random(32);
         }
 
         $number = WhatsappNumber::create([
@@ -71,19 +108,40 @@ class WhatsappNumberController extends Controller
             'label' => $validated['label'] ?? null,
             'access_token' => $validated['access_token'] ?? null,
             'graph_version' => $validated['graph_version'] ?: 'v23.0',
+            'webhook_verify_token' => $verifyToken,
             'is_active' => true,
-            'valid_from' => $validated['valid_from'] ?? null,
-            'expiry_date' => $validated['expiry_date'] ?? null,
+            'valid_from' => $validated['valid_from'] ?? now()->format('Y-m-d'),
+            'expiry_date' => $validated['expiry_date'] ?? now()->addMonths(2)->format('Y-m-d'),
         ]);
 
-        // Mirror the active window onto the Python side too - same
-        // reasoning as WidgetController::store()'s call to
-        // updateWidgetConfig() right after creating a widget.
+        $api->createNumber(
+            $number->phone_number_id,
+            $number->display_number ?? null,
+            $number->label ?? null
+        );
+
         $api->updateNumberConfig($number->phone_number_id, [
             'company_id' => $number->company_id,
-            'valid_from' => $validated['valid_from'] ?? null,
-            'expiry_date' => $validated['expiry_date'] ?? null,
+            'display_number' => $number->display_number ?? '',
+            'label' => $number->label ?? '',
+            'is_active' => $number->is_active,
+            'valid_from' => $number->valid_from ? $number->valid_from->format('Y-m-d') : null,
+            'expiry_date' => $number->expiry_date ? $number->expiry_date->format('Y-m-d') : null,
         ]);
+
+        // Seed the new number's bot persona (greeting, fallback,
+        // company_name, links, products) from the company's BotConfig row
+        // (or sensible defaults) right now, so the very first WhatsApp
+        // message it receives already shows the custom greeting instead
+        // of Track Route Pro's shared default.
+        try {
+            self::syncBotConfigForNumber($number, $api);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[WhatsappNumberController@store] Initial bot-persona sync failed', [
+                'phone_number_id' => $number->phone_number_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return redirect()->route('whatsapp-numbers.edit', $number->phone_number_id)
             ->with('success', 'WhatsApp number registered. Configure its bot persona and add some FAQs below.');
@@ -94,7 +152,7 @@ class WhatsappNumberController extends Controller
         $number = WhatsappNumber::where('phone_number_id', $phoneNumberId)->firstOrFail();
         $faqs = $api->listFaqSources($phoneNumberId);
         $isCompanyUser = !is_null((auth()->user()->company_id ?? auth()->user()->tenant_id));
-        $companies = $isCompanyUser ? collect() : Company::all();
+        $companies = $isCompanyUser ? collect() : Company::where('bot_usage_type', 'whatsapp')->get();
         $botConfig = $api->getBotConfig($phoneNumberId);
 
         return view('whatsapp_numbers.edit', compact('number', 'faqs', 'companies', 'isCompanyUser', 'botConfig'));
@@ -112,6 +170,7 @@ class WhatsappNumberController extends Controller
             'label' => 'nullable|string|max:255',
             'access_token' => 'nullable|string',
             'graph_version' => 'nullable|string|max:20',
+            'webhook_verify_token' => 'nullable|string|max:255',
             'is_active' => 'nullable|boolean',
             'valid_from' => 'nullable|date',
             'expiry_date' => 'nullable|date|after_or_equal:valid_from',
@@ -134,6 +193,11 @@ class WhatsappNumberController extends Controller
         $number->waba_id = $validated['waba_id'] ?? null;
         $number->label = $validated['label'] ?? null;
         $number->graph_version = $validated['graph_version'] ?: 'v23.0';
+        if (!empty($validated['webhook_verify_token'])) {
+            $number->webhook_verify_token = $validated['webhook_verify_token'];
+        } elseif (empty($number->webhook_verify_token)) {
+            $number->webhook_verify_token = \Illuminate\Support\Str::random(32);
+        }
         // Blank access_token means "leave the existing secret alone" -
         // it's never pre-filled back into the edit form (same convention
         // as any password-style field), so there's no way to tell "left
@@ -171,6 +235,19 @@ class WhatsappNumberController extends Controller
             'valid_from' => $validated['valid_from'] ?? null,
             'expiry_date' => $validated['expiry_date'] ?? null,
         ]);
+
+        // Whenever number-level settings change (especially if company_id
+        // was swapped to a different company), re-sync the bot persona
+        // from the BotConfig row too so greeting/fallback/links stay in
+        // sync on the Python side.
+        try {
+            self::syncBotConfigForNumber($number, $api);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[WhatsappNumberController@updateConfig] Bot-persona sync failed', [
+                'phone_number_id' => $newPhoneNumberId,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         if ($phoneNumberIdChanged) {
             return redirect()->route('whatsapp-numbers.edit', $newPhoneNumberId)->with('success', 'WhatsApp number settings saved and Phone Number ID updated.');

@@ -58,16 +58,25 @@ class MetaWebhookController extends Controller
         $token = $request->query('hub_verify_token');
         $challenge = $request->query('hub_challenge');
 
+        $globalToken = env('META_WEBHOOK_VERIFY_TOKEN') ?? config('services.meta.webhook_verify_token');
+        $numberTokens = \App\Models\WhatsappNumber::whereNotNull('webhook_verify_token')
+            ->pluck('webhook_verify_token')
+            ->filter()
+            ->all();
+        $allAllowedTokens = array_merge([$globalToken], $numberTokens);
+        $allAllowedTokens = array_values(array_unique(array_filter($allAllowedTokens)));
+
         \Log::info('[MetaWebhook] Verification', [
             'mode' => $mode,
             'token_received' => $token,
-            'token_expected' => config('services.meta.webhook_verify_token'),
+            'global_known' => filled($globalToken),
+            'known_number_tokens_count' => count($numberTokens),
             'challenge' => $challenge,
         ]);
 
         if (
             $mode === 'subscribe' &&
-            $token === config('services.meta.webhook_verify_token')
+            in_array($token, $allAllowedTokens, true)
         ) {
             return response($challenge, 200)
                 ->header('Content-Type', 'text/plain');
@@ -173,6 +182,60 @@ class MetaWebhookController extends Controller
 
                             if ($connectedNumberId) {
                                 $whatsappNumber = \App\Models\WhatsappNumber::where('phone_number_id', $connectedNumberId)->first();
+                            }
+
+                            if ($whatsappNumber) {
+                                try {
+                                    $numApi = app(\App\Services\WhatsappNumberApiService::class);
+                                    $existingConfig = $numApi->getNumberConfig($connectedNumberId);
+                                    if (!$existingConfig || empty($existingConfig['company_id'])) {
+                                        if (!$existingConfig) {
+                                            $numApi->createNumber(
+                                                $whatsappNumber->phone_number_id,
+                                                $whatsappNumber->display_number ?? null,
+                                                $whatsappNumber->label ?? null
+                                            );
+                                        }
+                                        $numApi->updateNumberConfig($whatsappNumber->phone_number_id, [
+                                            'company_id' => $whatsappNumber->company_id,
+                                            'display_number' => $whatsappNumber->display_number ?? '',
+                                            'label' => $whatsappNumber->label ?? '',
+                                            'is_active' => $whatsappNumber->is_active,
+                                            'valid_from' => $whatsappNumber->valid_from ? $whatsappNumber->valid_from->format('Y-m-d') : null,
+                                            'expiry_date' => $whatsappNumber->expiry_date ? $whatsappNumber->expiry_date->format('Y-m-d') : null,
+                                        ]);
+                                    }
+
+                                    // Alongside the number config, also
+                                    // ensure the per-number bot persona
+                                    // (greeting, fallback, company_name,
+                                    // links, products) is synced from the
+                                    // Laravel-side BotConfig row.  This is
+                                    // a defense-in-depth companion to the
+                                    // sync we added to BotConfigController:
+                                    // even if an admin never re-saves the
+                                    // Bot Settings page after this number
+                                    // was registered, the very first
+                                    // inbound message will still make the
+                                    // correct custom greeting appear on
+                                    // WhatsApp instead of the TRP default.
+                                    $existingBotConfig = $numApi->getBotConfig($connectedNumberId);
+                                    if (!$existingBotConfig || empty($existingBotConfig['templates']['greeting'])) {
+                                        try {
+                                            WhatsappNumberController::syncBotConfigForNumber($whatsappNumber, $numApi);
+                                        } catch (\Throwable $syncErr) {
+                                            \Illuminate\Support\Facades\Log::warning('[MetaWebhook] Lazy bot-persona sync failed', [
+                                                'phone_number_id' => $connectedNumberId,
+                                                'error' => $syncErr->getMessage(),
+                                            ]);
+                                        }
+                                    }
+                                } catch (\Throwable $e) {
+                                    \Illuminate\Support\Facades\Log::warning('[MetaWebhook] Lazy number sync failed', [
+                                        'phone_number_id' => $connectedNumberId,
+                                        'error' => $e->getMessage(),
+                                    ]);
+                                }
                             }
 
                             if ($whatsappNumber) {
@@ -352,6 +415,21 @@ class MetaWebhookController extends Controller
                                         );
                                         $replyText = $botResponse['reply'] ?? null;
                                         $replyOptions = $botResponse['options'] ?? null;
+                                    }
+
+                                    if ($replyText !== null) {
+                                        $replyText = trim(strip_tags(html_entity_decode($replyText)));
+                                    }
+                                    if (!empty($replyOptions)) {
+                                        $replyOptions = array_map(function ($o) {
+                                            if (isset($o['title'])) {
+                                                $o['title'] = trim(strip_tags(html_entity_decode($o['title'])));
+                                            }
+                                            if (isset($o['description'])) {
+                                                $o['description'] = trim(strip_tags(html_entity_decode($o['description'])));
+                                            }
+                                            return $o;
+                                        }, $replyOptions);
                                     }
 
                                     // The visitor explicitly asked for a
