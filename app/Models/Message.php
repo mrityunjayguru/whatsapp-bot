@@ -35,6 +35,16 @@ class Message extends Model
         'read_at',
     ];
 
+    protected static function booted()
+    {
+        static::created(function ($message) {
+            // Broadcast NewMessageReceived when an inbound message arrives from a customer
+            if ($message->direction === 'INBOUND') {
+                event(new \App\Events\NewMessageReceived($message));
+            }
+        });
+    }
+
     /**
      * True for the SYSTEM notices ConversationController::assign() sends
      * when a human agent joins, leaves, or hands a conversation back to

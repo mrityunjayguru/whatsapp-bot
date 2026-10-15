@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\NewMessage;
+use App\Models\BotConfig;
 use App\Models\Company;
 use App\Models\Contact;
 use App\Models\Conversation;
@@ -340,11 +341,21 @@ class WidgetMessageController extends Controller
 
         // 3. Ask the bot for an answer.
         $messageForBot = $validated['message'] ?? '[Attachment]';
-        $botResponse = $api->sendMessage($validated['token'], $validated['session_id'], $messageForBot);
-        $replyText = $botResponse['reply'] ?? "Sorry, I'm having trouble right now - please try again in a moment.";
-        $replyText = $this->linkifyAttachments($replyText);
-        $escalated = $botResponse['escalated'] ?? false;
-        $options = $botResponse['options'] ?? null;
+        $trimmedMsg = trim($validated['message'] ?? '');
+
+        $cannedReply = $this->getCannedReply($company, $trimmedMsg, $validated['token'], $api, $contact);
+        if ($cannedReply !== null) {
+            $replyText = $cannedReply['reply'];
+            $replyText = $this->linkifyAttachments($replyText);
+            $escalated = $cannedReply['escalated'];
+            $options = null;
+        } else {
+            $botResponse = $api->sendMessage($validated['token'], $validated['session_id'], $messageForBot);
+            $replyText = $botResponse['reply'] ?? "Sorry, I'm having trouble right now - please try again in a moment.";
+            $replyText = $this->linkifyAttachments($replyText);
+            $escalated = $botResponse['escalated'] ?? false;
+            $options = $botResponse['options'] ?? null;
+        }
 
         // 4. Save + broadcast the bot's reply.
         $outbound = Message::create([
@@ -582,4 +593,180 @@ class WidgetMessageController extends Controller
             'Content-Disposition' => 'attachment; filename="' . addslashes($fileName) . '"',
         ]);
     }
+
+    /**
+     * Check if a visitor's message is a greeting (e.g. hi, hello, hey, etc.)
+     */
+    protected function isGreetingMessage(?string $message): bool
+    {
+        if ($message === null) {
+            return false;
+        }
+
+        $cleaned = trim(preg_replace('/[^\p{L}\p{N}\s]/u', '', mb_strtolower($message)));
+        if ($cleaned === '') {
+            return false;
+        }
+
+        $greetings = [
+            'hi', 'hii', 'hiii', 'helo', 'hello', 'helloo', 'hey', 'heyy', 'hola',
+            'namaste', 'namaskar', 'good morning', 'good afternoon', 'good evening',
+            'gm', 'ga', 'ge', 'greetings', 'welcome', 'yo', 'sup'
+        ];
+
+        return in_array($cleaned, $greetings, true);
+    }
+
+    /**
+     * Match canned reply intent and format message for website widget.
+     * Returns ['reply' => string, 'escalated' => bool] or null.
+     */
+    protected function getCannedReply(Company $company, ?string $message, string $token, WidgetApiService $api, ?Contact $contact = null): ?array
+    {
+        if (empty($message)) {
+            return null;
+        }
+
+        $msg = mb_strtolower(trim($message));
+
+        // Keywords list for intents
+        $humanKeywords = [
+            'agent', 'human', 'representative', 'executive', 'manager',
+            'talk to someone', 'talk to human', 'live agent', 'real person',
+            'speak to a human', 'speak to human', 'live support', 'human please',
+            'talk to an agent', 'speak to an agent', 'connect me to'
+        ];
+
+        $supportKeywords = [
+            'support', 'help', 'helpdesk', 'issue', 'problem', 'not working',
+            'broken', 'complaint', 'error', 'not connecting', 'no signal',
+            'battery', 'faulty', 'assistance', 'ticket', 'trouble'
+        ];
+
+        $demoKeywords = [
+            'demo', 'trial', 'book demo', 'book a demo', 'schedule demo',
+            'request demo', 'need demo'
+        ];
+
+        $orderKeywords = [
+            'order', 'tracking id', 'shipment', 'delivery', 'delivered',
+            'dispatch', 'courier', 'order status', 'track order'
+        ];
+
+        $thanksKeywords = [
+            'thanks', 'thank you', 'thankyou', 'thnx', 'thx'
+        ];
+
+        $intent = null;
+        $escalated = false;
+
+        $wordIn = function(string $text, array $words): bool {
+            foreach ($words as $w) {
+                if (preg_match('/\b' . preg_quote($w, '/') . '\b/iu', $text)) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        if ($wordIn($msg, $humanKeywords)) {
+            $intent = 'human_handoff';
+            $escalated = true;
+        } elseif ($wordIn($msg, $supportKeywords)) {
+            $intent = 'support';
+            $escalated = true;
+        } elseif ($wordIn($msg, $demoKeywords)) {
+            $intent = 'demo';
+            $escalated = false;
+        } elseif ($wordIn($msg, $orderKeywords)) {
+            $intent = 'order_status';
+            $escalated = true;
+        } elseif ($wordIn($msg, $thanksKeywords)) {
+            $intent = 'thanks';
+            $escalated = false;
+        } elseif ($this->isGreetingMessage($msg)) {
+            $intent = 'greeting';
+            $escalated = false;
+        }
+
+        if (!$intent) {
+            return null;
+        }
+
+        $reply = $this->renderTemplate($company, $intent, $token, $api, $contact);
+        return [
+            'reply' => $reply,
+            'escalated' => $escalated,
+            'intent' => $intent,
+        ];
+    }
+
+    /**
+     * Render template for a given intent key.
+     */
+    protected function renderTemplate(Company $company, string $key, string $token, WidgetApiService $api, ?Contact $contact = null): string
+    {
+        $contactName = trim((string) ($contact?->custom_name ?? $contact?->name ?? ''));
+        $userName = ($contactName !== '' && $contactName !== 'Website Visitor' && $contactName !== 'Website visitor') ? $contactName : '';
+        $companyName = $company->name ?? 'our company';
+
+        $supportLink = 'https://example.com/support';
+        $demoLink = 'https://example.com/demo';
+        $productsLink = 'https://example.com/products';
+
+        $template = null;
+
+        // 1. Fetch from BotConfig
+        try {
+            $botConfig = BotConfig::where('tenant_id', $company->id)->first();
+            if ($botConfig && is_array($botConfig->payload)) {
+                $payload = $botConfig->payload;
+                $companyName = $payload['company_name'] ?? $companyName;
+                $supportLink = $payload['support_link'] ?? $supportLink;
+                $demoLink = $payload['demo_link'] ?? $demoLink;
+                $productsLink = $payload['products_link'] ?? $productsLink;
+
+                $tpls = $payload['templates'] ?? [];
+                if (!empty($tpls[$key])) {
+                    $template = $tpls[$key];
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignore DB error
+        }
+
+        // 2. Fallbacks for missing/null templates
+        if (empty($template)) {
+            $defaultTemplates = [
+                'greeting' => "Hi {name}! 👋 Welcome to {company_name}. How can I help you today? You can ask me about our products, book a demo, or get support.",
+                'demo' => "Thank you for your interest! 😊 You can book a demo here: {demo_link}. Our team will be happy to walk you through our features.",
+                'order_status' => "I'd be happy to help you check your order status. Please share your order ID or reference number so I can assist you.",
+                'support' => "I'm sorry you're experiencing an issue. Our support team is here to help: {support_link}. Please describe the problem you're facing.",
+                'human_handoff' => "I'll connect you with our support team for further assistance. Please wait a moment while we arrange for a team member to help you.",
+                'thanks' => "You're welcome! 😊 If you need any more help, feel free to message us anytime. Have a great day!",
+                'fallback' => "Sorry, I didn't quite understand your message. Could you please rephrase your question or choose one of these options: Products, Book a Demo, or Contact Support?",
+            ];
+            $template = $defaultTemplates[$key] ?? "Thanks for contacting {company_name}! How can we help you?";
+        }
+
+        $rendered = str_replace(
+            ['{name}', '{company_name}', '{support_link}', '{demo_link}', '{products_link}', '{greeting_prefix}'],
+            [$userName, $companyName, $supportLink, $demoLink, $productsLink, ''],
+            $template
+        );
+
+        $rendered = preg_replace('/\s+([!?,.])/', '$1', $rendered);
+        $rendered = preg_replace('/\s+/', ' ', $rendered);
+
+        return trim($rendered);
+    }
+
+    /**
+     * Retrieve and format the greeting/welcome message for the company / widget.
+     */
+    protected function getGreetingMessage(Company $company, string $token, WidgetApiService $api, ?Contact $contact = null): string
+    {
+        return $this->renderTemplate($company, 'greeting', $token, $api, $contact);
+    }
 }
+

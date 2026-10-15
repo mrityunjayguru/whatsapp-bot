@@ -357,9 +357,8 @@ class WhatsappNumberController extends Controller
             : [];
 
         $isActive = $request->has('is_active');
-        $linkText = !empty($validated['link_text']) ? $validated['link_text'] : null;
-
-        $result = $api->uploadFaqText($phoneNumberId, $validated['question'], $validated['answer'], $sourceUrl, false, $keywordList, $isActive, $linkText, $attachmentUrl);
+        $whatsappAnswer = \App\Http\Controllers\FaqController::formatHtmlForWhatsapp($validated['answer']);
+        $result = $api->uploadFaqText($phoneNumberId, $validated['question'], $whatsappAnswer, $sourceUrl, false, $keywordList, $isActive, $linkText, $attachmentUrl);
 
         if (!$result) {
             return back()->withInput()->with('error', 'Could not save that FAQ - check the bot service is running.');
@@ -420,7 +419,8 @@ class WhatsappNumberController extends Controller
         $isActive = $request->has('is_active');
         $linkText = !empty($validated['link_text']) ? $validated['link_text'] : null;
 
-        $result = $api->updateFaqSource($phoneNumberId, $sourceId, $validated['question'], $validated['answer'], $sourceUrl, false, $keywordList, $isActive, $linkText, $attachmentUrl);
+        $whatsappAnswer = \App\Http\Controllers\FaqController::formatHtmlForWhatsapp($validated['answer']);
+        $result = $api->updateFaqSource($phoneNumberId, $sourceId, $validated['question'], $whatsappAnswer, $sourceUrl, false, $keywordList, $isActive, $linkText, $attachmentUrl);
 
         if (!$result) {
             return redirect()->route('whatsapp-numbers.edit', $phoneNumberId)->with('error', 'Could not update FAQ - check the bot service is running.');

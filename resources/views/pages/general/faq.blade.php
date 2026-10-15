@@ -1,5 +1,9 @@
 @extends('layout.master')
 
+@push('plugin-styles')
+  <link href="{{ asset('build/plugins/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" />
+@endpush
+
 @section('content')
 <nav class="page-breadcrumb d-flex justify-content-between align-items-center">
   <ol class="breadcrumb mb-0">
@@ -104,15 +108,21 @@
                                 <form action="{{ route('faqs.toggle-status', $faq->id) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('PATCH')
-                                    <button type="submit" class="dropdown-item"><i data-lucide="power" class="icon-sm me-2 {{ $faq->is_active ? 'text-danger' : 'text-success' }}"></i> {{ $faq->is_active ? 'Deactivate' : 'Activate' }}</button>
+                                    <button type="button" class="dropdown-item btn-toggle-status" 
+                                            data-name="{{ $faq->question }}" 
+                                            data-action="{{ $faq->is_active ? 'deactivate' : 'activate' }}">
+                                        <i data-lucide="power" class="icon-sm me-2 {{ $faq->is_active ? 'text-danger' : 'text-success' }}"></i> {{ $faq->is_active ? 'Deactivate' : 'Activate' }}
+                                    </button>
                                 </form>
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <form action="{{ route('faqs.destroy', $faq->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this FAQ?');">
+                                <form action="{{ route('faqs.destroy', $faq->id) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="dropdown-item text-danger"><i data-lucide="trash" class="icon-sm me-2 text-danger"></i> Delete</button>
+                                    <button type="button" class="dropdown-item text-danger btn-delete-faq" data-name="{{ $faq->question }}">
+                                        <i data-lucide="trash" class="icon-sm me-2 text-danger"></i> Delete
+                                    </button>
                                 </form>
                             </li>
                         </ul>
@@ -133,3 +143,81 @@
   </div>
 </div>
 @endsection
+
+@push('plugin-scripts')
+  <script src="{{ asset('build/plugins/sweetalert2/sweetalert2.min.js') }}"></script>
+@endpush
+
+@push('custom-scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // SweetAlert for FAQ status toggle
+  document.querySelectorAll('.btn-toggle-status').forEach(function (button) {
+    button.addEventListener('click', function (e) {
+      e.preventDefault();
+      const form = this.closest('form');
+      const faqName = this.getAttribute('data-name') || 'this FAQ';
+      const action = this.getAttribute('data-action') || 'toggle';
+      const isDeactivating = (action === 'deactivate');
+
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: 'Update FAQ Status?',
+          html: `Are you sure you want to <strong>${action}</strong> this FAQ?<br><small class="text-muted text-truncate d-inline-block" style="max-width: 350px;">"${faqName}"</small>`,
+          icon: isDeactivating ? 'warning' : 'question',
+          showCancelButton: true,
+          confirmButtonText: isDeactivating ? 'Yes, Deactivate' : 'Yes, Activate',
+          cancelButtonText: 'Cancel',
+          customClass: {
+            confirmButton: isDeactivating ? 'btn btn-warning me-2' : 'btn btn-success me-2',
+            cancelButton: 'btn btn-secondary'
+          },
+          buttonsStyling: false
+        }).then(function (result) {
+          if (result.isConfirmed) {
+            form.submit();
+          }
+        });
+      } else {
+        if (confirm(`Are you sure you want to ${action} this FAQ?`)) {
+          form.submit();
+        }
+      }
+    });
+  });
+
+  // SweetAlert for FAQ delete
+  document.querySelectorAll('.btn-delete-faq').forEach(function (button) {
+    button.addEventListener('click', function (e) {
+      e.preventDefault();
+      const form = this.closest('form');
+      const faqName = this.getAttribute('data-name') || 'this FAQ';
+
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: 'Delete FAQ?',
+          html: `Are you sure you want to permanently delete this FAQ?<br><small class="text-danger text-truncate d-inline-block" style="max-width: 350px;">"${faqName}"</small>`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Yes, Delete',
+          cancelButtonText: 'Cancel',
+          customClass: {
+            confirmButton: 'btn btn-danger me-2',
+            cancelButton: 'btn btn-secondary'
+          },
+          buttonsStyling: false
+        }).then(function (result) {
+          if (result.isConfirmed) {
+            form.submit();
+          }
+        });
+      } else {
+        if (confirm('Are you sure you want to delete this FAQ?')) {
+          form.submit();
+        }
+      }
+    });
+  });
+});
+</script>
+@endpush

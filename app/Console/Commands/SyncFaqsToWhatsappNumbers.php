@@ -57,7 +57,7 @@ class SyncFaqsToWhatsappNumbers extends Command
                         $keywords = array_filter(array_map('trim', explode(',', $faq->keywords)));
                     }
                     $sourceUrl = $faq->attachment ?? $faq->url ?? null;
-                    $plainAnswer = strip_tags(html_entity_decode($faq->answer));
+                    $plainAnswer = \App\Http\Controllers\FaqController::formatHtmlForWhatsapp($faq->answer);
 
                     $result = $numApi->uploadFaqText(
                         $number->phone_number_id,

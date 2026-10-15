@@ -34,6 +34,10 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
+        if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !$user->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
+        }
+
         if (is_null($user->company_id)) {
             return redirect()->intended(route('companies.index', absolute: false));
         }
@@ -43,23 +47,34 @@ class AuthenticatedSessionController extends Controller
             return redirect()->intended(route('conversations.index', absolute: false));
         }
 
+        // Pull intended URL: if it's absent or just / or /dashboard, ignore it
+        // so company users land straight on their bot management page.
+        $intended = $request->session()->pull('url.intended');
+        if ($intended) {
+            $path = parse_url($intended, PHP_URL_PATH) ?? '';
+            $isGeneric = in_array(rtrim($path, '/'), ['', '/dashboard', '/login'], true);
+            if (!$isGeneric) {
+                return redirect()->to($intended);
+            }
+        }
+
         $company = Company::find($user->company_id);
         $botUsageType = $company?->bot_usage_type ?? 'widget';
 
-        if ($botUsageType === 'whatsapp') {
-            $whatsappNumber = WhatsappNumber::where('company_id', $user->company_id)->first();
+        if($botUsageType === 'whatsapp') {
+            $whatsappNumber = WhatsappNumber::where('company_id', $user->company_id)->latest('id')->first();
             if ($whatsappNumber) {
-                return redirect()->intended(route('whatsapp-numbers.edit', ['phoneNumberId' => $whatsappNumber->phone_number_id]));
+                return redirect()->route('whatsapp-numbers.edit', ['phoneNumberId' => $whatsappNumber->phone_number_id]);
             }
-            return redirect()->intended(route('whatsapp-numbers.index', absolute: false));
+            return redirect()->route('whatsapp-numbers.index');
         }
 
-        $widget = Widget::where('company_id', $user->company_id)->first();
+        $widget = Widget::where('company_id', $user->company_id)->latest('id')->first();
         if ($widget) {
-            return redirect()->intended(route('widgets.edit', ['token' => $widget->token]));
+            return redirect()->route('widgets.edit', ['token' => $widget->token]);
         }
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->route('dashboard');
     }
 
     /**

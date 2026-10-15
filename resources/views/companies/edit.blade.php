@@ -16,7 +16,14 @@
     <div class="card">
       <div class="card-body">
         
-        <h6 class="card-title mb-4">Edit Company</h6>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h6 class="card-title mb-0">Edit Company</h6>
+            @if($company->company_code)
+                <span class="badge bg-light text-dark border px-3 py-2 fs-6 font-monospace">
+                    ID: {{ $company->company_code }}
+                </span>
+            @endif
+        </div>
 
         <form action="{{ route('companies.update', $company->id) }}" method="POST">
             @csrf

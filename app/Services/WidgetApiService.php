@@ -142,6 +142,14 @@ class WidgetApiService
 
     public function updateWidgetConfig(string $token, array $data): ?array
     {
+        // Python's widget config model declares company_id as a string -
+        // sending a raw int (as Eloquent returns it) gets a 422
+        // "Input should be a valid string", which surfaced in the admin
+        // panel as "Could not save the widget config."
+        if (array_key_exists('company_id', $data) && $data['company_id'] !== null) {
+            $data['company_id'] = (string) $data['company_id'];
+        }
+
         try {
             $response = Http::withHeaders($this->headers())->timeout(15)
                 ->put("{$this->baseUrl}/widgets/{$token}/config", $data);

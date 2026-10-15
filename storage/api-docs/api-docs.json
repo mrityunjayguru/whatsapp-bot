@@ -1,0 +1,628 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Chatbot & CRM Mobile API Documentation",
+        "description": "Official API Documentation for Company and Employee Mobile App (Chat, Contacts, Tags, and Conversations).",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/api",
+            "description": "API Server"
+        }
+    ],
+    "paths": {
+        "/login": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Unified Login for Company and Employee",
+                "description": "Authenticate user and get Sanctum Bearer token along with user/company/employee profile.",
+                "operationId": "67d6d0fdd54fba132e1b6f55ca254183",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "role",
+                                    "company_code",
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "role": {
+                                        "type": "string",
+                                        "example": "employee",
+                                        "enum": [
+                                            "company",
+                                            "employee"
+                                        ]
+                                    },
+                                    "company_code": {
+                                        "type": "string",
+                                        "example": "DES9166"
+                                    },
+                                    "email": {
+                                        "description": "Email or Employee Code",
+                                        "type": "string",
+                                        "example": "employee@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "12345678"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Login successful."
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid credentials"
+                    },
+                    "404": {
+                        "description": "Invalid company code"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/me": {
+            "get": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Get Current Logged-in Profile",
+                "description": "Retrieve details of authenticated user, company and employee.",
+                "operationId": "bc2032a379aa97707ccc61511897c120",
+                "responses": {
+                    "200": {
+                        "description": "Authenticated user details"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/logout": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Logout",
+                "description": "Revoke current Sanctum token and mark employee offline.",
+                "operationId": "28d48c13fca984400ac8de99f54ee13a",
+                "responses": {
+                    "200": {
+                        "description": "Logged out successfully"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/contacts/{id}": {
+            "get": {
+                "tags": [
+                    "Contacts"
+                ],
+                "summary": "Get Contact Details",
+                "description": "Retrieve contact details, address, and associated tags for edit modal.",
+                "operationId": "8131a0db2b51bb64f22a1e2bd0cf08b9",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Contact ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contact details"
+                    },
+                    "404": {
+                        "description": "Contact not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Contacts"
+                ],
+                "summary": "Update Contact Information",
+                "description": "Update customer name, phone number, email and location details.",
+                "operationId": "f1e4eb1eb2663f26d76de1ee3f168425",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Contact ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Beatrix Kiddo"
+                                    },
+                                    "phone_number": {
+                                        "type": "string",
+                                        "example": "9876543210"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "example": "beatrix@example.com"
+                                    },
+                                    "country": {
+                                        "type": "string",
+                                        "example": "India"
+                                    },
+                                    "state": {
+                                        "type": "string",
+                                        "example": "Maharashtra"
+                                    },
+                                    "city": {
+                                        "type": "string",
+                                        "example": "Mumbai"
+                                    },
+                                    "pincode": {
+                                        "type": "string",
+                                        "example": "400001"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Contact updated successfully"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/tags": {
+            "get": {
+                "tags": [
+                    "Tags"
+                ],
+                "summary": "Get All Company Tags or Filter by Contact",
+                "description": "Retrieve available active tags or specific contact's tags via contact_id param.",
+                "operationId": "5ed61b1cfc452c39002adcc7bbec4691",
+                "parameters": [
+                    {
+                        "name": "contact_id",
+                        "in": "query",
+                        "description": "Contact ID to filter tags",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of tags"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/contacts/{id}/tags": {
+            "get": {
+                "tags": [
+                    "Tags"
+                ],
+                "summary": "Get Contact's Associated Tags",
+                "description": "Directly retrieve all tags associated with a specific contact.",
+                "operationId": "b478280758b0178efc6ea595ea92c490",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Contact ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contact's tags list"
+                    },
+                    "404": {
+                        "description": "Contact not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Tags"
+                ],
+                "summary": "Add / Update Tags for Contact",
+                "description": "Sync tags for a contact. Accepts tag IDs or new tag names (auto-creates if name does not exist).",
+                "operationId": "6cfa1709108258a206547f26007ca89c",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Contact ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "tags"
+                                ],
+                                "properties": {
+                                    "tags": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "example": [
+                                            "VIP Customer",
+                                            "Urgent Lead"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Tags updated successfully"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/conversations": {
+            "get": {
+                "tags": [
+                    "Conversations"
+                ],
+                "summary": "Get Conversations List (Mobile Screen)",
+                "description": "Retrieve conversations with filter tabs (all, active, new, closed) and real-time counts.",
+                "operationId": "9afc705d243114f271192eef256036cb",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filter by status: all, active, new, closed, open, pending, resolved",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Search by contact name, phone, or message",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "unread_only",
+                        "in": "query",
+                        "description": "Filter only unread conversations",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Items per page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Conversations list with tabs count"
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/conversations/{id}": {
+            "get": {
+                "tags": [
+                    "Conversations"
+                ],
+                "summary": "Get Conversation Details & Messages",
+                "description": "Retrieve specific conversation details, contact info, assigned agent and list of messages.",
+                "operationId": "3affe3972963e92fd6634c6cfd7d04b1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Conversation ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Conversation details and messages"
+                    },
+                    "403": {
+                        "description": "Unauthorized access"
+                    },
+                    "404": {
+                        "description": "Conversation not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/conversations/{id}/status": {
+            "post": {
+                "tags": [
+                    "Conversations"
+                ],
+                "summary": "Change Conversation Status",
+                "description": "Update the status of a conversation (OPEN, PENDING, RESOLVED, CLOSED).",
+                "operationId": "f19bd286ea246b2ca6d2c33584cac157",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Conversation ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "status"
+                                ],
+                                "properties": {
+                                    "status": {
+                                        "type": "string",
+                                        "example": "OPEN",
+                                        "enum": [
+                                            "OPEN",
+                                            "PENDING",
+                                            "RESOLVED",
+                                            "CLOSED"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Status updated successfully"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/conversations/{id}/messages": {
+            "post": {
+                "tags": [
+                    "Conversations"
+                ],
+                "summary": "Send Message (with optional attachments)",
+                "description": "Send text message or upload attachments. Automatically dispatches real-time WebSocket event and forwards to WhatsApp/Widget.",
+                "operationId": "8fcb26a0afff7b63bb73616e3804d8df",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Conversation ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "message_text": {
+                                        "type": "string",
+                                        "example": "Hello, how can I assist you?"
+                                    },
+                                    "files[]": {
+                                        "description": "Attachments (images, audio, video, documents)",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Message sent successfully"
+                    },
+                    "400": {
+                        "description": "Message text or files required"
+                    },
+                    "500": {
+                        "description": "Failed to send message"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "Enter your Bearer token obtained from /api/login endpoint.",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Authentication",
+            "description": "Authentication"
+        },
+        {
+            "name": "Contacts",
+            "description": "Contacts"
+        },
+        {
+            "name": "Tags",
+            "description": "Tags"
+        },
+        {
+            "name": "Conversations",
+            "description": "Conversations"
+        }
+    ]
+}

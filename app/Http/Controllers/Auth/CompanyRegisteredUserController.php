@@ -78,6 +78,6 @@ class CompanyRegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('widgets.edit', ['token' => $widget['token']]));
+        return redirect()->route('verification.notice');
     }
 }

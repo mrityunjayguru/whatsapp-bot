@@ -426,6 +426,7 @@ class ConversationController extends Controller
         if ($newEmployeeId && $newEmployeeId != $previousEmployeeId) {
             $history[] = [
                 'employee_id' => $newEmployeeId,
+                'assigned_by' => auth()->id(),
                 'assigned_at' => now()->toIso8601String(),
                 'unassigned_at' => null,
             ];
@@ -433,6 +434,7 @@ class ConversationController extends Controller
 
         $updateData = [
             'assigned_tenant_user_id' => $newEmployeeId,
+            'assigned_by' => $newEmployeeId ? auth()->id() : null,
             'assignment_history' => $history,
         ];
         

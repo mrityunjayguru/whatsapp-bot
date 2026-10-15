@@ -3,6 +3,7 @@
 @section('title', 'Conversation Details')
 
 @push('plugin-styles')
+  <link href="{{ asset('build/plugins/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" />
   <style>
     .chat-timeline { max-height: 400px; overflow-y: auto; padding: 15px; border-radius: 8px; border: 1px solid #e9ecef; background: #fff; }
     .chat-bubble { max-width: 80%; padding: 10px 15px; border-radius: 12px; margin-bottom: 15px; position: relative; }
@@ -24,8 +25,20 @@
     .timeline-item:last-child::after { display: none; }
     .timeline-title { font-weight: 500; color: #1f2937; margin-bottom: 2px; font-size: 0.95rem; }
     .timeline-date { color: #9ca3af; font-size: 0.8rem; }
+
+    /* Emoji Picker Styling */
+    #emojiPickerContainer {
+        z-index: 1050;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+    emoji-picker {
+        --num-columns: 8;
+        --emoji-size: 1.3rem;
+        width: 320px;
+        height: 350px;
+        max-width: 90vw;
+    }
   </style>
-  <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
 @endpush
 
 @section('content')
@@ -49,14 +62,13 @@
         <h4 class="mb-0">{{ $conversation->contact?->display_name ?? '-' }}</h4>
     </div>
     <div class="d-flex align-items-center">
-        <form action="{{ route('conversations.toggleBot', $conversation->id) }}" method="POST" class="m-0 p-0"
-            @if($conversation->bot_stopped && $conversation->assigned_tenant_user_id)
-                onsubmit="alert('A human agent is currently assigned to this conversation. Please unassign them first before starting the bot again.'); return false;"
-            @endif
-        >
+        <form action="{{ route('conversations.toggleBot', $conversation->id) }}" method="POST" class="m-0 p-0" id="toggleBotForm">
             @csrf
             @method('PUT')
-            <button type="submit" class="btn btn-sm {{ $conversation->bot_stopped ? 'btn-success' : 'btn-danger' }} fw-bold">
+            <button type="button" class="btn btn-sm {{ $conversation->bot_stopped ? 'btn-success' : 'btn-danger' }} fw-bold btn-toggle-bot"
+                    data-stopped="{{ $conversation->bot_stopped ? '1' : '0' }}"
+                    data-has-agent="{{ ($conversation->bot_stopped && $conversation->assigned_tenant_user_id) ? '1' : '0' }}">
+                <i data-lucide="{{ $conversation->bot_stopped ? 'play' : 'pause' }}" class="icon-sm me-1"></i>
                 {{ $conversation->bot_stopped ? 'Start Bot Reply' : 'Stop Bot Reply' }}
             </button>
         </form>
@@ -425,8 +437,8 @@
 
                         <input type="file" id="chatAttachmentInput" class="d-none" multiple {{ $isDisabled ? 'disabled' : '' }}>
 
-                        <input type="text" id="chatMessageInput" class="chat-input px-2" placeholder="{{ $isDisabled ? 'Assign an employee or stop bot to reply...' : 'Type a message...' }}" {{ $isDisabled ? 'disabled' : '' }}>
-                        <button id="chatSendBtn" class="btn btn-success rounded-circle p-0 ms-2 d-flex align-items-center justify-content-center border-0" style="width: 35px; height: 35px; background-color: #00c853;" {{ $isDisabled ? 'disabled' : '' }}>
+                        <textarea id="chatMessageInput" class="chat-input px-2" rows="1" placeholder="{{ $isDisabled ? 'Assign an employee or stop bot to reply...' : 'Type a message...' }}" {{ $isDisabled ? 'disabled' : '' }} style="resize: none; max-height: 120px; overflow-y: auto; line-height: 1.4;"></textarea>
+                        <button id="chatSendBtn" class="btn btn-success rounded-circle p-0 ms-2 d-flex align-items-center justify-content-center border-0 flex-shrink-0" style="width: 35px; height: 35px; background-color: #00c853;" {{ $isDisabled ? 'disabled' : '' }}>
                             <i data-lucide="mic" id="chatSendIcon" class="text-white" style="width: 16px; height: 16px;"></i>
                         </button>
                     </div>
@@ -795,9 +807,71 @@
 
 @endsection
 
+@push('plugin-scripts')
+  <script src="{{ asset('build/plugins/sweetalert2/sweetalert2.min.js') }}"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
+@endpush
+
 @push('custom-scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // SweetAlert for Toggle Bot Reply
+    document.querySelectorAll('.btn-toggle-bot').forEach(function (button) {
+        button.addEventListener('click', function (e) {
+            e.preventDefault();
+            const form = this.closest('form');
+            const isStopped = this.getAttribute('data-stopped') === '1';
+            const hasAgent = this.getAttribute('data-has-agent') === '1';
+
+            if (isStopped && hasAgent) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Human Agent Assigned',
+                        text: 'A human agent is currently assigned to this conversation. Please unassign them first before starting the bot again.',
+                        icon: 'warning',
+                        confirmButtonText: 'OK',
+                        customClass: { confirmButton: 'btn btn-primary' },
+                        buttonsStyling: false
+                    });
+                } else {
+                    alert('A human agent is currently assigned to this conversation. Please unassign them first before starting the bot again.');
+                }
+                return;
+            }
+
+            const title = isStopped ? 'Start Bot Reply?' : 'Stop Bot Reply?';
+            const text = isStopped 
+                ? 'Are you sure you want to resume automated bot replies for this conversation?' 
+                : 'Are you sure you want to stop automated bot replies? Incoming messages will need human response.';
+            const confirmText = isStopped ? 'Yes, Start Bot' : 'Yes, Stop Bot';
+            const btnClass = isStopped ? 'btn btn-success me-2' : 'btn btn-danger me-2';
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: title,
+                    text: text,
+                    icon: isStopped ? 'question' : 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: confirmText,
+                    cancelButtonText: 'Cancel',
+                    customClass: {
+                        confirmButton: btnClass,
+                        cancelButton: 'btn btn-secondary'
+                    },
+                    buttonsStyling: false
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            } else {
+                if (confirm(text)) {
+                    form.submit();
+                }
+            }
+        });
+    });
+
     // Dynamic dropdown for Country/State in Edit Contact Modal
     const countrySelect = document.getElementById('countrySelect');
     const stateSelect = document.getElementById('stateSelect');
@@ -917,12 +991,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (btnEmoji && emojiContainer && emojiPicker) {
         btnEmoji.addEventListener('click', (e) => {
+            e.stopPropagation();
             emojiContainer.classList.toggle('d-none');
         });
 
         emojiPicker.addEventListener('emoji-click', event => {
-            chatInput.value += event.detail.unicode;
-            chatInput.dispatchEvent(new Event('input'));
+            if (!chatInput) return;
+            const emoji = event.detail.unicode || (event.detail.emoji ? event.detail.emoji.unicode : '');
+            if (!emoji) return;
+            
+            const start = chatInput.selectionStart ?? chatInput.value.length;
+            const end = chatInput.selectionEnd ?? chatInput.value.length;
+            const text = chatInput.value;
+            chatInput.value = text.substring(0, start) + emoji + text.substring(end);
+            chatInput.selectionStart = chatInput.selectionEnd = start + emoji.length;
+            chatInput.focus();
+            chatInput.dispatchEvent(new Event('input', { bubbles: true }));
         });
 
         document.addEventListener('click', (e) => {
@@ -1020,12 +1104,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (chatInput && chatSendBtn) {
-        chatInput.addEventListener('input', toggleSendIcon);
+        function autoResizeInput() {
+            chatInput.style.height = 'auto';
+            chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+            toggleSendIcon();
+        }
 
-        chatInput.addEventListener('keypress', function(e) {
+        chatInput.addEventListener('input', autoResizeInput);
+
+        chatInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
-                e.preventDefault();
-                chatSendBtn.click();
+                if (e.shiftKey) {
+                    // Shift+Enter: allow default newline, auto-resize height
+                    setTimeout(autoResizeInput, 0);
+                } else {
+                    // Enter alone: send message like WhatsApp
+                    e.preventDefault();
+                    chatSendBtn.click();
+                }
             }
         });
 
@@ -1056,6 +1152,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (data.success) {
                     chatInput.value = '';
+                    chatInput.style.height = 'auto';
                     selectedFiles = [];
                     renderFilePreviews();
                     toggleSendIcon();

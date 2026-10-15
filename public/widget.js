@@ -162,7 +162,11 @@
       row.className = 'ws-row ws-event';
       var bub = document.createElement('div');
       bub.className = 'ws-event-bub';
-      bub.textContent = text;
+      var eventText = text || '';
+      if (eventText.toLowerCase().indexOf('ended conversation') === 0) {
+        eventText = eventText.charAt(0).toUpperCase() + eventText.slice(1);
+      }
+      bub.textContent = eventText;
       row.appendChild(bub);
     } else {
       row.className = 'ws-row ws-' + who;

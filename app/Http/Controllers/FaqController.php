@@ -56,7 +56,8 @@ class FaqController extends Controller
             ? array_filter(array_map('trim', explode(',', $validated['keywords'])))
             : [];
 
-        $textId = $apiService->uploadText($validated['question'], $validated['answer'], $sourceUrl, false, $keywordList);
+        $whatsappAnswer = self::formatHtmlForWhatsapp($validated['answer']);
+        $textId = $apiService->uploadText($validated['question'], $whatsappAnswer, $sourceUrl, false, $keywordList);
         $validated['faq_hash_id'] = $textId;
         $validated['python_source_ids'] = $textId ? [$textId] : [];
         $validated['is_active'] = $request->has('is_active') ? true : false;
@@ -127,7 +128,8 @@ class FaqController extends Controller
         $keywordList = !empty($validated['keywords'])
             ? array_filter(array_map('trim', explode(',', $validated['keywords'])))
             : [];
-        $textId = $apiService->uploadText($validated['question'], $validated['answer'], $sourceUrl, false, $keywordList);
+        $whatsappAnswer = self::formatHtmlForWhatsapp($validated['answer']);
+        $textId = $apiService->uploadText($validated['question'], $whatsappAnswer, $sourceUrl, false, $keywordList);
         $validated['faq_hash_id'] = $textId;
         $validated['python_source_ids'] = $textId ? [$textId] : [];
         $validated['is_active'] = $request->has('is_active') ? true : false;
@@ -169,6 +171,47 @@ class FaqController extends Controller
     }
 
     /**
+     * Converts rich text HTML from the editor into plain text with clickable links for WhatsApp.
+     * WhatsApp does not support HTML tags like <a href="url">text</a>.
+     * To make a link clickable in WhatsApp, the actual URL must appear in the text: e.g. "text (url)" or "url".
+     */
+    public static function formatHtmlForWhatsapp(string $html): string
+    {
+        // 1. Convert <a href="url">label</a> to label (url) or url
+        $text = preg_replace_callback('/<a\s+[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)<\/a>/is', function ($matches) {
+            $url = trim($matches[1]);
+            $label = trim(strip_tags($matches[2]));
+            if (empty($url)) {
+                return $label;
+            }
+            if (empty($label) || strcasecmp($label, $url) === 0) {
+                return $url;
+            }
+            return "{$label} ({$url})";
+        }, $html);
+
+        // 2. Convert <br>, <p>, <div> to newlines
+        $text = preg_replace('/<br\s*\/?>/i', "\n", $text);
+        $text = preg_replace('/<\/p>\s*<p>/i', "\n\n", $text);
+        $text = preg_replace('/<\/(p|div)>/i', "\n", $text);
+
+        // 3. Convert <b>, <strong> to *bold* (WhatsApp formatting)
+        $text = preg_replace('/<(b|strong)>(.*?)<\/(b|strong)>/is', '*$2*', $text);
+
+        // 4. Convert <i>, <em> to _italic_ (WhatsApp formatting)
+        $text = preg_replace('/<(i|em)>(.*?)<\/(i|em)>/is', '_$2_', $text);
+
+        // 5. Decode entities and remove any remaining HTML tags
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = strip_tags($text);
+
+        // 6. Clean up redundant blank lines
+        $text = preg_replace("/\n{3,}/", "\n\n", $text);
+
+        return trim($text);
+    }
+
+    /**
      * Sync a FAQ to each WhatsApp number's own per-number FAQ store on the Python side.
      * This is required because WhatsApp bot reply uses /whatsapp/numbers/{id}/bot/reply
      * which reads from the number's own store, NOT the shared company store.
@@ -182,7 +225,7 @@ class FaqController extends Controller
         }
 
         $numApi = app(WhatsappNumberApiService::class);
-        $plainAnswer = strip_tags(html_entity_decode($answer));
+        $plainAnswer = self::formatHtmlForWhatsapp($answer);
 
         foreach ($numbers as $number) {
             try {

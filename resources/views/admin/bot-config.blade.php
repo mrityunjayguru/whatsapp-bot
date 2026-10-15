@@ -120,11 +120,6 @@
 const initialConfig = @json($config);
 const templateLabels = {
     greeting: "Greeting (when someone says hi)",
-    demo: "Demo booking",
-    order_status: "Order / tracking status",
-    support: "Support / issue reported",
-    human_handoff: "Handoff to a human agent",
-    thanks: "Thanks / acknowledgement",
     fallback: "Fallback (nothing else matched)",
 };
 

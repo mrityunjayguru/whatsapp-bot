@@ -1,5 +1,9 @@
 @extends('layout.master')
 
+@push('plugin-styles')
+  <link href="{{ asset('build/plugins/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" />
+@endpush
+
 @section('title', 'Companies')
 
 @section('content')
@@ -56,6 +60,7 @@
           <table class="table table-hover mb-0">
             <thead>
               <tr>
+                <th class="pt-0">COMPANY ID</th>
                 <th class="pt-0">NAME</th>
                 <th class="pt-0">EMAIL</th>
                 <th class="pt-0">CONTACT NUMBER</th>
@@ -67,6 +72,9 @@
             <tbody>
               @forelse($companies as $company)
                 <tr>
+                  <td>
+                    <span class="badge bg-light text-dark border fw-bold font-monospace">{{ $company->company_code ?? '-' }}</span>
+                  </td>
                   <td>{{ $company->name }}</td>
                   <td>{{ $company->contact_email }}</td>
                   <td>{{ $company->contact_number ?? '-' }}</td>
@@ -88,7 +96,11 @@
                     <form action="{{ route('companies.toggle-status', $company->id) }}" method="POST" class="d-inline-block">
                         @csrf
                         @method('PATCH')
-                        <button type="submit" class="btn btn-sm btn-light btn-icon" title="Toggle Status">
+                        <button type="button" 
+                                class="btn btn-sm btn-light btn-icon btn-toggle-status" 
+                                title="Toggle Status"
+                                data-name="{{ $company->name }}"
+                                data-action="{{ $company->is_active ? 'deactivate' : 'activate' }}">
                             <i data-lucide="{{ $company->is_active ? 'toggle-right' : 'toggle-left' }}" class="icon-sm {{ $company->is_active ? 'text-success' : 'text-danger' }}"></i>
                         </button>
                     </form>
@@ -98,7 +110,10 @@
                     <form action="{{ route('companies.destroy', $company->id) }}" method="POST" class="d-inline-block">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-light btn-icon text-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this company? All associated users will also be deleted.');">
+                        <button type="button" 
+                                class="btn btn-sm btn-light btn-icon text-danger btn-delete-company" 
+                                title="Delete"
+                                data-name="{{ $company->name }}">
                             <i data-lucide="trash" class="icon-sm"></i>
                         </button>
                     </form>
@@ -126,3 +141,81 @@
 </div>
 
 @endsection
+
+@push('plugin-scripts')
+  <script src="{{ asset('build/plugins/sweetalert2/sweetalert2.min.js') }}"></script>
+@endpush
+
+@push('custom-scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // SweetAlert for Company Toggle Status
+  document.querySelectorAll('.btn-toggle-status').forEach(function (button) {
+    button.addEventListener('click', function (e) {
+      e.preventDefault();
+      const form = this.closest('form');
+      const companyName = this.getAttribute('data-name') || 'this company';
+      const action = this.getAttribute('data-action') || 'toggle';
+      const isDeactivating = (action === 'deactivate');
+
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: 'Update Status?',
+          html: `Are you sure you want to <strong>${action}</strong> <strong>${companyName}</strong>?`,
+          icon: isDeactivating ? 'warning' : 'question',
+          showCancelButton: true,
+          confirmButtonText: isDeactivating ? 'Yes, Deactivate' : 'Yes, Activate',
+          cancelButtonText: 'Cancel',
+          customClass: {
+            confirmButton: isDeactivating ? 'btn btn-warning me-2' : 'btn btn-success me-2',
+            cancelButton: 'btn btn-secondary'
+          },
+          buttonsStyling: false
+        }).then(function (result) {
+          if (result.isConfirmed) {
+            form.submit();
+          }
+        });
+      } else {
+        if (confirm(`Are you sure you want to ${action} ${companyName}?`)) {
+          form.submit();
+        }
+      }
+    });
+  });
+
+  // SweetAlert for Company Delete
+  document.querySelectorAll('.btn-delete-company').forEach(function (button) {
+    button.addEventListener('click', function (e) {
+      e.preventDefault();
+      const form = this.closest('form');
+      const companyName = this.getAttribute('data-name') || 'this company';
+
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: 'Delete Company?',
+          html: `Are you sure you want to delete <strong>${companyName}</strong>?<br><small class="text-danger">All associated users will also be deleted.</small>`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Yes, Delete',
+          cancelButtonText: 'Cancel',
+          customClass: {
+            confirmButton: 'btn btn-danger me-2',
+            cancelButton: 'btn btn-secondary'
+          },
+          buttonsStyling: false
+        }).then(function (result) {
+          if (result.isConfirmed) {
+            form.submit();
+          }
+        });
+      } else {
+        if (confirm(`Are you sure you want to delete ${companyName}? All associated users will also be deleted.`)) {
+          form.submit();
+        }
+      }
+    });
+  });
+});
+</script>
+@endpush

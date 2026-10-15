@@ -30,30 +30,30 @@ class CheckWidgetExpiry extends Command
     {
         $today = Carbon::today()->toDateString();
 
-        // Find all active companies that have an expiry_date in the past
-        $expiredCompanies = Company::where('is_active', true)
+        // Check for expired widgets in the widgets table (multi-widget architecture)
+        $expiredWidgets = \App\Models\Widget::where('is_active', true)
             ->whereNotNull('expiry_date')
             ->where('expiry_date', '<', $today)
-            ->whereNotNull('widget_token')
+            ->whereNotNull('token')
             ->get();
 
-        if ($expiredCompanies->isEmpty()) {
+        if ($expiredWidgets->isEmpty()) {
             $this->info('No expired widgets found.');
             return 0;
         }
 
-        foreach ($expiredCompanies as $company) {
-            $this->info("Disabling expired widget for company: {$company->name} (Token: {$company->widget_token})");
+        foreach ($expiredWidgets as $widget) {
+            $this->info("Disabling expired widget (Token: {$widget->token})");
             
-            // 1. Update the Python API to turn it off
-            $existingConfig = $api->getWidgetConfig($company->widget_token);
+            // 1. Update the Python API to turn this widget off
+            $existingConfig = $api->getWidgetConfig($widget->token);
             if ($existingConfig) {
                 $existingConfig['is_active'] = false;
-                $api->updateWidgetConfig($company->widget_token, $existingConfig);
+                $api->updateWidgetConfig($widget->token, $existingConfig);
             }
 
-            // 2. Update the local Laravel database
-            $company->update(['is_active' => false]);
+            // 2. Update just this widget's row (NEVER deactivate the entire company)
+            $widget->update(['is_active' => false]);
         }
 
         $this->info('Widget expiry check completed.');

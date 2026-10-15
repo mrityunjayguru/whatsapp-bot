@@ -1,5 +1,9 @@
 @extends('layout.master')
 
+@push('plugin-styles')
+  <link href="{{ asset('build/plugins/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" />
+@endpush
+
 @section('title', 'Employees')
 
 @section('content')
@@ -118,7 +122,7 @@
                     <form action="{{ route('employees.destroy', $employee->id) }}" method="POST" class="d-inline-block">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="btn btn-sm btn-light btn-icon text-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this employee?');">
+                        <button type="button" class="btn btn-sm btn-light btn-icon text-danger btn-delete-employee" title="Delete" data-name="{{ $employee->display_name }}">
                             <i data-lucide="trash" class="icon-sm"></i>
                         </button>
                     </form>
@@ -147,3 +151,45 @@
 </div>
 
 @endsection
+
+@push('plugin-scripts')
+  <script src="{{ asset('build/plugins/sweetalert2/sweetalert2.min.js') }}"></script>
+@endpush
+
+@push('custom-scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.btn-delete-employee').forEach(function (button) {
+    button.addEventListener('click', function (e) {
+      e.preventDefault();
+      const form = this.closest('form');
+      const employeeName = this.getAttribute('data-name') || 'this employee';
+
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: 'Delete Employee?',
+          html: `Are you sure you want to delete <strong>${employeeName}</strong>?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Yes, Delete',
+          cancelButtonText: 'Cancel',
+          customClass: {
+            confirmButton: 'btn btn-danger me-2',
+            cancelButton: 'btn btn-secondary'
+          },
+          buttonsStyling: false
+        }).then(function (result) {
+          if (result.isConfirmed) {
+            form.submit();
+          }
+        });
+      } else {
+        if (confirm(`Are you sure you want to delete ${employeeName}?`)) {
+          form.submit();
+        }
+      }
+    });
+  });
+});
+</script>
+@endpush

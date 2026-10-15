@@ -61,11 +61,10 @@
                 <td class="text-end">
                   @if(is_null(auth()->user()->company_id))
                     <a href="{{ route('widgets.edit', $widget['token']) }}" class="btn btn-sm btn-outline-secondary">Manage</a>
-                    <form action="{{ route('widgets.destroy', $widget['token']) }}" method="POST" class="d-inline"
-                          onsubmit="return confirm('Permanently delete this widget, its config, and ALL of its FAQs/files? This cannot be undone.');">
+                    <form action="{{ route('widgets.destroy', $widget['token']) }}" method="POST" class="d-inline">
                       @csrf
                       @method('DELETE')
-                      <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                      <button type="button" class="btn btn-sm btn-outline-danger btn-delete-widget" data-name="{{ $widget['site_name'] }}">Delete</button>
                     </form>
                   @else
                     <a href="{{ route('widgets.edit', $widget['token']) }}" class="btn btn-sm btn-outline-secondary">View</a>
@@ -80,3 +79,49 @@
   </div>
 </div>
 @endsection
+
+@push('plugin-styles')
+  <link href="{{ asset('build/plugins/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" />
+@endpush
+
+@push('plugin-scripts')
+  <script src="{{ asset('build/plugins/sweetalert2/sweetalert2.min.js') }}"></script>
+@endpush
+
+@push('custom-scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.btn-delete-widget').forEach(function (button) {
+    button.addEventListener('click', function (e) {
+      e.preventDefault();
+      const form = this.closest('form');
+      const name = this.getAttribute('data-name') || 'this widget';
+
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: 'Delete Widget?',
+          html: `Permanently delete <strong>${name}</strong>, its config, and all of its FAQs/files?<br><small class="text-danger">This cannot be undone.</small>`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Yes, Delete',
+          cancelButtonText: 'Cancel',
+          customClass: {
+            confirmButton: 'btn btn-danger me-2',
+            cancelButton: 'btn btn-secondary'
+          },
+          buttonsStyling: false
+        }).then(function (result) {
+          if (result.isConfirmed) {
+            form.submit();
+          }
+        });
+      } else {
+        if (confirm(`Permanently delete ${name}, its config, and all FAQs?`)) {
+          form.submit();
+        }
+      }
+    });
+  });
+});
+</script>
+@endpush

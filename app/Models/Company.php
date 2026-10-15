@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Company extends Model
 {
     protected $fillable = [
+        'company_code',
         'name',
         'contact_email',
         'contact_number',
@@ -16,6 +17,24 @@ class Company extends Model
         'valid_from',
         'expiry_date',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($company) {
+            if (empty($company->company_code)) {
+                $company->company_code = self::generateUniqueCompanyCode();
+            }
+        });
+    }
+
+    public static function generateUniqueCompanyCode(): string
+    {
+        do {
+            $code = 'DES' . str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+        } while (self::where('company_code', $code)->exists());
+
+        return $code;
+    }
 
     protected $casts = [
         'is_active' => 'boolean',

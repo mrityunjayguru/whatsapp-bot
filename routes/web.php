@@ -5,9 +5,34 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     if (auth()->check()) {
+        $user = auth()->user();
+        if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !$user->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
+        }
+        if (!is_null($user->company_id)) {
+            $employee = \App\Models\Employee::where('email', $user->email)->first();
+            if ($employee && $employee->role !== 'ADMIN') {
+                return redirect()->route('conversations.index');
+            }
+            $company = \App\Models\Company::find($user->company_id);
+            if ($company && $company->bot_usage_type === 'whatsapp') {
+                $whatsappNumber = \App\Models\WhatsappNumber::where('company_id', $user->company_id)->latest('id')->first();
+                if ($whatsappNumber) {
+                    return redirect()->route('whatsapp-numbers.edit', ['phoneNumberId' => $whatsappNumber->phone_number_id]);
+                }
+                return redirect()->route('whatsapp-numbers.index');
+            } elseif ($company && $company->bot_usage_type === 'widget') {
+                $widget = \App\Models\Widget::where('company_id', $user->company_id)->latest('id')->first();
+                if ($widget) {
+                    return redirect()->route('widgets.edit', ['token' => $widget->token]);
+                }
+            }
+        } elseif (auth()->id() === 1 || is_null($user->company_id)) {
+            return redirect()->route('companies.index');
+        }
         return redirect()->route('dashboard');
     }
-    return redirect()->route('login');
+    return view('welcome');
 });
 
 Route::get('/dashboard', function () {

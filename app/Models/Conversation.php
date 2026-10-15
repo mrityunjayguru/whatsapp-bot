@@ -14,6 +14,7 @@ class Conversation extends Model
         'contact_id',
         'title',
         'assigned_tenant_user_id',
+        'assigned_by',
         'status',
         'unread_count',
         'last_message_id',
@@ -36,16 +37,17 @@ class Conversation extends Model
 
     public function assignedUser()
     {
-        // Despite the column's name (assigned_tenant_user_id), this app
-        // actually assigns conversations to Employee records, not User
-        // accounts - confirmed by routes/web.php's dashboard route,
-        // which already looks up Employee::where('id', ...) against this
-        // same column. Employee has its own id space, separate from
-        // users.id - pointing this at User (as it was before) meant
-        // ->assignedUser resolved to the wrong record whenever an
-        // assignment existed, which is part of why "Assigned" always
-        // showed as empty even after assigning someone.
         return $this->belongsTo(Employee::class, 'assigned_tenant_user_id');
+    }
+
+    public function assignedByUser()
+    {
+        return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(Message::class, 'conversation_id');
     }
 
     public function company()

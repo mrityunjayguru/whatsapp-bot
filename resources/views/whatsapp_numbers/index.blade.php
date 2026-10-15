@@ -61,11 +61,10 @@
                 <td class="text-end">
                   @if(is_null(auth()->user()->company_id))
                     <a href="{{ route('whatsapp-numbers.edit', $number->phone_number_id) }}" class="btn btn-sm btn-outline-secondary">Manage</a>
-                    <form action="{{ route('whatsapp-numbers.destroy', $number->phone_number_id) }}" method="POST" class="d-inline"
-                          onsubmit="return confirm('Permanently remove this WhatsApp number, its bot config, and ALL of its FAQs? This cannot be undone.');">
+                    <form action="{{ route('whatsapp-numbers.destroy', $number->phone_number_id) }}" method="POST" class="d-inline">
                       @csrf
                       @method('DELETE')
-                      <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                      <button type="button" class="btn btn-sm btn-outline-danger btn-delete-number" data-name="{{ $number->display_number ?: $number->phone_number_id }}">Delete</button>
                     </form>
                   @else
                     <a href="{{ route('whatsapp-numbers.edit', $number->phone_number_id) }}" class="btn btn-sm btn-outline-secondary">View</a>
@@ -80,3 +79,49 @@
   </div>
 </div>
 @endsection
+
+@push('plugin-styles')
+  <link href="{{ asset('build/plugins/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" />
+@endpush
+
+@push('plugin-scripts')
+  <script src="{{ asset('build/plugins/sweetalert2/sweetalert2.min.js') }}"></script>
+@endpush
+
+@push('custom-scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.btn-delete-number').forEach(function (button) {
+    button.addEventListener('click', function (e) {
+      e.preventDefault();
+      const form = this.closest('form');
+      const name = this.getAttribute('data-name') || 'this WhatsApp number';
+
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: 'Delete WhatsApp Number?',
+          html: `Permanently remove <strong>${name}</strong>, its bot config, and all FAQs?<br><small class="text-danger">This cannot be undone.</small>`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Yes, Delete',
+          cancelButtonText: 'Cancel',
+          customClass: {
+            confirmButton: 'btn btn-danger me-2',
+            cancelButton: 'btn btn-secondary'
+          },
+          buttonsStyling: false
+        }).then(function (result) {
+          if (result.isConfirmed) {
+            form.submit();
+          }
+        });
+      } else {
+        if (confirm(`Permanently remove ${name}, its bot config, and all FAQs?`)) {
+          form.submit();
+        }
+      }
+    });
+  });
+});
+</script>
+@endpush
