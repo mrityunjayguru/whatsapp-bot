@@ -26,6 +26,7 @@ class FaqController extends Controller
     public function store(Request $request, \App\Services\FaqApiService $apiService)
     {
         $companyId = auth()->user()->company_id ?? auth()->user()->tenant_id;
+        $apiService->setCompanyId((int) $companyId);
         $validated = $request->validate([
             'question' => 'required|string|max:255',
             'category' => 'nullable|string|max:255',
@@ -57,15 +58,18 @@ class FaqController extends Controller
             : [];
 
         $whatsappAnswer = self::formatHtmlForWhatsapp($validated['answer']);
-        $textId = $apiService->uploadText($validated['question'], $whatsappAnswer, $sourceUrl, false, $keywordList);
+        $isActive = $request->boolean('is_active');
+        $textId = $isActive ? $apiService->uploadText($validated['question'], $whatsappAnswer, $sourceUrl, false, $keywordList) : null;
         $validated['faq_hash_id'] = $textId;
         $validated['python_source_ids'] = $textId ? [$textId] : [];
-        $validated['is_active'] = $request->has('is_active') ? true : false;
+        $validated['is_active'] = $isActive;
         $validated['tenant_id'] = $companyId;
         $validated['created_by'] = auth()->id();
 
         // Also sync to each WhatsApp number's own FAQ store
-        $this->syncFaqToWhatsappNumbers($companyId, $validated['question'], $validated['answer'], $sourceUrl, $keywordList, null);
+        if ($isActive) {
+            $this->syncFaqToWhatsappNumbers($companyId, $validated['question'], $validated['answer'], $sourceUrl, $keywordList, null);
+        }
 
         Faq::create($validated);
 
@@ -83,6 +87,7 @@ class FaqController extends Controller
     {
         $companyId = auth()->user()->company_id ?? auth()->user()->tenant_id;
         $faq = Faq::where('tenant_id', $companyId)->findOrFail($id);
+        $apiService->setCompanyId((int) $companyId);
 
         $validated = $request->validate([
             'question' => 'required|string|max:255',
@@ -129,14 +134,15 @@ class FaqController extends Controller
             ? array_filter(array_map('trim', explode(',', $validated['keywords'])))
             : [];
         $whatsappAnswer = self::formatHtmlForWhatsapp($validated['answer']);
-        $textId = $apiService->uploadText($validated['question'], $whatsappAnswer, $sourceUrl, false, $keywordList);
+        $isActive = $request->boolean('is_active');
+        $textId = $isActive ? $apiService->uploadText($validated['question'], $whatsappAnswer, $sourceUrl, false, $keywordList) : null;
         $validated['faq_hash_id'] = $textId;
         $validated['python_source_ids'] = $textId ? [$textId] : [];
-        $validated['is_active'] = $request->has('is_active') ? true : false;
+        $validated['is_active'] = $isActive;
 
         // Sync to each WhatsApp number's own FAQ store (old source IDs for deletion)
         $oldSourceIds = is_array($faq->python_source_ids) ? $faq->python_source_ids : ($faq->faq_hash_id ? [$faq->faq_hash_id] : []);
-        $this->syncFaqToWhatsappNumbers($companyId, $validated['question'], $validated['answer'], $sourceUrl, $keywordList, $oldSourceIds);
+        $this->syncFaqToWhatsappNumbers($companyId, $validated['question'], $validated['answer'], $sourceUrl, $keywordList, $oldSourceIds, $isActive, $faq->question);
 
         $faq->update($validated);
 
@@ -157,17 +163,46 @@ class FaqController extends Controller
             $apiService->deleteSource($faq->faq_hash_id);
         }
 
+        $this->syncFaqToWhatsappNumbers((int) $companyId, $faq->question, $faq->answer, null, [], (array) ($faq->python_source_ids ?: array_filter([$faq->faq_hash_id])), false);
         $faq->delete();
         return redirect()->route('faqs.index')->with('success', 'FAQ deleted and removed from bot successfully.');
     }
 
-    public function toggleStatus($id)
+    public function toggleStatus($id, \App\Services\FaqApiService $apiService)
     {
-        $companyId = auth()->user()->company_id ?? auth()->user()->tenant_id;
+        $companyId = (int) (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $faq = Faq::where('tenant_id', $companyId)->findOrFail($id);
-        
-        $faq->update(['is_active' => !$faq->is_active]);
-        return redirect()->route('faqs.index')->with('success', 'FAQ status updated successfully.');
+        $apiService->setCompanyId($companyId);
+        $activate = ! (bool) $faq->is_active;
+        $keywords = !empty($faq->keywords) ? array_filter(array_map('trim', explode(',', $faq->keywords))) : [];
+        $sourceIds = is_array($faq->python_source_ids) ? $faq->python_source_ids : array_filter([$faq->faq_hash_id]);
+
+        if ($activate) {
+            // A FAQ disabled before this patch may still exist in Python.
+            // Remove the stale company source before uploading its fresh copy.
+            foreach ($sourceIds as $oldSourceId) {
+                if (!$apiService->deleteSource((string) $oldSourceId)) {
+                    return redirect()->route('faqs.index')->with('error', 'Could not clean up the previous Python FAQ before activation.');
+                }
+            }
+            $sourceId = $apiService->uploadText($faq->question, self::formatHtmlForWhatsapp($faq->answer), $faq->attachment ?: $faq->url, false, $keywords);
+            if (!$sourceId) {
+                return redirect()->route('faqs.index')->with('error', 'FAQ could not be activated: Python sync failed.');
+            }
+            $this->syncFaqToWhatsappNumbers($companyId, $faq->question, $faq->answer, $faq->attachment ?: $faq->url, $keywords, $sourceIds, true);
+            $faq->update(['is_active' => true, 'faq_hash_id' => $sourceId, 'python_source_ids' => [$sourceId]]);
+        } else {
+            $failed = false;
+            foreach ($sourceIds as $sourceId) {
+                if (!$apiService->deleteSource((string) $sourceId)) $failed = true;
+            }
+            if ($failed) {
+                return redirect()->route('faqs.index')->with('error', 'Could not deactivate FAQ: Python sync failed.');
+            }
+            $this->syncFaqToWhatsappNumbers($companyId, $faq->question, $faq->answer, null, [], $sourceIds, false);
+            $faq->update(['is_active' => false, 'faq_hash_id' => null, 'python_source_ids' => []]);
+        }
+        return redirect()->route('faqs.index')->with('success', 'FAQ status synchronized successfully.');
     }
 
     /**
@@ -217,7 +252,7 @@ class FaqController extends Controller
      * which reads from the number's own store, NOT the shared company store.
      * Deduplicates by question name before uploading to prevent multiple copies.
      */
-    private function syncFaqToWhatsappNumbers(int $companyId, string $question, string $answer, ?string $sourceUrl, array $keywords, ?array $oldSourceIds): void
+    private function syncFaqToWhatsappNumbers(int $companyId, string $question, string $answer, ?string $sourceUrl, array $keywords, ?array $oldSourceIds, bool $isActive = true, ?string $previousQuestion = null): void
     {
         $numbers = WhatsappNumber::where('company_id', $companyId)->get();
         if ($numbers->isEmpty()) {
@@ -240,13 +275,16 @@ class FaqController extends Controller
                 $existingSources = $numApi->listFaqSources($number->phone_number_id);
                 foreach ($existingSources as $source) {
                     $sourceName = $source['name'] ?? $source['title'] ?? '';
-                    if (trim(strtolower($sourceName)) === trim(strtolower($question))) {
+                    if (in_array(trim(mb_strtolower($sourceName)), array_filter([trim(mb_strtolower($question)), $previousQuestion ? trim(mb_strtolower($previousQuestion)) : null]), true)) {
                         $sourceId = $source['id'] ?? $source['source_id'] ?? null;
                         if ($sourceId) {
                             $numApi->deleteFaqSource($number->phone_number_id, $sourceId);
                         }
                     }
                 }
+
+                // Disabled FAQs must not be present in the live per-number store.
+                if (!$isActive) continue;
 
                 // Upload the new/updated FAQ to this number's store
                 $numApi->uploadFaqText(

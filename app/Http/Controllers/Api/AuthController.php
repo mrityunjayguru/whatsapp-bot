@@ -15,6 +15,97 @@ use OpenApi\Attributes as OA;
 class AuthController extends Controller
 {
     /**
+     * Verify Company by Company Code / Company ID.
+     */
+    #[
+        OA\Post(
+            path: "/verify-company",
+            summary: "Verify Company Code",
+            description: "Check if a company code/ID is registered and active before proceeding to login.",
+            tags: ["Authentication"]
+        ),
+        OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ["company_code"],
+                properties: [
+                    new OA\Property(property: "company_code", type: "string", example: "DES9166", description: "Company ID / Code entered by user")
+                ]
+            )
+        ),
+        OA\Response(
+            response: 200,
+            description: "Company is verified and active",
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: "status", type: "boolean", example: true),
+                    new OA\Property(property: "message", type: "string", example: "Company verified successfully."),
+                    new OA\Property(
+                        property: "data",
+                        type: "object",
+                        properties: [
+                            new OA\Property(property: "id", type: "integer", example: 1),
+                            new OA\Property(property: "company_code", type: "string", example: "DES9166"),
+                            new OA\Property(property: "name", type: "string", example: "Acme Corp"),
+                            new OA\Property(property: "bot_usage_type", type: "string", example: "ALL")
+                        ]
+                    )
+                ]
+            )
+        ),
+        OA\Response(response: 404, description: "Whoops! Company not registered"),
+        OA\Response(response: 403, description: "Company account is inactive"),
+        OA\Response(response: 422, description: "Validation error")
+    ]
+    public function verifyCompany(Request $request): JsonResponse
+    {
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'company_code' => 'required|string|trim',
+        ]);
+
+        // Support both company_code and company_id param in request
+        $inputCode = trim((string) ($request->input('company_code') ?? $request->input('company_id') ?? ''));
+
+        if (empty($inputCode)) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Company ID is required.',
+                'errors'  => [
+                    'company_code' => ['The company ID / code field is required.']
+                ]
+            ], 422);
+        }
+
+        $company = Company::where('company_code', $inputCode)->first();
+
+        if (!$company) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Whoops! Company not registered.',
+            ], 404);
+        }
+
+        if (!$company->is_active) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Company account is inactive. Please contact support.',
+            ], 403);
+        }
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Company verified successfully.',
+            'data'    => [
+                'id'             => $company->id,
+                'company_code'   => $company->company_code,
+                'name'           => $company->name,
+                'contact_email'  => $company->contact_email,
+                'bot_usage_type' => $company->bot_usage_type,
+            ],
+        ]);
+    }
+
+    /**
      * Handle login for Company Admin or Employee with explicit role parameter.
      * Requires: role (company|employee), company_code, email, password
      */

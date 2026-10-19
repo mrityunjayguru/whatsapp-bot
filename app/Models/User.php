@@ -24,6 +24,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'company_id',
+        'email_verified_at',
     ];
 
     /**
@@ -52,5 +53,38 @@ class User extends Authenticatable implements MustVerifyEmail
     public function company()
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * Check if user is an employee.
+     */
+    public function isEmployee(): bool
+    {
+        return Employee::where('email', $this->email)->exists();
+    }
+
+    /**
+     * Determine if the user has verified their email address.
+     * Employees do not need email verification.
+     */
+    public function hasVerifiedEmail(): bool
+    {
+        if ($this->isEmployee()) {
+            return true;
+        }
+
+        return !is_null($this->email_verified_at);
+    }
+
+    /**
+     * Send email verification notification only if not an employee.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        if ($this->isEmployee()) {
+            return;
+        }
+
+        $this->notify(new \Illuminate\Auth\Notifications\VerifyEmail);
     }
 }

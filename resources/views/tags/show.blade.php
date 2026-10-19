@@ -43,7 +43,7 @@
           <div class="col-sm-3">
             @if($tag->creator)
               <div class="d-flex align-items-center fw-bold">
-                <img src="{{ url('https://ui-avatars.com/api/?name=' . urlencode($tag->creator->name) . '&background=random&rounded=true') }}" alt="avatar" class="wd-20 ht-20 rounded-circle me-2">
+                <img src="{{ url('https://ui-avatars.com/api/?name=' . urlencode($tag->creator->name) . '&background=random&rounded=true') }}" alt="avatar" class="wd-10 ht-10 rounded-circle me-2" style="height:32px;">
                 {{ $tag->creator->name }}
               </div>
             @else

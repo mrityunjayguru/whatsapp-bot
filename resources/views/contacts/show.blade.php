@@ -501,7 +501,7 @@
           @endif
           <div class="mb-3">
             <label for="phone_number" class="form-label text-muted">Phone Number</label>
-            <input type="text" class="form-control" id="phone_number" name="phone_number" value="{{ $contact->phone_number }}">
+            <input type="text" class="form-control" id="phone_number" name="phone_number" value="{{ str_starts_with($contact->phone_number ?? '', 'web:') ? '' : $contact->phone_number }}">
           </div>
           <div class="mb-3">
             <label for="email" class="form-label text-muted">Email</label>

@@ -143,6 +143,15 @@ class ConversationController extends Controller
         $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
 
+        if (auth()->id() !== 1) {
+            $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
+            if ($employee && $employee->role !== 'ADMIN') {
+                if ($conversation->assigned_tenant_user_id !== $employee->id) {
+                    return response()->json(['error' => 'You are not assigned to this conversation.'], 403);
+                }
+            }
+        }
+
         $request->validate([
             'message_text' => 'nullable|string',
             'files' => 'nullable|array',
@@ -323,6 +332,15 @@ class ConversationController extends Controller
     {
         $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
+
+        if (auth()->id() !== 1) {
+            $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
+            if ($employee && $employee->role !== 'ADMIN') {
+                if ($conversation->assigned_tenant_user_id !== $employee->id) {
+                    abort(403, 'You are not assigned to this conversation.');
+                }
+            }
+        }
 
         $oldStatus = $conversation->status;
         $previousEmployeeId = $conversation->assigned_tenant_user_id;
@@ -551,6 +569,15 @@ class ConversationController extends Controller
     {
         $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
+
+        if (auth()->id() !== 1) {
+            $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
+            if ($employee && $employee->role !== 'ADMIN') {
+                if ($conversation->assigned_tenant_user_id !== $employee->id) {
+                    abort(403, 'You are not assigned to this conversation.');
+                }
+            }
+        }
 
         $botWasActive = !$conversation->bot_stopped;
         $willStopBot = !$conversation->bot_stopped; // True if it's currently active and will be stopped

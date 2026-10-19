@@ -351,10 +351,20 @@ class WidgetMessageController extends Controller
             $options = null;
         } else {
             $botResponse = $api->sendMessage($validated['token'], $validated['session_id'], $messageForBot);
-            $replyText = $botResponse['reply'] ?? "Sorry, I'm having trouble right now - please try again in a moment.";
+            $replyText = $botResponse['reply'] ?? $this->renderTemplate($company, 'fallback', $validated['token'], $api, $contact);
             $replyText = $this->linkifyAttachments($replyText);
             $escalated = $botResponse['escalated'] ?? false;
             $options = $botResponse['options'] ?? null;
+        }
+
+        // Empty settings + no matching FAQ: no invented bot message.
+        if (trim((string) $replyText) === '') {
+            return response()->json([
+                'reply' => null,
+                'escalated' => false,
+                'options' => $options,
+                'conversation_id' => $conversation->id,
+            ]);
         }
 
         // 4. Save + broadcast the bot's reply.
@@ -463,7 +473,7 @@ class WidgetMessageController extends Controller
 
         // 3. Get that exact FAQ's answer and save + broadcast it too.
         $botResponse = $api->selectOption($validated['token'], $validated['source_id']);
-        $replyText = $botResponse['reply'] ?? "Sorry, I'm having trouble right now - please try again in a moment.";
+        $replyText = $botResponse['reply'] ?? $this->renderTemplate($this->checkCompany($validated['token']), 'fallback', $validated['token'], $api);
         $replyText = $this->linkifyAttachments($replyText);
 
         $outbound = Message::create([
@@ -637,26 +647,6 @@ class WidgetMessageController extends Controller
             'talk to an agent', 'speak to an agent', 'connect me to'
         ];
 
-        $supportKeywords = [
-            'support', 'help', 'helpdesk', 'issue', 'problem', 'not working',
-            'broken', 'complaint', 'error', 'not connecting', 'no signal',
-            'battery', 'faulty', 'assistance', 'ticket', 'trouble'
-        ];
-
-        $demoKeywords = [
-            'demo', 'trial', 'book demo', 'book a demo', 'schedule demo',
-            'request demo', 'need demo'
-        ];
-
-        $orderKeywords = [
-            'order', 'tracking id', 'shipment', 'delivery', 'delivered',
-            'dispatch', 'courier', 'order status', 'track order'
-        ];
-
-        $thanksKeywords = [
-            'thanks', 'thank you', 'thankyou', 'thnx', 'thx'
-        ];
-
         $intent = null;
         $escalated = false;
 
@@ -672,18 +662,6 @@ class WidgetMessageController extends Controller
         if ($wordIn($msg, $humanKeywords)) {
             $intent = 'human_handoff';
             $escalated = true;
-        } elseif ($wordIn($msg, $supportKeywords)) {
-            $intent = 'support';
-            $escalated = true;
-        } elseif ($wordIn($msg, $demoKeywords)) {
-            $intent = 'demo';
-            $escalated = false;
-        } elseif ($wordIn($msg, $orderKeywords)) {
-            $intent = 'order_status';
-            $escalated = true;
-        } elseif ($wordIn($msg, $thanksKeywords)) {
-            $intent = 'thanks';
-            $escalated = false;
         } elseif ($this->isGreetingMessage($msg)) {
             $intent = 'greeting';
             $escalated = false;
@@ -694,6 +672,9 @@ class WidgetMessageController extends Controller
         }
 
         $reply = $this->renderTemplate($company, $intent, $token, $api, $contact);
+        if ($reply === '') {
+            return null;
+        }
         return [
             'reply' => $reply,
             'escalated' => $escalated,
@@ -710,10 +691,6 @@ class WidgetMessageController extends Controller
         $userName = ($contactName !== '' && $contactName !== 'Website Visitor' && $contactName !== 'Website visitor') ? $contactName : '';
         $companyName = $company->name ?? 'our company';
 
-        $supportLink = 'https://example.com/support';
-        $demoLink = 'https://example.com/demo';
-        $productsLink = 'https://example.com/products';
-
         $template = null;
 
         // 1. Fetch from BotConfig
@@ -722,10 +699,6 @@ class WidgetMessageController extends Controller
             if ($botConfig && is_array($botConfig->payload)) {
                 $payload = $botConfig->payload;
                 $companyName = $payload['company_name'] ?? $companyName;
-                $supportLink = $payload['support_link'] ?? $supportLink;
-                $demoLink = $payload['demo_link'] ?? $demoLink;
-                $productsLink = $payload['products_link'] ?? $productsLink;
-
                 $tpls = $payload['templates'] ?? [];
                 if (!empty($tpls[$key])) {
                     $template = $tpls[$key];
@@ -735,23 +708,18 @@ class WidgetMessageController extends Controller
             // Ignore DB error
         }
 
-        // 2. Fallbacks for missing/null templates
-        if (empty($template)) {
-            $defaultTemplates = [
-                'greeting' => "Hi {name}! 👋 Welcome to {company_name}. How can I help you today? You can ask me about our products, book a demo, or get support.",
-                'demo' => "Thank you for your interest! 😊 You can book a demo here: {demo_link}. Our team will be happy to walk you through our features.",
-                'order_status' => "I'd be happy to help you check your order status. Please share your order ID or reference number so I can assist you.",
-                'support' => "I'm sorry you're experiencing an issue. Our support team is here to help: {support_link}. Please describe the problem you're facing.",
-                'human_handoff' => "I'll connect you with our support team for further assistance. Please wait a moment while we arrange for a team member to help you.",
-                'thanks' => "You're welcome! 😊 If you need any more help, feel free to message us anytime. Have a great day!",
-                'fallback' => "Sorry, I didn't quite understand your message. Could you please rephrase your question or choose one of these options: Products, Book a Demo, or Contact Support?",
-            ];
-            $template = $defaultTemplates[$key] ?? "Thanks for contacting {company_name}! How can we help you?";
+        // Never seed canned business responses. Only the three messages
+        // explicitly saved under Bot Settings are permitted here.
+        if (!in_array($key, ['greeting', 'human_handoff', 'fallback'], true)) {
+            return '';
+        }
+        if (!is_string($template) || trim($template) === '') {
+            return '';
         }
 
         $rendered = str_replace(
-            ['{name}', '{company_name}', '{support_link}', '{demo_link}', '{products_link}', '{greeting_prefix}'],
-            [$userName, $companyName, $supportLink, $demoLink, $productsLink, ''],
+            ['{name}', '{company_name}', '{greeting_prefix}'],
+            [$userName, $companyName, ''],
             $template
         );
 

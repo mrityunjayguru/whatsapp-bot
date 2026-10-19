@@ -67,7 +67,8 @@
             @method('PUT')
             <button type="button" class="btn btn-sm {{ $conversation->bot_stopped ? 'btn-success' : 'btn-danger' }} fw-bold btn-toggle-bot"
                     data-stopped="{{ $conversation->bot_stopped ? '1' : '0' }}"
-                    data-has-agent="{{ ($conversation->bot_stopped && $conversation->assigned_tenant_user_id) ? '1' : '0' }}">
+                    data-has-agent="{{ ($conversation->bot_stopped && $conversation->assigned_tenant_user_id) ? '1' : '0' }}"
+                    {{ (!empty($isEmployeeNotAssigned)) ? 'disabled' : '' }}>
                 <i data-lucide="{{ $conversation->bot_stopped ? 'play' : 'pause' }}" class="icon-sm me-1"></i>
                 {{ $conversation->bot_stopped ? 'Start Bot Reply' : 'Stop Bot Reply' }}
             </button>
@@ -92,7 +93,7 @@
                         </div>
                         <div class="col-6">
                             <small class="text-muted d-block">Status</small>
-                            <select name="status" class="form-select form-select-sm border-0 bg-primary-subtle text-primary rounded-pill fw-bold" style="width:auto; padding-right: 30px; font-size: 0.75rem;">
+                            <select name="status" class="form-select form-select-sm border-0 bg-primary-subtle text-primary rounded-pill fw-bold" style="width:auto; padding-right: 30px; font-size: 0.75rem;" {{ (!empty($isEmployeeNotAssigned)) ? 'disabled' : '' }}>
                                 <option value="OPEN" {{ $conversation->status === 'OPEN' ? 'selected' : '' }}>OPEN</option>
                                 <option value="PENDING" {{ $conversation->status === 'PENDING' ? 'selected' : '' }}>PENDING</option>
                                 <option value="RESOLVED" {{ $conversation->status === 'RESOLVED' ? 'selected' : '' }}>RESOLVED</option>
@@ -113,7 +114,7 @@
                     <div class="row mb-3">
                         <div class="col-6">
                             <small class="text-muted d-block mb-1">Assigned</small>
-                            <select name="employee_id" class="form-select form-select-sm" style="max-width:200px;" {{ $conversation->status === 'CLOSED' ? 'disabled' : '' }}>
+                            <select name="employee_id" class="form-select form-select-sm" style="max-width:200px;" {{ ($conversation->status === 'CLOSED' || !empty($isEmployeeNotAssigned)) ? 'disabled' : '' }}>
                                 <option value="">Unassigned (bot answers)</option>
                                 @foreach($activeEmployees as $employee)
                                     <option value="{{ $employee->id }}" @selected($conversation->assigned_tenant_user_id == $employee->id)>
@@ -135,7 +136,7 @@
                     </div>
                     
                     <div class="border-top pt-3">
-                        <button type="submit" class="btn btn-sm btn-primary fw-bold px-3">Save Changes</button>
+                        <button type="submit" class="btn btn-sm btn-primary fw-bold px-3" {{ (!empty($isEmployeeNotAssigned)) ? 'disabled' : '' }}>Save Changes</button>
                     </div>
                 </form>
                 <!-- <div class="d-flex gap-2 border-top pt-3">
@@ -218,8 +219,8 @@
                 
                 <div class="d-flex gap-2 border-top pt-3">
                   @if($conversation->contact)
-                    <button data-bs-toggle="modal" data-bs-target="#editContactModal" class="btn btn-sm btn-outline-secondary fw-bold"><i data-lucide="user" class="icon-sm me-1"></i> Edit Contact</button>
-                    <button data-bs-toggle="modal" data-bs-target="#addTagModal" class="btn btn-sm btn-outline-secondary fw-bold"><i data-lucide="tag" class="icon-sm me-1"></i> Add Tag</button>
+                    <button data-bs-toggle="modal" data-bs-target="#editContactModal" class="btn btn-sm btn-outline-secondary fw-bold" {{ (!empty($isEmployeeNotAssigned)) ? 'disabled' : '' }}><i data-lucide="user" class="icon-sm me-1"></i> Edit Contact</button>
+                    <button data-bs-toggle="modal" data-bs-target="#addTagModal" class="btn btn-sm btn-outline-secondary fw-bold" {{ (!empty($isEmployeeNotAssigned)) ? 'disabled' : '' }}><i data-lucide="tag" class="icon-sm me-1"></i> Add Tag</button>
                     <a href="{{ route('contacts.show', $conversation->contact_id) }}" class="btn btn-sm btn-outline-secondary fw-bold"><i data-lucide="eye" class="icon-sm me-1"></i> View Contact</a>
                   @else
                     <button class="btn btn-sm btn-outline-secondary fw-bold" disabled>Contact Unavailable</button>

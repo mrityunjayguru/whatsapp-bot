@@ -6,6 +6,7 @@ use App\Http\Controllers\WidgetMessageController;
 use Illuminate\Support\Facades\Route;
 
 // Authentication APIs (Unified Company & Employee Login)
+Route::post('/verify-company', [AuthController::class, 'verifyCompany']);
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {

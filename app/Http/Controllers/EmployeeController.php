@@ -64,12 +64,13 @@ class EmployeeController extends Controller
         $nextId = $tenantEmployeeCount + 1;
         $employeeCode = 'EMP-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
 
-        // Create User for login
+        // Create User for login (auto-verified since employees do not require email verification)
         \App\Models\User::create([
             'name' => trim($request->first_name . ' ' . $request->last_name),
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'company_id' => $companyId,
+            'email_verified_at' => now(),
         ]);
 
         Employee::create([

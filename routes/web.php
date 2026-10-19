@@ -74,8 +74,8 @@ require __DIR__.'/auth.php';
 
 Route::get('meta/webhook', [\App\Http\Controllers\MetaWebhookController::class, 'verify'])->name('meta.webhook.verify');
 Route::post('meta/webhook', [\App\Http\Controllers\MetaWebhookController::class, 'handle'])->middleware('throttle:60,1')->name('meta.webhook');
-Route::get('/admin/bot-config', [\App\Http\Controllers\BotConfigController::class, 'edit'])->name('bot-config.edit');
-Route::put('/admin/bot-config', [\App\Http\Controllers\BotConfigController::class, 'update'])->name('bot-config.update');
+Route::get('/admin/bot-config', [\App\Http\Controllers\BotConfigController::class, 'edit'])->middleware(['auth', 'verified'])->name('bot-config.edit');
+Route::put('/admin/bot-config', [\App\Http\Controllers\BotConfigController::class, 'update'])->middleware(['auth', 'verified'])->name('bot-config.update');
 Route::get('contacts', [\App\Http\Controllers\ContactController::class, 'index'])->middleware(['auth', 'verified'])->name('contacts.index');
 Route::get('contacts/{contact}', [\App\Http\Controllers\ContactController::class, 'show'])->middleware(['auth', 'verified'])->name('contacts.show');
 Route::put('contacts/{contact}', [\App\Http\Controllers\ContactController::class, 'update'])->middleware(['auth', 'verified'])->name('contacts.update');

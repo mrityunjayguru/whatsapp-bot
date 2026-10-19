@@ -12,6 +12,88 @@
         }
     ],
     "paths": {
+        "/verify-company": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Verify Company Code",
+                "description": "Check if a company code/ID is registered and active before proceeding to login.",
+                "operationId": "4405e770b8dacb99b242411772f2bdea",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "company_code"
+                                ],
+                                "properties": {
+                                    "company_code": {
+                                        "description": "Company ID / Code entered by user",
+                                        "type": "string",
+                                        "example": "DES9166"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Company is verified and active",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Company verified successfully."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "company_code": {
+                                                    "type": "string",
+                                                    "example": "DES9166"
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "Acme Corp"
+                                                },
+                                                "bot_usage_type": {
+                                                    "type": "string",
+                                                    "example": "ALL"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Whoops! Company not registered"
+                    },
+                    "403": {
+                        "description": "Company account is inactive"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "tags": [
