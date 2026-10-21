@@ -61,7 +61,20 @@
         <div class="text-muted small">{{ $conversation->formatted_id }}</div>
         <h4 class="mb-0">{{ $conversation->contact?->display_name ?? '-' }}</h4>
     </div>
-    <div class="d-flex align-items-center">
+    <div class="d-flex align-items-center gap-2">
+        @if(auth()->user()->company?->crm_integration_enabled)
+            <button type="button" 
+                    class="btn btn-sm {{ $conversation->is_sent_to_crm ? 'btn-outline-success' : 'btn-outline-primary' }} fw-bold" 
+                    id="btnSendToCrm" 
+                    data-url="{{ route('conversations.sendToCrm', $conversation->id) }}"
+                    {{ $conversation->is_sent_to_crm ? 'disabled' : '' }}>
+                <i data-lucide="{{ $conversation->is_sent_to_crm ? 'check-circle' : 'send' }}" class="icon-sm me-1"></i>
+                <span id="btnSendToCrmText">
+                    {{ $conversation->is_sent_to_crm ? 'Sent to CRM (' . ($conversation->crm_lead_id ?? 'Done') . ')' : 'Send to CRM' }}
+                </span>
+            </button>
+        @endif
+
         <form action="{{ route('conversations.toggleBot', $conversation->id) }}" method="POST" class="m-0 p-0" id="toggleBotForm">
             @csrf
             @method('PUT')
@@ -217,11 +230,19 @@
                     </div>
                 </div>
                 
-                <div class="d-flex gap-2 border-top pt-3">
+                <div class="d-flex flex-wrap gap-2 border-top pt-3">
                   @if($conversation->contact)
                     <button data-bs-toggle="modal" data-bs-target="#editContactModal" class="btn btn-sm btn-outline-secondary fw-bold" {{ (!empty($isEmployeeNotAssigned)) ? 'disabled' : '' }}><i data-lucide="user" class="icon-sm me-1"></i> Edit Contact</button>
                     <button data-bs-toggle="modal" data-bs-target="#addTagModal" class="btn btn-sm btn-outline-secondary fw-bold" {{ (!empty($isEmployeeNotAssigned)) ? 'disabled' : '' }}><i data-lucide="tag" class="icon-sm me-1"></i> Add Tag</button>
                     <a href="{{ route('contacts.show', $conversation->contact_id) }}" class="btn btn-sm btn-outline-secondary fw-bold"><i data-lucide="eye" class="icon-sm me-1"></i> View Contact</a>
+                    @if(auth()->user()->company?->crm_integration_enabled)
+                      <button type="button" 
+                              class="btn btn-sm {{ $conversation->is_sent_to_crm ? 'btn-outline-success' : 'btn-outline-primary' }} fw-bold btn-trigger-send-to-crm"
+                              {{ $conversation->is_sent_to_crm ? 'disabled' : '' }}>
+                          <i data-lucide="{{ $conversation->is_sent_to_crm ? 'check-circle' : 'share-2' }}" class="icon-sm me-1"></i>
+                          <span>{{ $conversation->is_sent_to_crm ? 'Lead Sent' : 'Send to CRM' }}</span>
+                      </button>
+                    @endif
                   @else
                     <button class="btn btn-sm btn-outline-secondary fw-bold" disabled>Contact Unavailable</button>
                   @endif
@@ -1327,6 +1348,84 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Echo is not defined. WebSockets will not work.');
     }
     @endif
+    // Send to CRM Handler
+    const btnSendToCrm = document.getElementById('btnSendToCrm');
+    const sendToCrmAction = function() {
+        if (!btnSendToCrm) return;
+        const url = btnSendToCrm.getAttribute('data-url');
+        if (!url) return;
+
+        Swal.fire({
+            title: 'Send to CRM?',
+            text: 'This customer will be stored as an Unassigned Lead in CRM.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '<i class="link-icon" data-lucide="send"></i> Yes, Send',
+            cancelButtonText: 'Cancel',
+            customClass: {
+                confirmButton: 'btn btn-primary me-2',
+                cancelButton: 'btn btn-secondary'
+            },
+            buttonsStyling: false
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Show loading
+                Swal.fire({
+                    title: 'Sending to CRM...',
+                    text: 'Connecting to CRM API and creating lead',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    }
+                })
+                .then(response => response.json().then(data => ({ status: response.status, body: data })))
+                .then(({ status, body }) => {
+                    if (status >= 200 && status < 300 && body.success) {
+                        Swal.fire({
+                            title: 'Success!',
+                            text: body.message || 'Lead created in CRM successfully!',
+                            icon: 'success',
+                            confirmButtonClass: 'btn btn-primary'
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Failed to Send',
+                            text: body.message || 'Unknown error occurred while contacting CRM.',
+                            icon: 'error',
+                            confirmButtonClass: 'btn btn-primary'
+                        });
+                    }
+                })
+                .catch(err => {
+                    console.error('Send to CRM error:', err);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Network error or CRM API endpoint unreachable: ' + err.message,
+                        icon: 'error',
+                        confirmButtonClass: 'btn btn-primary'
+                    });
+                });
+            }
+        });
+    };
+
+    if (btnSendToCrm) {
+        btnSendToCrm.addEventListener('click', sendToCrmAction);
+    }
+    document.querySelectorAll('.btn-trigger-send-to-crm').forEach(btn => {
+        btn.addEventListener('click', sendToCrmAction);
+    });
 });
 </script>
 @endpush

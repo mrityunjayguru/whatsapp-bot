@@ -81,13 +81,26 @@
                 @error('bot_usage_type') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
             </div>
 
-            <div class="mb-4">
-                <label class="form-label">Status <span class="text-danger">*</span></label>
-                <select class="form-select @error('status') is-invalid @enderror" name="status" required>
-                    <option value="ACTIVE" {{ old('status', $company->is_active ? 'ACTIVE' : 'INACTIVE') == 'ACTIVE' ? 'selected' : '' }}>Active</option>
-                    <option value="INACTIVE" {{ old('status', $company->is_active ? 'ACTIVE' : 'INACTIVE') == 'INACTIVE' ? 'selected' : '' }}>Inactive</option>
-                </select>
-                @error('status') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            <div class="card bg-light border p-3 mb-4 rounded">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <h6 class="fw-bold mb-0 text-dark"><i data-lucide="layers" class="icon-sm me-1 text-primary"></i> CRM Integration</h6>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" name="crm_integration_enabled" id="crm_integration_enabled" value="1" {{ old('crm_integration_enabled', $company->crm_integration_enabled) ? 'checked' : '' }}>
+                        <label class="form-check-label fw-bold" for="crm_integration_enabled">Enable Send to CRM</label>
+                    </div>
+                </div>
+                <small class="text-muted d-block mb-3">If enabled, agents can send conversations to CRM as unassigned leads.</small>
+
+                <div id="crmConfigFields" style="{{ old('crm_integration_enabled', $company->crm_integration_enabled) ? '' : 'display: none;' }}">
+                    <div class="mb-3">
+                        <label class="form-label">CRM API URL <small class="text-muted">(Default: http://localhost/CRM/public/api/leads/store-from-chatbot)</small></label>
+                        <input type="text" class="form-control" name="crm_api_url" value="{{ old('crm_api_url', $company->crm_api_url ?? 'http://localhost/CRM/public/api/leads/store-from-chatbot') }}" placeholder="http://localhost/CRM/public/api/leads/store-from-chatbot">
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">CRM API Token / Secret <small class="text-muted">(Optional)</small></label>
+                        <input type="text" class="form-control" name="crm_api_token" value="{{ old('crm_api_token', $company->crm_api_token) }}" placeholder="Optional API Token">
+                    </div>
+                </div>
             </div>
 
             <button type="submit" class="btn btn-primary submit">
@@ -120,6 +133,14 @@
     document.addEventListener('DOMContentLoaded', function() {
         setupToggle('togglePassword', 'password', 'eyeIconPassword');
         setupToggle('togglePasswordConfirm', 'password_confirmation', 'eyeIconConfirm');
+
+        var crmSwitch = document.getElementById('crm_integration_enabled');
+        var crmFields = document.getElementById('crmConfigFields');
+        if (crmSwitch && crmFields) {
+            crmSwitch.addEventListener('change', function() {
+                crmFields.style.display = this.checked ? 'block' : 'none';
+            });
+        }
     });
 </script>
 @endpush

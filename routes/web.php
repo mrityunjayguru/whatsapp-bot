@@ -90,6 +90,7 @@ Route::put('conversations/{conversation}/toggle-bot', [\App\Http\Controllers\Con
 Route::post('conversations/{conversation}/messages', [\App\Http\Controllers\ConversationController::class, 'sendMessage'])->middleware(['auth', 'verified'])->name('conversations.messages.store');
 Route::put('conversations/{conversation}/status', [\App\Http\Controllers\ConversationController::class, 'updateStatus'])->middleware(['auth', 'verified'])->name('conversations.updateStatus');
 Route::put('conversations/{conversation}/details', [\App\Http\Controllers\ConversationController::class, 'updateDetails'])->middleware(['auth', 'verified'])->name('conversations.updateDetails');
+Route::post('conversations/{conversation}/send-to-crm', [\App\Http\Controllers\ConversationController::class, 'sendToCrm'])->middleware(['auth', 'verified'])->name('conversations.sendToCrm');
 Route::middleware(['auth'])->group(function () {
     Route::resource('faqs', App\Http\Controllers\FaqController::class);
     Route::patch('faqs/{faq}/toggle-status', [App\Http\Controllers\FaqController::class, 'toggleStatus'])->name('faqs.toggle-status');

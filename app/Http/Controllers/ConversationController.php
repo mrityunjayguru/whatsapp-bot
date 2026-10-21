@@ -640,4 +640,100 @@ class ConversationController extends Controller
 
         return back()->with('success', $conversation->bot_stopped ? 'Bot stopped for this conversation.' : 'Bot resumed for this conversation.');
     }
+
+    /**
+     * Send conversation details to CRM as an unassigned lead.
+     */
+    public function sendToCrm(Request $request, Conversation $conversation)
+    {
+        $company = auth()->user()->company ?? Company::find($conversation->tenant_id);
+
+        if (!$company || !$company->crm_integration_enabled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'CRM integration is not enabled for your company.',
+            ], 403);
+        }
+
+        $contact = $conversation->contact;
+        if (!$contact) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No contact information found for this conversation.',
+            ], 422);
+        }
+
+        // Target API URL
+        $crmUrl = $company->crm_api_url ?: 'http://localhost/CRM/public/api/leads/store-from-chatbot';
+
+        // Prepare lead data
+        $leadName = $contact->display_name ?: ($contact->whatsapp_profile_name ?: 'Chat Contact');
+        $phone = preg_replace('/^web:/', '', (string) $contact->phone_number);
+        if (empty($phone)) {
+            $phone = 'N/A';
+        }
+
+        // Last few messages as requirement/context
+        $recentMessages = $conversation->messages()
+            ->latest()
+            ->limit(3)
+            ->get()
+            ->reverse()
+            ->pluck('message_text')
+            ->filter()
+            ->implode(' | ');
+
+        $requirement = $recentMessages ?: 'Inquiry via ' . ($conversation->channel === 'web_widget' ? 'Web Widget' : 'WhatsApp');
+
+        $payload = [
+            'name'            => $leadName,
+            'phone'           => $phone,
+            'whatsapp_number' => $phone !== 'N/A' ? $phone : null,
+            'email'           => $contact->email,
+            'company_name'    => $company->name,
+            'requirement'     => $requirement,
+            'owner_email'     => $company->contact_email,
+            'source_name'     => $conversation->channel === 'web_widget' ? 'Website Chatbot' : 'WhatsApp Bot',
+            'note'            => 'Sent from Chatbot Conversation #' . $conversation->id . '. Status: Unassigned.',
+        ];
+
+        try {
+            $httpClient = \Illuminate\Support\Facades\Http::timeout(10);
+            if (!empty($company->crm_api_token)) {
+                $httpClient = $httpClient->withToken($company->crm_api_token);
+            }
+
+            $response = $httpClient->post($crmUrl, $payload);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $crmLeadId = $data['data']['lead_id'] ?? null;
+
+                $conversation->update([
+                    'is_sent_to_crm' => true,
+                    'crm_lead_id'    => $crmLeadId,
+                    'sent_to_crm_at' => now(),
+                ]);
+
+                return response()->json([
+                    'success'     => true,
+                    'message'     => 'Lead successfully created in CRM as Unassigned (' . ($crmLeadId ?? 'Done') . ')!',
+                    'crm_lead_id' => $crmLeadId,
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'CRM responded with error: ' . ($response->json('message') ?? $response->body()),
+            ], 400);
+
+        } catch (\Exception $e) {
+            \Log::error('Send to CRM failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to connect to CRM API: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
+

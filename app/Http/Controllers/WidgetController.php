@@ -52,10 +52,10 @@ class WidgetController extends Controller
             'expiry_date' => 'nullable|date|after_or_equal:valid_from',
         ]);
 
-        $widget = $api->createWidget($validated['site_name'], $validated['contact_email'] ?? null);
+        $widget = $api->createWidget($validated['site_name'], $validated['contact_email'] ?? null, (string) $validated['company_id']);
 
-        if (!$widget) {
-            return back()->withInput()->with('error', 'Could not create the widget - check the bot service is running.');
+        if (!$widget || (string) ($widget['company_id'] ?? '') !== (string) $validated['company_id']) {
+            return back()->withInput()->with('error', 'Widget was not created with the correct company. Check the Python API logs.');
         }
 
         $company = \App\Models\Company::findOrFail($validated['company_id']);
@@ -88,11 +88,15 @@ class WidgetController extends Controller
         // it - not this admin panel - has to be the one enforcing the
         // date window. Push the dates there now rather than waiting for
         // the first settings edit.
-        $api->updateWidgetConfig($widget['token'], [
-            'company_id' => $validated['company_id'],
+        $synced = $api->updateWidgetConfig($widget['token'], [
+            'company_id' => (string) $validated['company_id'],
             'valid_from' => $validated['valid_from'] ?? null,
             'expiry_date' => $validated['expiry_date'] ?? null,
         ]);
+        if (!$synced) {
+            return redirect()->route('widgets.edit', $widget['token'])
+                ->with('error', 'Widget created, but Python configuration sync failed. Save Widget Settings to retry.');
+        }
 
         return redirect()->route('widgets.edit', $widget['token'])
             ->with('success', 'Widget created. Configure it and add some FAQs below, then copy the embed script onto your site.');
@@ -215,7 +219,10 @@ class WidgetController extends Controller
         $expiryDate = $validated['expiry_date'];
 
         $widgetModel = \App\Models\Widget::where('token', $token)->first();
-        $validated['company_id'] = $widgetModel ? $widgetModel->company_id : null;
+        if (!$widgetModel || !$widgetModel->company_id) {
+            return back()->withInput()->with('error', 'This widget has no assigned company in Laravel. Assign a company before saving.');
+        }
+        $validated['company_id'] = (string) $widgetModel->company_id;
         $updated = $api->updateWidgetConfig($token, $validated);
 
         if (!$updated) {

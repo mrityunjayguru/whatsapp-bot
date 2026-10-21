@@ -94,6 +94,9 @@ class CompanyController extends Controller
             'password' => 'nullable|string|min:8|confirmed',
             'bot_usage_type' => 'required|in:whatsapp,widget',
             'status' => 'required|in:ACTIVE,INACTIVE',
+            'crm_integration_enabled' => 'nullable|boolean',
+            'crm_api_url' => 'nullable|string|max:255',
+            'crm_api_token' => 'nullable|string|max:255',
         ]);
 
         // Validate user email unique if it's changing
@@ -109,6 +112,9 @@ class CompanyController extends Controller
             'contact_email' => $request->email,
             'contact_number' => $request->contact_number,
             'bot_usage_type' => $request->bot_usage_type,
+            'crm_integration_enabled' => $request->boolean('crm_integration_enabled'),
+            'crm_api_url' => $request->crm_api_url,
+            'crm_api_token' => $request->crm_api_token,
             'is_active' => $request->status === 'ACTIVE',
         ]);
 

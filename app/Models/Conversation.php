@@ -24,10 +24,15 @@ class Conversation extends Model
         'resolved_at',
         'bot_stopped',
         'assignment_history',
+        'is_sent_to_crm',
+        'crm_lead_id',
+        'sent_to_crm_at',
     ];
 
     protected $casts = [
         'assignment_history' => 'array',
+        'is_sent_to_crm' => 'boolean',
+        'sent_to_crm_at' => 'datetime',
     ];
 
     public function contact()

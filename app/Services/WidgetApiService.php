@@ -105,9 +105,13 @@ class WidgetApiService
         return [];
     }
 
-    public function createWidget(string $siteName, ?string $contactEmail = null): ?array
+    public function createWidget(string $siteName, ?string $contactEmail = null, ?string $companyId = null): ?array
     {
-        $payload = ['site_name' => $siteName];
+        if (!$companyId) {
+            Log::error('WidgetApiService createWidget requires companyId');
+            return null;
+        }
+        $payload = ['site_name' => $siteName, 'company_id' => (string) $companyId];
         if ($contactEmail) {
             $payload['contact_email'] = $contactEmail;
         }
@@ -154,7 +158,17 @@ class WidgetApiService
             $response = Http::withHeaders($this->headers())->timeout(15)
                 ->put("{$this->baseUrl}/widgets/{$token}/config", $data);
             if ($response->successful()) {
-                return $response->json();
+                $result = $response->json();
+                if (array_key_exists('company_id', $data)
+                    && (string) ($result['company_id'] ?? '') !== (string) $data['company_id']) {
+                    Log::error('WidgetApiService company_id not persisted', [
+                        'token' => $token,
+                        'expected' => $data['company_id'],
+                        'actual' => $result['company_id'] ?? null,
+                    ]);
+                    return null;
+                }
+                return $result;
             }
             Log::error('WidgetApiService updateWidgetConfig failed', ['status' => $response->status(), 'body' => $response->body()]);
         } catch (\Throwable $e) {

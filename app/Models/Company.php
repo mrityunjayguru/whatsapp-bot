@@ -12,6 +12,9 @@ class Company extends Model
         'contact_email',
         'contact_number',
         'bot_usage_type',
+        'crm_integration_enabled',
+        'crm_api_url',
+        'crm_api_token',
         'widget_token',
         'is_active',
         'valid_from',
@@ -38,6 +41,7 @@ class Company extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'crm_integration_enabled' => 'boolean',
         'valid_from' => 'date:Y-m-d',
         'expiry_date' => 'date:Y-m-d',
     ];

@@ -78,23 +78,13 @@ class WidgetMessageController extends Controller
 
         $syntheticId = 'web:' . $token . ':' . $sessionId;
         
+        // Session identity must be used, not visitor IP. Shared IP addresses can
+        // otherwise reopen another visitor's human-assigned/paused conversation.
         $contact = Contact::where('tenant_id', $company->id)
-            ->where(function($q) use ($syntheticId, $ip) {
-                if ($ip) {
-                    $q->where('ip_address', $ip);
-                } else {
-                    $q->where('phone_number', $syntheticId)
-                      ->orWhere('whatsapp_profile_name', $syntheticId);
-                }
+            ->where(function ($q) use ($syntheticId) {
+                $q->where('phone_number', $syntheticId)
+                  ->orWhere('whatsapp_profile_name', $syntheticId);
             })->first();
-            
-        if (!$contact && $ip) {
-            $contact = Contact::where('tenant_id', $company->id)
-                ->where(function($q) use ($syntheticId) {
-                    $q->where('phone_number', $syntheticId)
-                      ->orWhere('whatsapp_profile_name', $syntheticId);
-                })->first();
-        }
 
         if (!$contact) {
             return null;
@@ -230,23 +220,13 @@ class WidgetMessageController extends Controller
         $syntheticId = 'web:' . $validated['token'] . ':' . $validated['session_id'];
         $ip = $request->ip();
         
+        // Never identify a chat visitor solely by IP. Several people behind
+        // one office/mobile NAT can have the same IP but different sessions.
         $contact = Contact::where('tenant_id', $company->id)
-            ->where(function ($query) use ($syntheticId, $ip) {
-                if ($ip) {
-                    $query->where('ip_address', $ip);
-                } else {
-                    $query->where('phone_number', $syntheticId)
-                          ->orWhere('whatsapp_profile_name', $syntheticId);
-                }
+            ->where(function ($query) use ($syntheticId) {
+                $query->where('phone_number', $syntheticId)
+                      ->orWhere('whatsapp_profile_name', $syntheticId);
             })->first();
-            
-        if (!$contact && $ip) {
-            $contact = Contact::where('tenant_id', $company->id)
-                ->where(function ($query) use ($syntheticId) {
-                    $query->where('phone_number', $syntheticId)
-                          ->orWhere('whatsapp_profile_name', $syntheticId);
-                })->first();
-        }
 
         if (!$contact) {
             $contact = Contact::create([
@@ -351,18 +331,23 @@ class WidgetMessageController extends Controller
             $options = null;
         } else {
             $botResponse = $api->sendMessage($validated['token'], $validated['session_id'], $messageForBot);
-            $replyText = $botResponse['reply'] ?? $this->renderTemplate($company, 'fallback', $validated['token'], $api, $contact);
-            $replyText = $this->linkifyAttachments($replyText);
-            $escalated = $botResponse['escalated'] ?? false;
+            $replyText = trim((string) ($botResponse['reply'] ?? ''));
             $options = $botResponse['options'] ?? null;
+            $escalated = (bool) ($botResponse['escalated'] ?? false);
+            // An empty/failed Python response must not produce a blank bubble.
+            // The Laravel Bot Settings record is the fallback authority.
+            if ($replyText === '' && empty($options)) {
+                $replyText = $this->renderTemplate($company, 'fallback', $validated['token'], $api, $contact);
+                $escalated = true;
+            }
+            $replyText = $this->linkifyAttachments($replyText);
         }
 
-        // Empty settings + no matching FAQ: no invented bot message.
-        if (trim((string) $replyText) === '') {
+        if (trim(strip_tags($replyText)) === '' && empty($options)) {
             return response()->json([
                 'reply' => null,
-                'escalated' => false,
-                'options' => $options,
+                'escalated' => $escalated,
+                'options' => null,
                 'conversation_id' => $conversation->id,
             ]);
         }
@@ -473,7 +458,7 @@ class WidgetMessageController extends Controller
 
         // 3. Get that exact FAQ's answer and save + broadcast it too.
         $botResponse = $api->selectOption($validated['token'], $validated['source_id']);
-        $replyText = $botResponse['reply'] ?? $this->renderTemplate($this->checkCompany($validated['token']), 'fallback', $validated['token'], $api);
+        $replyText = $botResponse['reply'] ?? "Sorry, I'm having trouble right now - please try again in a moment.";
         $replyText = $this->linkifyAttachments($replyText);
 
         $outbound = Message::create([
@@ -672,9 +657,6 @@ class WidgetMessageController extends Controller
         }
 
         $reply = $this->renderTemplate($company, $intent, $token, $api, $contact);
-        if ($reply === '') {
-            return null;
-        }
         return [
             'reply' => $reply,
             'escalated' => $escalated,
@@ -691,6 +673,10 @@ class WidgetMessageController extends Controller
         $userName = ($contactName !== '' && $contactName !== 'Website Visitor' && $contactName !== 'Website visitor') ? $contactName : '';
         $companyName = $company->name ?? 'our company';
 
+        $supportLink = 'https://example.com/support';
+        $demoLink = 'https://example.com/demo';
+        $productsLink = 'https://example.com/products';
+
         $template = null;
 
         // 1. Fetch from BotConfig
@@ -699,6 +685,10 @@ class WidgetMessageController extends Controller
             if ($botConfig && is_array($botConfig->payload)) {
                 $payload = $botConfig->payload;
                 $companyName = $payload['company_name'] ?? $companyName;
+                $supportLink = $payload['support_link'] ?? $supportLink;
+                $demoLink = $payload['demo_link'] ?? $demoLink;
+                $productsLink = $payload['products_link'] ?? $productsLink;
+
                 $tpls = $payload['templates'] ?? [];
                 if (!empty($tpls[$key])) {
                     $template = $tpls[$key];
@@ -708,18 +698,13 @@ class WidgetMessageController extends Controller
             // Ignore DB error
         }
 
-        // Never seed canned business responses. Only the three messages
-        // explicitly saved under Bot Settings are permitted here.
-        if (!in_array($key, ['greeting', 'human_handoff', 'fallback'], true)) {
-            return '';
-        }
-        if (!is_string($template) || trim($template) === '') {
-            return '';
-        }
+        // Bot Settings values are configured by the company, never seed a
+        // canned business reply in this controller.
+        $template = (string) ($template ?? '');
 
         $rendered = str_replace(
-            ['{name}', '{company_name}', '{greeting_prefix}'],
-            [$userName, $companyName, ''],
+            ['{name}', '{company_name}', '{support_link}', '{demo_link}', '{products_link}', '{greeting_prefix}'],
+            [$userName, $companyName, $supportLink, $demoLink, $productsLink, ''],
             $template
         );
 
