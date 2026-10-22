@@ -48,6 +48,7 @@ class CompanyController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'company_code' => 'nullable|string|max:50|alpha_dash|unique:companies,company_code',
             'email' => 'required|email|unique:companies,contact_email|unique:users,email',
             'contact_number' => 'nullable|string|max:20',
             'password' => 'required|string|min:8|confirmed',
@@ -55,13 +56,18 @@ class CompanyController extends Controller
             'status' => 'required|in:ACTIVE,INACTIVE',
         ]);
 
-        $company = Company::create([
+        $companyData = [
             'name' => $request->name,
             'contact_email' => $request->email,
             'contact_number' => $request->contact_number,
             'bot_usage_type' => $request->bot_usage_type,
             'is_active' => $request->status === 'ACTIVE',
-        ]);
+        ];
+        if ($request->filled('company_code')) {
+            $companyData['company_code'] = strtoupper(trim($request->company_code));
+        }
+
+        $company = Company::create($companyData);
 
         // Create Admin User for the company
         User::create([
@@ -89,6 +95,7 @@ class CompanyController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'company_code' => 'required|string|max:50|alpha_dash|unique:companies,company_code,' . $company->id,
             'email' => 'required|email|unique:companies,contact_email,' . $company->id,
             'contact_number' => 'nullable|string|max:20',
             'password' => 'nullable|string|min:8|confirmed',
@@ -109,6 +116,7 @@ class CompanyController extends Controller
 
         $company->update([
             'name' => $request->name,
+            'company_code' => strtoupper(trim($request->company_code)),
             'contact_email' => $request->email,
             'contact_number' => $request->contact_number,
             'bot_usage_type' => $request->bot_usage_type,

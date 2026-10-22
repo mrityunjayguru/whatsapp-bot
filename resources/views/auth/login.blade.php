@@ -23,8 +23,15 @@
               @csrf
 
               <div class="mb-3">
-                <label for="email" class="form-label">Email address</label>
-                <input type="email" class="form-control" name="email" id="email" placeholder="Email" value="{{ old('email') }}" required autofocus autocomplete="username">
+                <label for="company_code" class="form-label">Company ID / Code</label>
+                <input type="text" class="form-control" name="company_code" id="company_code" placeholder="Company ID (Required for Company & Employees)" value="{{ old('company_code') }}" autofocus autocomplete="organization" style="text-transform: uppercase;">
+                <small class="text-secondary fs-11px d-block mt-1">Super Admins can leave this field blank.</small>
+                <x-input-error :messages="$errors->get('company_code')" class="mt-2 text-danger" />
+              </div>
+
+              <div class="mb-3">
+                <label for="email" class="form-label">Email address <span class="text-danger">*</span></label>
+                <input type="email" class="form-control" name="email" id="email" placeholder="Email" value="{{ old('email') }}" required autocomplete="username">
                 <x-input-error :messages="$errors->get('email')" class="mt-2 text-danger" />
               </div>
 

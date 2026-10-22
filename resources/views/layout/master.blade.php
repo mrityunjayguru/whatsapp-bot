@@ -56,10 +56,45 @@ License: You must have a valid license to legally use this template for your pro
   @stack('plugin-styles')
   @stack('style')
 
-  {{-- Critical: logo theme toggle (inline so it works on live without rebuild) --}}
+  {{-- Critical styles (inline so it works on live without client asset cache delay) --}}
   <style>
     [data-bs-theme='dark']  .logo-mini-light { display: none !important; }
     [data-bs-theme='light'] .logo-mini-dark  { display: none !important; }
+
+    /* Active Sidebar Menu Item Highlight (Red) */
+    .sidebar .sidebar-body .nav .nav-item.active > .nav-link,
+    .sidebar .sidebar-body .nav .nav-item.active > .nav-link .link-title,
+    .sidebar-dark .sidebar .sidebar-body .nav .nav-item.active > .nav-link,
+    .sidebar-dark .sidebar .sidebar-body .nav .nav-item.active > .nav-link .link-title {
+      color: #ef4444 !important;
+      font-weight: 600 !important;
+    }
+
+    .sidebar .sidebar-body .nav .nav-item.active > .nav-link::before,
+    .sidebar-dark .sidebar .sidebar-body .nav .nav-item.active > .nav-link::before {
+      background: #ef4444 !important;
+      background-color: #ef4444 !important;
+    }
+
+    .sidebar .sidebar-body .nav .nav-item.active > .nav-link .link-icon,
+    .sidebar .sidebar-body .nav .nav-item.active > .nav-link svg,
+    .sidebar-dark .sidebar .sidebar-body .nav .nav-item.active > .nav-link .link-icon,
+    .sidebar-dark .sidebar .sidebar-body .nav .nav-item.active > .nav-link svg {
+      color: #ef4444 !important;
+      stroke: #ef4444 !important;
+      fill: rgba(239, 68, 68, 0.15) !important;
+    }
+
+    .sidebar .sidebar-body .nav.sub-menu .nav-item .nav-link.active,
+    .sidebar-dark .sidebar .sidebar-body .nav.sub-menu .nav-item .nav-link.active {
+      color: #ef4444 !important;
+    }
+
+    .sidebar .sidebar-body .nav.sub-menu .nav-item .nav-link.active::before,
+    .sidebar-dark .sidebar .sidebar-body .nav.sub-menu .nav-item .nav-link.active::before {
+      background: #ef4444 !important;
+      border-color: #ef4444 !important;
+    }
   </style>
 </head>
 <body data-base-url="{{url('/')}}">

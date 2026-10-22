@@ -67,6 +67,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/feed', [\App\Http\Controllers\NotificationController::class, 'feed'])->name('notifications.feed');
 });
 
 require __DIR__.'/auth.php';
@@ -84,6 +87,7 @@ Route::resource('tags', \App\Http\Controllers\TagController::class)->middleware(
 Route::resource('employees', \App\Http\Controllers\EmployeeController::class)->middleware(['auth', 'verified']);
 Route::resource('companies', \App\Http\Controllers\CompanyController::class)->middleware(['auth', 'verified']);
 Route::patch('companies/{company}/toggle-status', [\App\Http\Controllers\CompanyController::class, 'toggleStatus'])->middleware(['auth', 'verified'])->name('companies.toggle-status');
+Route::get('conversations/unread-count', [\App\Http\Controllers\ConversationController::class, 'unreadCount'])->middleware(['auth', 'verified'])->name('conversations.unreadCount');
 Route::resource('conversations', \App\Http\Controllers\ConversationController::class)->middleware(['auth', 'verified'])->only(['index', 'show']);
 Route::put('conversations/{conversation}/assign', [\App\Http\Controllers\ConversationController::class, 'assign'])->middleware(['auth', 'verified'])->name('conversations.assign');
 Route::put('conversations/{conversation}/toggle-bot', [\App\Http\Controllers\ConversationController::class, 'toggleBot'])->middleware(['auth', 'verified'])->name('conversations.toggleBot');
@@ -94,7 +98,14 @@ Route::post('conversations/{conversation}/send-to-crm', [\App\Http\Controllers\C
 Route::middleware(['auth'])->group(function () {
     Route::resource('faqs', App\Http\Controllers\FaqController::class);
     Route::patch('faqs/{faq}/toggle-status', [App\Http\Controllers\FaqController::class, 'toggleStatus'])->name('faqs.toggle-status');
-    });
+    Route::resource('faq-categories', App\Http\Controllers\FaqCategoryController::class)->except(['create', 'show', 'edit']);
+    Route::patch('faq-categories/{category}/toggle-status', [App\Http\Controllers\FaqCategoryController::class, 'toggleStatus'])->name('faq-categories.toggle-status');
+    Route::resource('departments', App\Http\Controllers\DepartmentController::class)->except(['create', 'show', 'edit']);
+    Route::patch('departments/{department}/toggle-status', [App\Http\Controllers\DepartmentController::class, 'toggleStatus'])->name('departments.toggle-status');
+    Route::resource('designations', App\Http\Controllers\DesignationController::class)->except(['create', 'show', 'edit']);
+    Route::patch('designations/{designation}/toggle-status', [App\Http\Controllers\DesignationController::class, 'toggleStatus'])->name('designations.toggle-status');
+    Route::resource('roles', App\Http\Controllers\RoleController::class)->except(['show']);
+});
     
 Route::get('/api/states/{countryName}', [\App\Http\Controllers\LocationController::class, 'getStates']);
 Route::get('widget', [App\Http\Controllers\WidgetController::class, 'index'])->middleware(['auth', 'verified'])->name('widgets.index');

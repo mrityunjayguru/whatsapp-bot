@@ -7,10 +7,14 @@
 @section('content')
 <nav class="page-breadcrumb d-flex justify-content-between align-items-center">
   <ol class="breadcrumb mb-0">
-    <li class="breadcrumb-item"><a href="#">Faqs</a></li>
-    <li class="breadcrumb-item active" aria-current="page">FAQ</li>
+    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}"><i data-lucide="home" class="icon-sm"></i></a></li>
+    <li class="breadcrumb-item"><a href="{{ route('faqs.index') }}">Faqs</a></li>
+    <li class="breadcrumb-item active" aria-current="page">FAQ List</li>
   </ol>
-  <a href="{{ route('faqs.create') }}" class="btn btn-primary"><i data-lucide="plus" class="icon-sm me-2"></i> Add FAQ</a>
+  <div class="d-flex gap-2">
+    <a href="{{ route('faq-categories.index') }}" class="btn btn-outline-primary"><i data-lucide="folder" class="icon-sm me-1"></i> FAQ Categories</a>
+    <a href="{{ route('faqs.create') }}" class="btn btn-primary"><i data-lucide="plus" class="icon-sm me-1"></i> Add FAQ</a>
+  </div>
 </nav>
 
 <div class="row">
@@ -18,9 +22,12 @@
     <div class="card">
       <div class="card-body">
         
-        <div class="d-flex justify-content-between mb-3 align-items-center">
-            <h6 class="card-title mb-0">FAQ List</h6>
-            <button class="btn btn-outline-secondary btn-sm" onclick="window.location.reload()"><i data-lucide="refresh-cw" class="icon-sm me-2"></i> Refresh</button>
+        <div class="d-flex justify-content-between mb-3 align-items-center flex-wrap gap-2">
+            <div>
+              <h6 class="card-title mb-1">FAQ List</h6>
+              <p class="text-secondary fs-13px mb-0">Manage question and answer pairs synchronized with your AI bot.</p>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm" onclick="window.location.reload()"><i data-lucide="refresh-cw" class="icon-sm me-1"></i> Refresh</button>
         </div>
 
         @if(session('success'))
@@ -29,6 +36,51 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         @endif
+
+        {{-- Filters Section --}}
+        <form action="{{ route('faqs.index') }}" method="GET" id="faqFilterForm" class="mb-4">
+          <div class="row g-2 align-items-center">
+            
+            {{-- Category Filter --}}
+            <div class="col-md-3 col-sm-6">
+              <select name="category" class="form-select form-select-sm" onchange="document.getElementById('faqFilterForm').submit()">
+                <option value="">All Categories</option>
+                @foreach($categories as $cat)
+                  <option value="{{ $cat }}" {{ request('category') === $cat ? 'selected' : '' }}>
+                    {{ $cat }}
+                  </option>
+                @endforeach
+              </select>
+            </div>
+
+            {{-- Status Filter --}}
+            <div class="col-md-2 col-sm-6">
+              <select name="status" class="form-select form-select-sm" onchange="document.getElementById('faqFilterForm').submit()">
+                <option value="">All Status</option>
+                <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
+                <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
+              </select>
+            </div>
+
+            {{-- Search Input --}}
+            <div class="col-md-4 col-sm-8 ms-auto">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-transparent"><i data-lucide="search" class="icon-sm text-muted"></i></span>
+                <input type="text" name="search" class="form-control" placeholder="Search question, answer, keywords..." value="{{ request('search') }}" onkeypress="if(event.key === 'Enter') { document.getElementById('faqFilterForm').submit(); return false; }">
+              </div>
+            </div>
+
+            {{-- Clear Filters Button --}}
+            @if(request()->hasAny(['category', 'status', 'search']))
+              <div class="col-auto">
+                <a href="{{ route('faqs.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset Filters">
+                  <i data-lucide="rotate-ccw" class="icon-sm me-1"></i> Reset
+                </a>
+              </div>
+            @endif
+
+          </div>
+        </form>
 
         <div class="table-responsive">
           <table class="table table-hover">
@@ -41,8 +93,6 @@
                 <th>ANSWER PREVIEW</th>
                 <th>ATTACHMENT</th>
                 <!-- <th>URL</th> -->
-                <th>MATCH TYPE</th>
-                <th>PRIORITY</th>
                 <th>STATUS</th>
                 <th>CREATED BY</th>
                 <th>CREATED AT</th>
@@ -89,8 +139,6 @@
                         --
                     @endif
                 </td> -->
-                <td><span class="badge" style="background-color: #e0d4f5; color: #7f32d3;">{{ $faq->match_type ?? 'AI Semantic' }}</span></td>
-                <td><span class="badge" style="background-color: #fdf3e7; color: #e4913c;">{{ $faq->priority ?? 'Medium' }}</span></td>
                 <td>
                     <span class="badge {{ $faq->is_active ? 'bg-success' : 'bg-secondary' }} text-white" style="opacity: 0.8;">{{ $faq->is_active ? 'Active' : 'Inactive' }}</span>
                 </td>

@@ -129,13 +129,21 @@ class ConversationController extends Controller
         $allContacts = \App\Models\Contact::where('tenant_id', $companyId)->get();
         $allCountries = \App\Models\Country::orderBy('name')->get();
         
+        $canAssignChats = true;
+        if (auth()->id() !== 1) {
+            $currentEmp = \App\Models\Employee::where('email', auth()->user()->email)->first();
+            if ($currentEmp && $currentEmp->role !== 'ADMIN') {
+                $canAssignChats = $currentEmp->canAssignChats();
+            }
+        }
+
         $activeEmployeesQuery = \App\Models\Employee::where('tenant_id', $companyId)->where('status', 'ACTIVE');
-        if (isset($employee) && $employee && $employee->role !== 'ADMIN') {
+        if (isset($employee) && $employee && $employee->role !== 'ADMIN' && !$canAssignChats) {
             $activeEmployeesQuery->where('id', $employee->id);
         }
         $activeEmployees = $activeEmployeesQuery->orderBy('display_name')->get();
 
-        return view('conversations.show', compact('conversation', 'allTags', 'allContacts', 'activeEmployees', 'allCountries', 'isEmployeeNotAssigned'));
+        return view('conversations.show', compact('conversation', 'allTags', 'allContacts', 'activeEmployees', 'allCountries', 'isEmployeeNotAssigned', 'canAssignChats'));
     }
 
     public function sendMessage(Request $request, $id)
@@ -339,6 +347,11 @@ class ConversationController extends Controller
                 if ($conversation->assigned_tenant_user_id !== $employee->id) {
                     abort(403, 'You are not assigned to this conversation.');
                 }
+                if ($request->has('employee_id') && $conversation->assigned_tenant_user_id != $request->employee_id) {
+                    if (!$employee->canAssignChats()) {
+                        abort(403, 'You do not have permission to assign or transfer conversations.');
+                    }
+                }
             }
         }
 
@@ -423,6 +436,16 @@ class ConversationController extends Controller
     {
         $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
         $conversation = \App\Models\Conversation::where('tenant_id', $companyId)->findOrFail($id);
+
+        if (auth()->id() !== 1) {
+            $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
+            if ($employee && $employee->role !== 'ADMIN' && !$employee->canAssignChats()) {
+                if ($request->wantsJson() || $request->ajax()) {
+                    return response()->json(['error' => 'You do not have permission to assign or transfer conversations.'], 403);
+                }
+                abort(403, 'You do not have permission to assign or transfer conversations.');
+            }
+        }
 
         $request->validate([
             'employee_id' => 'nullable|exists:employees,id',
@@ -734,6 +757,33 @@ class ConversationController extends Controller
                 'message' => 'Failed to connect to CRM API: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Get the total unread message count across visible conversations for the current user.
+     */
+    public function unreadCount(Request $request)
+    {
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
+        $query = \App\Models\Conversation::where('tenant_id', $companyId)->where('unread_count', '>', 0);
+
+        if (auth()->id() !== 1) {
+            $employee = \App\Models\Employee::where('email', auth()->user()->email)->first();
+            if ($employee && $employee->role !== 'ADMIN') {
+                $query->where(function($q) use ($employee) {
+                    $q->where('assigned_tenant_user_id', $employee->id)
+                      ->orWhereJsonContains('assignment_history', ['employee_id' => $employee->id])
+                      ->orWhereJsonContains('assignment_history', ['employee_id' => (string)$employee->id]);
+                });
+            }
+        }
+
+        $totalUnread = (int) $query->sum('unread_count');
+
+        return response()->json([
+            'unread_count' => $totalUnread,
+            'has_unread' => $totalUnread > 0,
+        ]);
     }
 }
 

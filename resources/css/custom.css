@@ -6,3 +6,48 @@
 
 [data-bs-theme='dark']  .logo-mini-light { display: none !important; }
 [data-bs-theme='light'] .logo-mini-dark  { display: none !important; }
+
+/* ── Active Menu Item Red Highlight ────────────────────────────────────────── */
+.sidebar .sidebar-body .nav .nav-item.active > .nav-link,
+.sidebar .sidebar-body .nav .nav-item:hover > .nav-link,
+.sidebar-dark .sidebar .sidebar-body .nav .nav-item.active > .nav-link,
+.sidebar-dark .sidebar .sidebar-body .nav .nav-item:hover > .nav-link {
+  color: #ef4444 !important;
+}
+
+.sidebar .sidebar-body .nav .nav-item.active > .nav-link::before,
+.sidebar-dark .sidebar .sidebar-body .nav .nav-item.active > .nav-link::before {
+  background: #ef4444 !important;
+}
+
+.sidebar .sidebar-body .nav .nav-item.active > .nav-link .link-icon,
+.sidebar .sidebar-body .nav .nav-item.active > .nav-link svg,
+.sidebar .sidebar-body .nav .nav-item:hover > .nav-link .link-icon,
+.sidebar .sidebar-body .nav .nav-item:hover > .nav-link svg,
+.sidebar-dark .sidebar .sidebar-body .nav .nav-item.active > .nav-link .link-icon,
+.sidebar-dark .sidebar .sidebar-body .nav .nav-item.active > .nav-link svg,
+.sidebar-dark .sidebar .sidebar-body .nav .nav-item:hover > .nav-link .link-icon,
+.sidebar-dark .sidebar .sidebar-body .nav .nav-item:hover > .nav-link svg {
+  color: #ef4444 !important;
+  fill: rgba(239, 68, 68, 0.15) !important;
+}
+
+.sidebar .sidebar-body .nav .nav-item.active > .nav-link .link-title,
+.sidebar-dark .sidebar .sidebar-body .nav .nav-item.active > .nav-link .link-title {
+  color: #ef4444 !important;
+  font-weight: 500 !important;
+}
+
+/* Sub-menu active link highlight in red */
+.sidebar .sidebar-body .nav.sub-menu .nav-item .nav-link.active,
+.sidebar .sidebar-body .nav.sub-menu .nav-item:hover .nav-link,
+.sidebar-dark .sidebar .sidebar-body .nav.sub-menu .nav-item .nav-link.active,
+.sidebar-dark .sidebar .sidebar-body .nav.sub-menu .nav-item:hover .nav-link {
+  color: #ef4444 !important;
+}
+
+.sidebar .sidebar-body .nav.sub-menu .nav-item .nav-link.active::before,
+.sidebar-dark .sidebar .sidebar-body .nav.sub-menu .nav-item .nav-link.active::before {
+  background: #ef4444 !important;
+  border-color: #ef4444 !important;
+}

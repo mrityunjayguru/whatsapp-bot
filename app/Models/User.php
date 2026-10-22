@@ -77,6 +77,28 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get associated employee record if any
+     */
+    public function employee()
+    {
+        return $this->hasOne(Employee::class, 'email', 'email');
+    }
+
+    /**
+     * Check if user has permission to access a feature
+     */
+    public function canAccess(string $permissionName): bool
+    {
+        // Super Admin (no company_id) or Company Owner (no employee record) has full access
+        if (is_null($this->company_id) || !$this->isEmployee()) {
+            return true;
+        }
+
+        $emp = $this->employee;
+        return $emp ? $emp->hasPermission($permissionName) : false;
+    }
+
+    /**
      * Send email verification notification only if not an employee.
      */
     public function sendEmailVerificationNotification(): void

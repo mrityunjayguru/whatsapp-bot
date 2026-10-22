@@ -9,18 +9,74 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
+use App\Models\FaqCategory;
+use Illuminate\Support\Facades\Schema;
+
 class FaqController extends Controller
 {
-    public function index()
+    /**
+     * Helper to retrieve available categories for the tenant (from FaqCategory table or default fallback)
+     */
+    protected function getAvailableCategories($companyId)
+    {
+        $categories = collect();
+
+        // Check if faq_categories table exists and load active categories
+        if (Schema::hasTable('faq_categories')) {
+            $catQuery = FaqCategory::where('status', 1);
+            if (!is_null($companyId)) {
+                $catQuery->where('tenant_id', $companyId);
+            }
+            $categories = $catQuery->orderBy('name')->pluck('name');
+        }
+
+        // Return only categories defined in database
+        return $categories;
+    }
+
+    public function index(Request $request)
     {
         $companyId = auth()->user()->company_id ?? auth()->user()->tenant_id;
-        $faqs = Faq::where('tenant_id', $companyId)->orderBy('id', 'desc')->get();
-        return view('pages.general.faq', compact('faqs'));
+        $query = Faq::query();
+        if (!is_null($companyId)) {
+            $query->where('tenant_id', $companyId);
+        }
+
+        // Category filter
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+
+        // Status filter
+        if ($request->filled('status')) {
+            if ($request->status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($request->status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        // Search keyword/question
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('question', 'like', "%{$search}%")
+                  ->orWhere('keywords', 'like', "%{$search}%")
+                  ->orWhere('answer', 'like', "%{$search}%")
+                  ->orWhere('faq_hash_id', 'like', "%{$search}%");
+            });
+        }
+
+        $faqs = $query->orderBy('id', 'desc')->get();
+        $categories = $this->getAvailableCategories($companyId);
+
+        return view('pages.general.faq', compact('faqs', 'categories', 'request'));
     }
 
     public function create()
     {
-        return view('pages.faqs.create');
+        $companyId = auth()->user()->company_id ?? auth()->user()->tenant_id;
+        $categories = $this->getAvailableCategories($companyId);
+        return view('pages.faqs.create', compact('categories'));
     }
 
     public function store(Request $request, \App\Services\FaqApiService $apiService)
@@ -80,7 +136,8 @@ class FaqController extends Controller
     {
         $companyId = auth()->user()->company_id ?? auth()->user()->tenant_id;
         $faq = Faq::where('tenant_id', $companyId)->findOrFail($id);
-        return view('pages.faqs.edit', compact('faq'));
+        $categories = $this->getAvailableCategories($companyId);
+        return view('pages.faqs.edit', compact('faq', 'categories'));
     }
 
     public function update(Request $request, $id, \App\Services\FaqApiService $apiService)

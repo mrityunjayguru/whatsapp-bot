@@ -36,6 +36,13 @@
             </div>
 
             <div class="mb-3">
+                <label class="form-label">Company ID / Code <span class="text-danger">*</span></label>
+                <input type="text" class="form-control @error('company_code') is-invalid @enderror" name="company_code" value="{{ old('company_code', $company->company_code) }}" placeholder="e.g. DES1234" required style="text-transform: uppercase;">
+                <small class="text-secondary d-block mt-1">Unique code used by employees and admins to log in.</small>
+                @error('company_code') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+
+            <div class="mb-3">
                 <label class="form-label">Email Address <span class="text-danger">*</span></label>
                 <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email', $company->contact_email) }}" required>
                 @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror

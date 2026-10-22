@@ -28,6 +28,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'company_code' => ['nullable', 'string', 'max:50'],
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ];
@@ -42,7 +43,52 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $email = $this->input('email');
+        $companyCode = trim((string) $this->input('company_code'));
+
+        if (!empty($companyCode)) {
+            $company = \App\Models\Company::where('company_code', strtoupper($companyCode))->first();
+
+            if (!$company) {
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'company_code' => 'Invalid Company ID. No company found with this code.',
+                ]);
+            }
+
+            if (!$company->is_active) {
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'company_code' => 'Company account is inactive. Please contact support.',
+                ]);
+            }
+
+            $credentials = [
+                'email' => $email,
+                'password' => $this->input('password'),
+                'company_id' => $company->id,
+            ];
+        } else {
+            // No company code entered: check if this is a Super Admin (company_id is null)
+            $superAdminUser = \App\Models\User::where('email', $email)
+                ->whereNull('company_id')
+                ->first();
+
+            if (!$superAdminUser) {
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'company_code' => 'Company ID is required for company accounts and employees.',
+                ]);
+            }
+
+            $credentials = [
+                'email' => $email,
+                'password' => $this->input('password'),
+                'company_id' => null,
+            ];
+        }
+
+        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -81,6 +127,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('company_code')) . '|' . Str::lower($this->string('email')) . '|' . $this->ip());
     }
 }

@@ -35,187 +35,35 @@
         </a>
       </li>
       @endif
-      <!-- <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle d-flex" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-          <img src="{{ url('build/images/flags/us.svg') }}" class="w-20px" title="us" alt="flag">
-          <span class="ms-2 d-none d-md-inline-block">English</span>
-        </a>
-        <div class="dropdown-menu" aria-labelledby="languageDropdown">
-          <a href="javascript:;" class="dropdown-item py-2 d-flex"><img src="{{ url('build/images/flags/us.svg') }}" class="w-20px" title="us" alt="us"> <span class="ms-2"> English </span></a>
-          <a href="javascript:;" class="dropdown-item py-2 d-flex"><img src="{{ url('build/images/flags/fr.svg') }}" class="w-20px" title="fr" alt="fr"> <span class="ms-2"> French </span></a>
-          <a href="javascript:;" class="dropdown-item py-2 d-flex"><img src="{{ url('build/images/flags/de.svg') }}" class="w-20px" title="de" alt="de"> <span class="ms-2"> German </span></a>
-          <a href="javascript:;" class="dropdown-item py-2 d-flex"><img src="{{ url('build/images/flags/pt.svg') }}" class="w-20px" title="pt" alt="pt"> <span class="ms-2"> Portuguese </span></a>
-          <a href="javascript:;" class="dropdown-item py-2 d-flex"><img src="{{ url('build/images/flags/es.svg') }}" class="w-20px" title="es" alt="es"> <span class="ms-2"> Spanish </span></a>
-        </div>
-      </li>
-      <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" id="appsDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-          <i data-lucide="layout-grid"></i>
-        </a>
-        <div class="dropdown-menu p-0" aria-labelledby="appsDropdown">
-          <div class="px-3 py-2 d-flex align-items-center justify-content-between border-bottom">
-            <p class="mb-0 fw-bold">Web Apps</p>
-            <a href="javascript:;" class="text-secondary">Edit</a>
-          </div>
-          <div class="row g-0 p-1">
-            <div class="col-3 text-center">
-              <a href="{{ url('/apps/chat') }}" class="dropdown-item d-flex flex-column align-items-center justify-content-center w-70px h-70px"><i data-lucide="message-square" class="icon-lg mb-1"></i><p class="fs-12px">Chat</p></a>
-            </div>
-            <div class="col-3 text-center">
-              <a href="{{ url('/apps/calendar') }}" class="dropdown-item d-flex flex-column align-items-center justify-content-center w-70px h-70px"><i data-lucide="calendar" class="icon-lg mb-1"></i><p class="fs-12px">Calendar</p></a>
-            </div>
-            <div class="col-3 text-center">
-              <a href="{{ url('/email/inbox') }}" class="dropdown-item d-flex flex-column align-items-center justify-content-center w-70px h-70px"><i data-lucide="mail" class="icon-lg mb-1"></i><p class="fs-12px">Email</p></a>
-            </div>
-            <div class="col-3 text-center">
-              <a href="{{ url('/general/profile') }}" class="dropdown-item d-flex flex-column align-items-center justify-content-center w-70px h-70px"><i data-lucide="instagram" class="icon-lg mb-1"></i><p class="fs-12px">Profile</p></a>
-            </div>
-          </div>
-          <div class="px-3 py-2 d-flex align-items-center justify-content-center border-top">
-            <a href="javascript:;">View all</a>
-          </div>
-        </div>
-      </li>
-      <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" id="messageDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-          <i data-lucide="mail"></i>
-        </a>
-        <div class="dropdown-menu p-0" aria-labelledby="messageDropdown">
-          <div class="px-3 py-2 d-flex align-items-center justify-content-between border-bottom">
-            <p>9 New Messages</p>
-            <a href="javascript:;" class="text-secondary">Clear all</a>
-          </div>
-          <div class="p-1">
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="me-3">
-                <img class="w-30px h-30px rounded-circle" src="{{ url('https://placehold.co/30x30') }}" alt="userr">
-              </div>
-              <div class="d-flex justify-content-between flex-grow-1">
-                <div class="me-4">
-                  <p>Leonardo Payne</p>
-                  <p class="fs-12px text-secondary">Project status</p>
-                </div>
-                <p class="fs-12px text-secondary">2 min ago</p>
-              </div>	
-            </a>
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="me-3">
-                <img class="w-30px h-30px rounded-circle" src="{{ url('https://placehold.co/30x30') }}" alt="userr">
-              </div>
-              <div class="d-flex justify-content-between flex-grow-1">
-                <div class="me-4">
-                  <p>Carl Henson</p>
-                  <p class="fs-12px text-secondary">Client meeting</p>
-                </div>
-                <p class="fs-12px text-secondary">30 min ago</p>
-              </div>	
-            </a>
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="me-3">
-                <img class="w-30px h-30px rounded-circle" src="{{ url('https://placehold.co/30x30') }}" alt="userr">
-              </div>
-              <div class="d-flex justify-content-between flex-grow-1">
-                <div class="me-4">
-                  <p>Jensen Combs</p>
-                  <p class="fs-12px text-secondary">Project updates</p>
-                </div>
-                <p class="fs-12px text-secondary">1 hrs ago</p>
-              </div>	
-            </a>
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="me-3">
-                <img class="w-30px h-30px rounded-circle" src="{{ url('https://placehold.co/30x30') }}" alt="userr">
-              </div>
-              <div class="d-flex justify-content-between flex-grow-1">
-                <div class="me-4">
-                  <p>Amiah Burton</p>
-                  <p class="fs-12px text-secondary">Project deadline</p>
-                </div>
-                <p class="fs-12px text-secondary">2 hrs ago</p>
-              </div>	
-            </a>
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="me-3">
-                <img class="w-30px h-30px rounded-circle" src="{{ url('https://placehold.co/30x30') }}" alt="userr">
-              </div>
-              <div class="d-flex justify-content-between flex-grow-1">
-                <div class="me-4">
-                  <p>Yaretzi Mayo</p>
-                  <p class="fs-12px text-secondary">New record</p>
-                </div>
-                <p class="fs-12px text-secondary">5 hrs ago</p>
-              </div>	
-            </a>
-          </div>
-          <div class="px-3 py-2 d-flex align-items-center justify-content-center border-top">
-            <a href="javascript:;">View all</a>
-          </div>
-        </div>
-      </li>
-      <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+      {{-- Notifications & Activity Dropdown --}}
+      <li class="nav-item dropdown me-2">
+        <a class="nav-link dropdown-toggle position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Notifications & Activities">
           <i data-lucide="bell"></i>
-          <div class="indicator">
-            <div class="circle"></div>
-          </div>
+          <span id="headerNotificationDot" class="position-absolute rounded-circle" style="top: 8px; right: 8px; width: 8px; height: 8px; background-color: #ef4444; border: 2px solid #fff; box-sizing: content-box; display: none;"></span>
         </a>
-        <div class="dropdown-menu p-0" aria-labelledby="notificationDropdown">
+        <div class="dropdown-menu p-0" aria-labelledby="notificationDropdown" style="width: 320px; max-width: 90vw;">
           <div class="px-3 py-2 d-flex align-items-center justify-content-between border-bottom">
-            <p>6 New Notifications</p>
-            <a href="javascript:;" class="text-secondary">Clear all</a>
-          </div>
-          <div class="p-1">
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-primary rounded-circle me-3">
-                <i class="icon-sm text-white" data-lucide="gift"></i>
-              </div>
-              <div class="flex-grow-1 me-2">
-                <p>New Order Recieved</p>
-                <p class="fs-12px text-secondary">30 min ago</p>
-              </div>	
-            </a>
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-primary rounded-circle me-3">
-                <i class="icon-sm text-white" data-lucide="alert-circle"></i>
-              </div>
-              <div class="flex-grow-1 me-2">
-                <p>Server Limit Reached!</p>
-                <p class="fs-12px text-secondary">1 hrs ago</p>
-              </div>	
-            </a>
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-primary rounded-circle me-3">
-                <img class="w-30px h-30px rounded-circle" src="{{ url('https://placehold.co/30x30') }}" alt="userr">
-              </div>
-              <div class="flex-grow-1 me-2">
-                <p>New customer registered</p>
-                <p class="fs-12px text-secondary">2 sec ago</p>
-              </div>	
-            </a>
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-primary rounded-circle me-3">
-                <i class="icon-sm text-white" data-lucide="layers"></i>
-              </div>
-              <div class="flex-grow-1 me-2">
-                <p>Apps are ready for update</p>
-                <p class="fs-12px text-secondary">5 hrs ago</p>
-              </div>	
-            </a>
-            <a href="javascript:;" class="dropdown-item d-flex align-items-center py-2">
-              <div class="w-30px h-30px d-flex align-items-center justify-content-center bg-primary rounded-circle me-3">
-                <i class="icon-sm text-white" data-lucide="download"></i>
-              </div>
-              <div class="flex-grow-1 me-2">
-                <p>Download completed</p>
-                <p class="fs-12px text-secondary">6 hrs ago</p>
-              </div>	
+            <div class="d-flex align-items-center">
+              <span class="fw-bold fs-13px me-2">Notifications</span>
+              <span id="headerNotificationCountBadge" class="badge bg-danger rounded-pill fs-11px" style="display: none;">0</span>
+            </div>
+            <a href="javascript:void(0);" id="headerNotificationRefreshBtn" class="text-secondary fs-12px" title="Refresh">
+              <i data-lucide="refresh-cw" class="icon-xs"></i>
             </a>
           </div>
-          <div class="px-3 py-2 d-flex align-items-center justify-content-center border-top">
-            <a href="javascript:;">View all</a>
+          <div class="p-1" id="headerNotificationList" style="max-height: 330px; overflow-y: auto;">
+            <div class="p-3 text-center text-secondary fs-12px" id="headerNotificationLoading">
+              <div class="spinner-border spinner-border-sm text-primary me-1" role="status"></div>
+              Loading activity...
+            </div>
+          </div>
+          <div class="px-3 py-2 d-flex align-items-center justify-content-center border-top bg-light">
+            <a href="{{ route('notifications.index') }}" class="fs-12px fw-semibold text-primary d-flex align-items-center">
+              View All Notifications <i data-lucide="chevron-right" class="icon-xs ms-1"></i>
+            </a>
           </div>
         </div>
-      </li> -->
+      </li>
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
           <img class="w-30px h-30px ms-1 rounded-circle" src="{{ url('https://placehold.co/30x30') }}" alt="profile">
@@ -266,9 +114,16 @@
               </a>
             </li> --}}
             <li>
+              <a href="javascript:void(0);" class="dropdown-item py-2 text-body ms-0" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                <i class="me-2 icon-md" data-lucide="key-round"></i>
+                <span>Change Password</span>
+              </a>
+            </li>
+            <li class="border-top my-1"></li>
+            <li>
               <form method="POST" action="{{ route('logout') }}" class="m-0">
                 @csrf
-                <button type="submit" class="dropdown-item py-2 text-body ms-0 w-100 text-start bg-transparent border-0">
+                <button type="submit" class="dropdown-item py-2 text-danger ms-0 w-100 text-start bg-transparent border-0">
                   <i class="me-2 icon-md" data-lucide="log-out"></i>
                   <span>Log Out</span>
                 </button>
@@ -462,3 +317,100 @@
   }
 </script>
 @endif
+
+{{-- Change Password Modal --}}
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-bottom py-3">
+        <h6 class="modal-title fw-bold d-flex align-items-center" id="changePasswordModalLabel">
+          <i data-lucide="key-round" class="icon-sm text-primary me-2"></i> Change Password
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="POST" action="{{ route('password.update') }}" id="changePasswordForm">
+        @csrf
+        @method('put')
+        <div class="modal-body py-3">
+          <p class="text-muted small mb-3">Ensure your account is using a long, random password to stay secure.</p>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Current Password <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="password" name="current_password" id="current_password" class="form-control form-control-sm @error('current_password', 'updatePassword') is-invalid @enderror" required autocomplete="current-password" placeholder="Enter current password">
+              <button class="btn btn-outline-secondary btn-sm toggle-pwd-visibility" type="button" data-target="current_password">
+                <i data-lucide="eye" class="icon-xs"></i>
+              </button>
+            </div>
+            @error('current_password', 'updatePassword')
+              <div class="text-danger small mt-1">{{ $message }}</div>
+            @enderror
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold">New Password <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="password" name="password" id="new_password" class="form-control form-control-sm @error('password', 'updatePassword') is-invalid @enderror" required autocomplete="new-password" placeholder="Minimum 8 characters">
+              <button class="btn btn-outline-secondary btn-sm toggle-pwd-visibility" type="button" data-target="new_password">
+                <i data-lucide="eye" class="icon-xs"></i>
+              </button>
+            </div>
+            @error('password', 'updatePassword')
+              <div class="text-danger small mt-1">{{ $message }}</div>
+            @enderror
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label small fw-bold">Confirm New Password <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="password" name="password_confirmation" id="new_password_confirmation" class="form-control form-control-sm @error('password_confirmation', 'updatePassword') is-invalid @enderror" required autocomplete="new-password" placeholder="Re-enter new password">
+              <button class="btn btn-outline-secondary btn-sm toggle-pwd-visibility" type="button" data-target="new_password_confirmation">
+                <i data-lucide="eye" class="icon-xs"></i>
+              </button>
+            </div>
+            @error('password_confirmation', 'updatePassword')
+              <div class="text-danger small mt-1">{{ $message }}</div>
+            @enderror
+          </div>
+        </div>
+        <div class="modal-footer border-top py-2 bg-light">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-primary fw-bold">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Show modal automatically if validation failed from password update
+    @if($errors->updatePassword->any())
+      var pwdModalEl = document.getElementById('changePasswordModal');
+      if (pwdModalEl && typeof bootstrap !== 'undefined') {
+        var pwdModal = new bootstrap.Modal(pwdModalEl);
+        pwdModal.show();
+      }
+    @endif
+
+    // Toggle password visibility
+    document.querySelectorAll('.toggle-pwd-visibility').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var targetId = this.getAttribute('data-target');
+        var input = document.getElementById(targetId);
+        if (input) {
+          if (input.type === 'password') {
+            input.type = 'text';
+            this.innerHTML = '<i data-lucide="eye-off" class="icon-xs"></i>';
+          } else {
+            input.type = 'password';
+            this.innerHTML = '<i data-lucide="eye" class="icon-xs"></i>';
+          }
+          if (window.lucide) {
+            lucide.createIcons();
+          }
+        }
+      });
+    });
+  });
+</script>

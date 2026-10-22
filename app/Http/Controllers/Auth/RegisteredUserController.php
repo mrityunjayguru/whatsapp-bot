@@ -32,14 +32,31 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'company_code' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:companies,company_code'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'bot_usage_type' => ['nullable', 'in:widget,whatsapp'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
+
+        $botUsageType = $request->input('bot_usage_type', 'widget');
+
+        $companyData = [
+            'name' => $request->name,
+            'contact_email' => $request->email,
+            'is_active' => true,
+            'bot_usage_type' => $botUsageType,
+        ];
+        if ($request->filled('company_code')) {
+            $companyData['company_code'] = strtoupper(trim($request->company_code));
+        }
+
+        $company = \App\Models\Company::create($companyData);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'company_id' => $company->id,
         ]);
 
         event(new Registered($user));

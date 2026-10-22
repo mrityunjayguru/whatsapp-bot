@@ -37,12 +37,14 @@
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Category</label>
+                            <label class="form-label d-flex justify-content-between align-items-center">
+                                <span>Category</span>
+                            </label>
                             <select class="form-select" name="category">
-                                <option value="General" {{ $faq->category === 'General' ? 'selected' : '' }}>General</option>
-                                <option value="Billing" {{ $faq->category === 'Billing' ? 'selected' : '' }}>Billing</option>
-                                <option value="Technical" {{ $faq->category === 'Technical' ? 'selected' : '' }}>Technical</option>
-                                <option value="Sales" {{ $faq->category === 'Sales' ? 'selected' : '' }}>Sales</option>
+                                <option value="">-- Select Category --</option>
+                                @foreach($categories as $cat)
+                                    <option value="{{ $cat }}" {{ old('category', $faq->category) === $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
@@ -51,23 +53,6 @@
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Match Type</label>
-                            <select class="form-select" name="match_type">
-                                <option value="Exact Match" {{ $faq->match_type === 'Exact Match' ? 'selected' : '' }}>Exact Match</option>
-                                <option value="AI Semantic" {{ $faq->match_type === 'AI Semantic' ? 'selected' : '' }}>AI Semantic</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Priority</label>
-                            <select class="form-select" name="priority">
-                                <option value="Low" {{ $faq->priority === 'Low' ? 'selected' : '' }}>Low</option>
-                                <option value="Medium" {{ $faq->priority === 'Medium' ? 'selected' : '' }}>Medium</option>
-                                <option value="High" {{ $faq->priority === 'High' ? 'selected' : '' }}>High</option>
-                            </select>
-                        </div>
-                    </div>
                 </div>
             </div>
 

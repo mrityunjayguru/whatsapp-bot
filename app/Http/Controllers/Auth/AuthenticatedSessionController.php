@@ -42,9 +42,22 @@ class AuthenticatedSessionController extends Controller
             return redirect()->intended(route('companies.index', absolute: false));
         }
 
-        $employee = Employee::where('email', $user->email)->first();
-        if ($employee && $employee->role !== 'ADMIN') {
-            return redirect()->intended(route('conversations.index', absolute: false));
+        $employee = Employee::where('tenant_id', $user->company_id)
+            ->where('email', $user->email)
+            ->first();
+
+        if (!$employee) {
+            $employee = Employee::where('email', $user->email)->first();
+        }
+
+        if ($employee) {
+            $employee->update([
+                'last_login_at' => now(),
+                'is_online' => true,
+            ]);
+            if ($employee->role !== 'ADMIN') {
+                return redirect()->intended(route('conversations.index', absolute: false));
+            }
         }
 
         // Pull intended URL: if it's absent or just / or /dashboard, ignore it

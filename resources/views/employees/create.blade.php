@@ -2,6 +2,11 @@
 
 @section('title', 'Add Employee')
 
+@php
+  $catalog = $catalog ?? \App\Services\RolePermissionService::getPermissionCatalog();
+  $allPermissions = $allPermissions ?? \App\Models\Permission::all()->groupBy('module');
+@endphp
+
 @section('content')
 <nav class="page-breadcrumb">
   <ol class="breadcrumb">
@@ -58,15 +63,29 @@
             <div class="row">
                 <div class="col-sm-6">
                     <div class="mb-3">
-                        <label class="form-label">Department</label>
-                        <input type="text" class="form-control @error('department') is-invalid @enderror" name="department" value="{{ old('department') }}">
+                        <label class="form-label" for="department">Department</label>
+                        <select class="form-select @error('department') is-invalid @enderror" name="department" id="department">
+                            <option value="">Select Department</option>
+                            @foreach($departments as $dept)
+                                <option value="{{ $dept->name }}" {{ old('department') == $dept->name ? 'selected' : '' }}>
+                                    {{ $dept->name }}
+                                </option>
+                            @endforeach
+                        </select>
                         @error('department') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                 </div><!-- Col -->
                 <div class="col-sm-6">
                     <div class="mb-3">
-                        <label class="form-label">Designation</label>
-                        <input type="text" class="form-control @error('designation') is-invalid @enderror" name="designation" value="{{ old('designation') }}">
+                        <label class="form-label" for="designation">Designation</label>
+                        <select class="form-select @error('designation') is-invalid @enderror" name="designation" id="designation">
+                            <option value="">Select Designation</option>
+                            @foreach($designations as $desig)
+                                <option value="{{ $desig->name }}" data-department-id="{{ $desig->department_id }}" {{ old('designation') == $desig->name ? 'selected' : '' }}>
+                                    {{ $desig->name }}
+                                </option>
+                            @endforeach
+                        </select>
                         @error('designation') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                 </div><!-- Col -->
@@ -75,13 +94,18 @@
             <div class="row">
                 <div class="col-sm-4">
                     <div class="mb-3">
-                        <label class="form-label">Role <span class="text-danger">*</span></label>
-                        <select class="form-select @error('role') is-invalid @enderror" name="role" required>
-                            <option value="EMPLOYEE" {{ old('role') == 'EMPLOYEE' ? 'selected' : '' }}>Employee</option>
-                            <option value="MANAGER" {{ old('role') == 'MANAGER' ? 'selected' : '' }}>Manager</option>
-                            <option value="ADMIN" {{ old('role') == 'ADMIN' ? 'selected' : '' }}>Admin</option>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0">Role <span class="text-danger">*</span></label>
+                        </div>
+                        <select class="form-select @error('role_id') is-invalid @enderror" name="role_id" required>
+                            <option value="">Select Role</option>
+                            @foreach($roles as $role)
+                                <option value="{{ $role->id }}" {{ old('role_id') == $role->id ? 'selected' : (old('role') == strtoupper($role->slug) ? 'selected' : '') }}>
+                                    {{ $role->name }} {{ $role->is_system ? '(System)' : '' }}
+                                </option>
+                            @endforeach
                         </select>
-                        @error('role') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        @error('role_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                 </div><!-- Col -->
                 <div class="col-sm-4">
@@ -90,8 +114,8 @@
                         <select class="form-select @error('status') is-invalid @enderror" name="status" required>
                             <option value="ACTIVE" {{ old('status') == 'ACTIVE' ? 'selected' : '' }}>Active</option>
                             <option value="INACTIVE" {{ old('status') == 'INACTIVE' ? 'selected' : '' }}>Inactive</option>
-                            <option value="INVITED" {{ old('status') == 'INVITED' ? 'selected' : '' }}>Invited</option>
-                            <option value="BLOCKED" {{ old('status') == 'BLOCKED' ? 'selected' : '' }}>Blocked</option>
+                            <!-- <option value="INVITED" {{ old('status') == 'INVITED' ? 'selected' : '' }}>Invited</option>
+                            <option value="BLOCKED" {{ old('status') == 'BLOCKED' ? 'selected' : '' }}>Blocked</option> -->
                         </select>
                         @error('status') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
@@ -105,8 +129,31 @@
                 </div><!-- Col -->
             </div><!-- Row -->
 
-            <button type="submit" class="btn btn-primary submit">Save Employee</button>
-            <a href="{{ route('employees.index') }}" class="btn btn-secondary">Cancel</a>
+            <div class="row">
+                <div class="col-6">
+                    <div class="card border mb-4" style="background-color: #f8fafc;">
+                        <div class="card-body py-3 px-4">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="me-3">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i data-lucide="user-check" class="icon-sm text-primary me-2"></i>
+                                        <h6 class="mb-0 fw-bold text-dark">Chat Assignment / Transfer Permission</h6>
+                                    </div>
+                                    <p class="text-muted small mb-0">Allow this employee to assign or transfer conversations to other active team members.</p>
+                                </div>
+                                <div class="form-check form-switch fs-4 mb-0">
+                                    <input type="checkbox" class="form-check-input cursor-pointer" id="can_assign_chats" name="can_assign_chats" value="1" {{ old('can_assign_chats') ? 'checked' : '' }}>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 pt-2">
+                <button type="submit" class="btn btn-primary px-4 fw-semibold">Save Employee</button>
+                <a href="{{ route('employees.index') }}" class="btn btn-secondary px-3">Cancel</a>
+            </div>
         </form>
 
       </div>

@@ -28,43 +28,25 @@
             <div class="card mb-3">
                 <div class="card-body">
                     <h6 class="card-title text-muted mb-4 border-bottom pb-2">SECTION 1 : FAQ DETAILS</h6>
-                    
                     <div class="mb-3">
                         <label class="form-label">Question <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" name="question" placeholder="Enter question title..." required>
                     </div>
-
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Category</label>
+                            <label class="form-label d-flex justify-content-between align-items-center">
+                                <span>Category</span>
+                            </label>
                             <select class="form-select" name="category">
-                                <option value="General">General</option>
-                                <option value="Billing">Billing</option>
-                                <option value="Technical">Technical</option>
-                                <option value="Sales">Sales</option>
+                                <option value="">-- Select Category --</option>
+                                @foreach($categories as $cat)
+                                    <option value="{{ $cat }}" {{ old('category') == $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Keywords (comma-separated)</label>
                             <input type="text" class="form-control" name="keywords" placeholder="e.g. Onboarding, Setup, Password">
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Match Type</label>
-                            <select class="form-select" name="match_type">
-                                <option value="Exact Match">Exact Match</option>
-                                <option value="AI Semantic">AI Semantic</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Priority</label>
-                            <select class="form-select" name="priority">
-                                <option value="Low">Low</option>
-                                <option value="Medium" selected>Medium</option>
-                                <option value="High">High</option>
-                            </select>
                         </div>
                     </div>
                 </div>

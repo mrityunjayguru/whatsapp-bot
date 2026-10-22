@@ -102,7 +102,13 @@
                   </td>
                   <td>{{ $employee->email }}</td>
                   <td>{{ $employee->department ?? '-' }}</td>
-                  <td><span class="badge bg-secondary">{{ $employee->role }}</span></td>
+                  <td>
+                    @if($employee->customRole)
+                      <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold">{{ $employee->customRole->name }}</span>
+                    @else
+                      <span class="badge bg-secondary">{{ $employee->role }}</span>
+                    @endif
+                  </td>
                   <td>
                     @if($employee->status == 'ACTIVE')
                       <span class="badge bg-success-subtle text-success border border-success-subtle"><span class="bg-success rounded-circle d-inline-block me-1" style="width:6px;height:6px;"></span> Active</span>

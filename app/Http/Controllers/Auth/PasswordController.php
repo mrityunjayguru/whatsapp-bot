@@ -20,10 +20,19 @@ class PasswordController extends Controller
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
-        $request->user()->update([
-            'password' => Hash::make($validated['password']),
+        $hashed = Hash::make($validated['password']);
+        $user = $request->user();
+        $user->update([
+            'password' => $hashed,
         ]);
 
-        return back()->with('status', 'password-updated');
+        // If the user has an associated employee record, update password_hash as well
+        if ($user->email) {
+            \App\Models\Employee::where('email', $user->email)->update([
+                'password_hash' => $hashed,
+            ]);
+        }
+
+        return back()->with('success', 'Your password has been changed successfully.');
     }
 }

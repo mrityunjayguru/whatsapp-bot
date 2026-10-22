@@ -7,7 +7,6 @@
       <div class="row">
         <div class="col-md-4 pe-md-0">
           <div class="auth-side-wrapper" style="background-image: url({{ url('https://placehold.co/220x450') }})">
-
           </div>
         </div>
         <div class="col-md-8 ps-md-0">
@@ -31,11 +30,50 @@
               </div>
 
               <div class="mb-3">
+                <label for="company_code" class="form-label">Company ID / Code <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="company_code" id="company_code" placeholder="e.g. MYCOMP or DES1234" value="{{ old('company_code') }}" required style="text-transform: uppercase;">
+                <small class="text-secondary d-block mt-1">Unique company code. Employees will use this Company ID to log in.</small>
+                <x-input-error :messages="$errors->get('company_code')" class="mt-2 text-danger" />
+              </div>
+
+              <div class="mb-3">
                 <label for="contact_number" class="form-label">Contact Number</label>
                 <input type="text" class="form-control" name="contact_number" id="contact_number" autocomplete="tel" placeholder="Contact Number" value="{{ old('contact_number') }}">
                 <x-input-error :messages="$errors->get('contact_number')" class="mt-2 text-danger" />
               </div>
 
+              <div class="mb-3">
+                <label class="form-label d-block">Preferred Channel <span class="text-danger">*</span></label>
+                <div class="row g-2">
+                  <div class="col-6">
+                    <label class="card h-100 p-2 border cursor-pointer channel-card" for="channel_widget" style="cursor: pointer;">
+                      <div class="d-flex align-items-center">
+                        <input type="radio" class="form-check-input me-2 mt-0" name="bot_usage_type" id="channel_widget" value="widget" {{ old('bot_usage_type', 'widget') === 'widget' ? 'checked' : '' }} required>
+                        <div>
+                          <div class="fw-semibold fs-13px d-flex align-items-center">
+                            Website Widget
+                          </div>
+                          <small class="text-secondary fs-11px">Web live chat widget</small>
+                        </div>
+                      </div>           
+                    </label>
+                  </div>
+                  <div class="col-6">
+                    <label class="card h-100 p-2 border cursor-pointer channel-card" for="channel_whatsapp" style="cursor: pointer;">
+                      <div class="d-flex align-items-center">
+                        <input type="radio" class="form-check-input me-2 mt-0" name="bot_usage_type" id="channel_whatsapp" value="whatsapp" {{ old('bot_usage_type') === 'whatsapp' ? 'checked' : '' }} required>
+                        <div>
+                          <div class="fw-semibold fs-13px d-flex align-items-center">
+                           WhatsApp
+                          </div>
+                          <small class="text-secondary fs-11px">WhatsApp Cloud API</small>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                <x-input-error :messages="$errors->get('bot_usage_type')" class="mt-2 text-danger" />
+              </div>
 
               <div class="mb-3">
                 <label for="email" class="form-label">Email address <span class="text-danger">*</span></label>

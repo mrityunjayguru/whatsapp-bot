@@ -5,11 +5,11 @@
 @push('plugin-styles')
   <link href="{{ asset('build/plugins/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" />
   <style>
-    .chat-timeline { max-height: 400px; overflow-y: auto; padding: 15px; border-radius: 8px; border: 1px solid #e9ecef; background: #fff; }
-    .chat-bubble { max-width: 80%; padding: 10px 15px; border-radius: 12px; margin-bottom: 15px; position: relative; }
-    .chat-inbound { background: #f1f3f5; color: #333; float: left; clear: both; border-top-left-radius: 0; }
-    .chat-outbound { background: #00c853; color: #fff; float: right; clear: both; border-top-right-radius: 0; }
-    .chat-time { font-size: 0.70rem; opacity: 0.8; margin-top: 5px; text-align: right; }
+    .chat-timeline { max-height: 400px; overflow-y: auto; padding: 15px; border-radius: 8px; border: 1px solid #e9ecef; background: #f8fafc; }
+    .chat-bubble { max-width: 80%; padding: 10px 15px; border-radius: 12px; margin-bottom: 15px; position: relative; font-size: 0.92rem; }
+    .chat-inbound { background: #ffffff; color: #1e293b; float: left; clear: both; border-top-left-radius: 0; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+    .chat-outbound { background: #e2e8f0; color: #0f172a; float: right; clear: both; border-top-right-radius: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+    .chat-time { font-size: 0.70rem; opacity: 0.75; margin-top: 5px; text-align: right; color: inherit; }
     .chat-input-area { border: 1px solid #e9ecef; border-radius: 20px; padding: 5px 15px; display: flex; align-items: center; }
     .chat-input { border: none; flex-grow: 1; outline: none; box-shadow: none; background: transparent; }
 
@@ -96,7 +96,7 @@
         <div class="card mb-4 shadow-sm border-0">
             <div class="card-body">
                 <div class="section-title">SECTION 1: CONVERSATION HEADER</div>
-                <form action="{{ route('conversations.updateDetails', $conversation->id) }}" method="POST">
+                <form id="conversationHeaderForm" action="{{ route('conversations.updateDetails', $conversation->id) }}" method="POST">
                     @csrf
                     @method('PUT')
                     <div class="row mb-3">
@@ -121,20 +121,23 @@
                         </div>
                         <div class="col-6">
                             <small class="text-muted d-block">Department</small>
-                            <strong>-</strong>
+                            <strong>{{ $conversation->assignedEmployee?->department ?? '-' }}</strong>
                         </div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
                             <small class="text-muted d-block mb-1">Assigned</small>
-                            <select name="employee_id" class="form-select form-select-sm" style="max-width:200px;" {{ ($conversation->status === 'CLOSED' || !empty($isEmployeeNotAssigned)) ? 'disabled' : '' }}>
+                            <select name="employee_id" class="form-select form-select-sm" style="max-width:200px;" {{ ($conversation->status === 'CLOSED' || !empty($isEmployeeNotAssigned) || empty($canAssignChats)) ? 'disabled' : '' }}>
                                 <option value="">Unassigned (bot answers)</option>
                                 @foreach($activeEmployees as $employee)
                                     <option value="{{ $employee->id }}" @selected($conversation->assigned_tenant_user_id == $employee->id)>
-                                        {{ $employee->is_online ? '🟢' : '⚪' }} {{ $employee->display_name }}
+                                        {{ $employee->display_name }}
                                     </option>
                                 @endforeach
                             </select>
+                            @if(empty($canAssignChats))
+                                <small class="text-muted fs-11px d-block mt-1"><i data-lucide="lock" style="width: 11px; height: 11px;"></i> Assignment locked</small>
+                            @endif
                         </div>
                         <div class="col-6">
                             <small class="text-muted d-block">Created</small>
@@ -149,7 +152,7 @@
                     </div>
                     
                     <div class="border-top pt-3">
-                        <button type="submit" class="btn btn-sm btn-primary fw-bold px-3" {{ (!empty($isEmployeeNotAssigned)) ? 'disabled' : '' }}>Save Changes</button>
+                        <button type="submit" id="saveHeaderChangesBtn" class="btn btn-sm btn-primary fw-bold px-3" disabled>Save Changes</button>
                     </div>
                 </form>
                 <!-- <div class="d-flex gap-2 border-top pt-3">
@@ -404,7 +407,7 @@
                                         <img src="{{ $msg->media_url }}" alt="Image" style="max-width: 200px; border-radius: 8px; margin-bottom: 5px; display: block;">
                                     </a>
                                 @elseif(in_array($msg->message_type, ['DOCUMENT', 'VIDEO', 'AUDIO']) && $msg->media_url)
-                                    <a href="{{ $msg->media_url }}" target="_blank" class="d-flex align-items-center mb-2 {{ $msg->direction === 'INBOUND' ? 'text-dark' : 'text-white' }}" style="text-decoration: underline;">
+                                    <a href="{{ $msg->media_url }}" target="_blank" class="d-flex align-items-center mb-2 text-dark" style="text-decoration: underline;">
                                         <i data-lucide="paperclip" class="icon-sm me-1"></i> {{ $msg->file_name ?? 'Attachment' }}
                                     </a>
                                 @endif
@@ -673,7 +676,7 @@
 <div class="modal fade" id="editContactModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form action="{{ route('contacts.update', $conversation->contact?->id ?? 0) }}" method="POST">
+      <form id="editContactForm" action="{{ route('contacts.update', $conversation->contact?->id ?? 0) }}" method="POST">
         @csrf
         @method('PUT')
         <div class="modal-header">
@@ -732,7 +735,7 @@
         </div>
         <div class="modal-footer justify-content-center">
           <button type="button" class="btn btn-outline-dark px-4" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary px-4">Save Changes</button>
+          <button type="submit" id="saveContactChangesBtn" class="btn btn-primary px-4" disabled>Save Changes</button>
         </div>
       </form>
     </div>
@@ -1426,6 +1429,77 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.btn-trigger-send-to-crm').forEach(btn => {
         btn.addEventListener('click', sendToCrmAction);
     });
+
+    // ----------------------------------------------------
+    // Enable "Save Changes" button only on unsaved changes
+    // ----------------------------------------------------
+    const convHeaderForm = document.getElementById('conversationHeaderForm');
+    const saveHeaderBtn = document.getElementById('saveHeaderChangesBtn');
+    if (convHeaderForm && saveHeaderBtn) {
+        const isEmployeeNotAssigned = {{ (!empty($isEmployeeNotAssigned)) ? 'true' : 'false' }};
+        const statusField = convHeaderForm.querySelector('[name="status"]');
+        const employeeField = convHeaderForm.querySelector('[name="employee_id"]');
+
+        const initialStatus = statusField ? statusField.value : '';
+        const initialEmployee = employeeField ? employeeField.value : '';
+
+        function checkHeaderChanges() {
+            if (isEmployeeNotAssigned) {
+                saveHeaderBtn.disabled = true;
+                return;
+            }
+            const currentStatus = statusField ? statusField.value : '';
+            const currentEmployee = employeeField ? employeeField.value : '';
+            const isDirty = (currentStatus !== initialStatus) || (currentEmployee !== initialEmployee);
+            saveHeaderBtn.disabled = !isDirty;
+        }
+
+        convHeaderForm.addEventListener('change', checkHeaderChanges);
+        convHeaderForm.addEventListener('input', checkHeaderChanges);
+    }
+
+    // Modal Edit Contact Form: Save Changes disabled until unsaved changes
+    const editContactForm = document.getElementById('editContactForm');
+    const saveContactBtn = document.getElementById('saveContactChangesBtn');
+    if (editContactForm && saveContactBtn) {
+        let initialContactData = {};
+
+        function captureInitialContactValues() {
+            initialContactData = {};
+            const elements = editContactForm.querySelectorAll('input:not([readonly]):not([type="hidden"]), select, textarea');
+            elements.forEach(el => {
+                if (el.name) {
+                    initialContactData[el.name] = el.value ?? '';
+                }
+            });
+            saveContactBtn.disabled = true;
+        }
+
+        function checkContactChanges() {
+            const elements = editContactForm.querySelectorAll('input:not([readonly]):not([type="hidden"]), select, textarea');
+            let isDirty = false;
+            elements.forEach(el => {
+                if (el.name && initialContactData.hasOwnProperty(el.name)) {
+                    if ((el.value ?? '') !== (initialContactData[el.name] ?? '')) {
+                        isDirty = true;
+                    }
+                }
+            });
+            saveContactBtn.disabled = !isDirty;
+        }
+
+        captureInitialContactValues();
+
+        const contactModalEl = document.getElementById('editContactModal');
+        if (contactModalEl) {
+            contactModalEl.addEventListener('show.bs.modal', function () {
+                captureInitialContactValues();
+            });
+        }
+
+        editContactForm.addEventListener('input', checkContactChanges);
+        editContactForm.addEventListener('change', checkContactChanges);
+    }
 });
 </script>
 @endpush

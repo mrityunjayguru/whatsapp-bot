@@ -14,7 +14,7 @@ class EmployeeController extends Controller
     public function index(Request $request)
     {
         $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
-        $query = Employee::where('tenant_id', $companyId)->with('creator')->latest();
+        $query = Employee::where('tenant_id', $companyId)->with(['creator', 'customRole'])->latest();
 
         if ($search = $request->input('search')) {
             $query->where(function($q) use ($search) {
@@ -39,7 +39,14 @@ class EmployeeController extends Controller
      */
     public function create()
     {
-        return view('employees.create');
+        $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
+        \App\Services\RolePermissionService::ensureTenantDefaultRoles($companyId);
+        $departments = \App\Models\Department::where('tenant_id', $companyId)->where('status', true)->orderBy('name')->get();
+        $designations = \App\Models\Designation::where('tenant_id', $companyId)->where('status', true)->orderBy('name')->get();
+        $roles = \App\Models\Role::where('tenant_id', $companyId)->orderBy('name')->get();
+        $catalog = \App\Services\RolePermissionService::getPermissionCatalog();
+        $allPermissions = \App\Models\Permission::all()->groupBy('module');
+        return view('employees.create', compact('departments', 'designations', 'roles', 'catalog', 'allPermissions'));
     }
 
     /**
@@ -55,10 +62,20 @@ class EmployeeController extends Controller
             'mobile_number' => 'nullable|string|max:20',
             'designation' => 'nullable|string|max:255',
             'department' => 'nullable|string|max:255',
-            'role' => 'required|in:ADMIN,MANAGER,EMPLOYEE',
+            'role_id' => 'nullable|exists:roles,id',
+            'role' => 'nullable|string|max:50',
             'status' => 'required|in:ACTIVE,INACTIVE,INVITED,BLOCKED',
             'password' => 'required|string|min:8',
         ]);
+
+        $roleId = $request->input('role_id');
+        $roleName = 'EMPLOYEE';
+        if ($roleId) {
+            $selectedRole = \App\Models\Role::find($roleId);
+            $roleName = $selectedRole ? strtoupper($selectedRole->slug) : 'EMPLOYEE';
+        } elseif ($request->filled('role')) {
+            $roleName = strtoupper($request->role);
+        }
 
         $tenantEmployeeCount = Employee::where('tenant_id', $companyId)->count();
         $nextId = $tenantEmployeeCount + 1;
@@ -84,7 +101,9 @@ class EmployeeController extends Controller
             'password_hash' => Hash::make($request->password),
             'designation' => $request->designation,
             'department' => $request->department,
-            'role' => $request->role,
+            'role' => in_array($roleName, ['ADMIN', 'MANAGER', 'EMPLOYEE'], true) ? $roleName : 'EMPLOYEE',
+            'role_id' => $roleId,
+            'can_assign_chats' => $roleName === 'ADMIN' ? true : $request->boolean('can_assign_chats'),
             'status' => $request->status,
             'created_by' => auth()->id(),
         ]);
@@ -98,8 +117,14 @@ class EmployeeController extends Controller
     public function edit($id)
     {
         $companyId = (auth()->user()->company_id ?? auth()->user()->tenant_id);
+        \App\Services\RolePermissionService::ensureTenantDefaultRoles($companyId);
         $employee = Employee::where('tenant_id', $companyId)->findOrFail($id);
-        return view('employees.edit', compact('employee'));
+        $departments = \App\Models\Department::where('tenant_id', $companyId)->where('status', true)->orderBy('name')->get();
+        $designations = \App\Models\Designation::where('tenant_id', $companyId)->where('status', true)->orderBy('name')->get();
+        $roles = \App\Models\Role::where('tenant_id', $companyId)->orderBy('name')->get();
+        $catalog = \App\Services\RolePermissionService::getPermissionCatalog();
+        $allPermissions = \App\Models\Permission::all()->groupBy('module');
+        return view('employees.edit', compact('employee', 'departments', 'designations', 'roles', 'catalog', 'allPermissions'));
     }
 
     /**
@@ -117,10 +142,20 @@ class EmployeeController extends Controller
             'mobile_number' => 'nullable|string|max:20',
             'designation' => 'nullable|string|max:255',
             'department' => 'nullable|string|max:255',
-            'role' => 'required|in:ADMIN,MANAGER,EMPLOYEE',
+            'role_id' => 'nullable|exists:roles,id',
+            'role' => 'nullable|string|max:50',
             'status' => 'required|in:ACTIVE,INACTIVE,INVITED,BLOCKED',
             'password' => 'nullable|string|min:8',
         ]);
+
+        $roleId = $request->input('role_id');
+        $roleName = $employee->role;
+        if ($roleId) {
+            $selectedRole = \App\Models\Role::find($roleId);
+            $roleName = $selectedRole ? strtoupper($selectedRole->slug) : 'EMPLOYEE';
+        } elseif ($request->filled('role')) {
+            $roleName = strtoupper($request->role);
+        }
 
         $data = [
             'first_name' => $request->first_name,
@@ -130,7 +165,9 @@ class EmployeeController extends Controller
             'mobile_number' => $request->mobile_number,
             'designation' => $request->designation,
             'department' => $request->department,
-            'role' => $request->role,
+            'role' => in_array($roleName, ['ADMIN', 'MANAGER', 'EMPLOYEE'], true) ? $roleName : 'EMPLOYEE',
+            'role_id' => $roleId,
+            'can_assign_chats' => $roleName === 'ADMIN' ? true : $request->boolean('can_assign_chats'),
             'status' => $request->status,
         ];
 
